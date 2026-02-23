@@ -30,5 +30,5 @@ Generate & decode QR codes — text, URLs, WiFi networks, vCard contacts, emails
 → See [`QR Code Studio/`](QR%20Code%20Studio/) for setup & usage instructions.
 
 ### 🛡️ Metadata Scrubber
-Inspect & strip metadata from images (JPEG, PNG, WebP, TIFF, BMP) and documents (DOCX, PDF, XLSX, PPTX). For images: categorized EXIF tables, GPS map, privacy alerts. For documents: author, company, revision history, tracked changes, hidden sheets, speaker notes. Strip single or batch with mixed file types.  
-→ See [`EXIF Stripper/`](EXIF%20Stripper/) for setup & usage instructions.
+Inspect & strip metadata from images (JPG, PNG, WebP, TIFF, BMP) and documents (DOCX, PDF, XLSX, PPTX). Unified single-page UI — upload multiple files, view per-file metadata in expanders with privacy risk alerts and GPS maps, strip individually or batch-download all cleaned files as ZIP.  
+→ See [`Metadata Scrubber/`](Metadata%20Scrubber/) for setup & usage instructions.
