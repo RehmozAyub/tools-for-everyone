@@ -8,3 +8,15 @@ Some of these tools require a .env file for configuration, which you can easily 
 
 If you have any questions, need help, or want to share your experience, feel free to reach out to me.
 Instagram: @rehmozdoesstuff
+
+---
+
+## 🧰 Available Tools
+
+### 🎙️ Audio Transcriber
+Transcribe audio files using a Streamlit web interface.  
+→ See [`Audio Transcriber/`](Audio%20Transcriber/)
+
+### 📄 PDF Suite
+All-in-one PDF toolkit — merge, split, compress, extract text, convert to/from images, rotate, watermark, add page numbers, and password-protect PDFs. Clean Streamlit UI.  
+→ See [`PDF Suite/`](PDF%20Suite/) for setup & usage instructions.
