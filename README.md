@@ -28,3 +28,7 @@ Rename multiple files at once with powerful rules — find & replace, regex patt
 ### 📱 QR Code Studio
 Generate & decode QR codes — text, URLs, WiFi networks, vCard contacts, emails, and batch mode. Customizable colors, error correction, and border. Export as PNG or SVG. Decode from uploaded images or camera with auto-parsing of WiFi/vCard/URL payloads.  
 → See [`QR Code Studio/`](QR%20Code%20Studio/) for setup & usage instructions.
+
+### 🔍 EXIF Stripper + Inspector
+View, analyze, and strip EXIF metadata from images. Categorized metadata tables, GPS location on a map, privacy risk alerts for sensitive tags (GPS, serial numbers, owner names). Strip single or batch images with orientation preservation and before/after comparison.  
+→ See [`EXIF Stripper/`](EXIF%20Stripper/) for setup & usage instructions.
