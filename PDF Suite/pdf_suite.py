@@ -117,6 +117,17 @@ def show_pdf_info(filename, info):
     st.info(f"📊 **{filename}** — {info['pages']} pages, {info['size_kb']:.1f} KB")
 
 
+def make_transparent_image(img_bytes, opacity):
+    """Apply opacity to an image and return PNG bytes with alpha channel."""
+    img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
+    alpha = img.split()[3]
+    alpha = alpha.point(lambda p: int(p * opacity))
+    img.putalpha(alpha)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # MERGE PDFs
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -215,7 +226,6 @@ elif tool == "split":
                         use_container_width=True,
                     )
                 else:
-                    # Individual pages → ZIP
                     buf = io.BytesIO()
                     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
                         for i in range(len(doc)):
@@ -511,52 +521,141 @@ elif tool == "rotate":
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 elif tool == "watermark":
     st.markdown("### 💧 Add Watermark")
-    st.markdown("Overlay a diagonal text watermark on every page.")
+    st.markdown("Overlay a text or image watermark on every page.")
 
     file = st.file_uploader("Upload PDF", type=["pdf"], key="wm_upload")
 
     if file:
         pdf_bytes = file.read()
 
-        c1, c2 = st.columns(2)
-        wm_text = c1.text_input("Watermark text", "CONFIDENTIAL")
-        opacity = c2.slider("Opacity", 0.05, 0.5, 0.15)
+        wm_type = st.radio("Watermark type", ["✍️ Text", "🖼️ Image"], horizontal=True)
 
-        c3, c4 = st.columns(2)
-        font_size = c3.slider("Font size", 20, 120, 60)
-        color_hex = c4.color_picker("Color", "#FF0000")
+        # ---- TEXT WATERMARK ----
+        if wm_type == "✍️ Text":
+            c1, c2 = st.columns(2)
+            wm_text = c1.text_input("Watermark text", "CONFIDENTIAL")
+            opacity = c2.slider("Opacity", 0.05, 0.5, 0.15)
 
-        if st.button("💧 Add Watermark", type="primary", use_container_width=True):
-            with st.spinner("Applying watermark…"):
-                doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+            c3, c4 = st.columns(2)
+            font_size = c3.slider("Font size", 20, 120, 60)
+            color_hex = c4.color_picker("Color", "#FF0000")
 
-                r = int(color_hex[1:3], 16) / 255
-                g = int(color_hex[3:5], 16) / 255
-                b = int(color_hex[5:7], 16) / 255
+            if st.button("💧 Add Text Watermark", type="primary", use_container_width=True):
+                with st.spinner("Applying text watermark…"):
+                    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
 
-                for page in doc:
-                    rect = page.rect
-                    page.insert_text(
-                        fitz.Point(rect.width / 4, rect.height / 2),
-                        wm_text,
-                        fontsize=font_size,
-                        color=(r, g, b),
-                        rotate=45,
-                        overlay=True,
-                        fill_opacity=opacity,
-                    )
+                    r = int(color_hex[1:3], 16) / 255
+                    g = int(color_hex[3:5], 16) / 255
+                    b = int(color_hex[5:7], 16) / 255
 
-                output = doc.tobytes()
-                doc.close()
+                    for page in doc:
+                        rect = page.rect
+                        # Use morph for arbitrary-angle rotation (rotate= only allows 0/90/180/270)
+                        center = fitz.Point(rect.width / 2, rect.height / 2)
+                        page.insert_text(
+                            fitz.Point(rect.width / 4, rect.height / 2),
+                            wm_text,
+                            fontsize=font_size,
+                            color=(r, g, b),
+                            overlay=True,
+                            fill_opacity=opacity,
+                            morph=(center, fitz.Matrix(45)),
+                        )
 
-            st.success("✅ Watermark added to all pages")
-            st.download_button(
-                "⬇️ Download Watermarked PDF",
-                data=output,
-                file_name=f"watermarked_{file.name}",
-                mime="application/pdf",
-                use_container_width=True,
+                    output = doc.tobytes()
+                    doc.close()
+
+                st.success("✅ Text watermark added to all pages")
+                st.download_button(
+                    "⬇️ Download Watermarked PDF",
+                    data=output,
+                    file_name=f"watermarked_{file.name}",
+                    mime="application/pdf",
+                    use_container_width=True,
+                )
+
+        # ---- IMAGE WATERMARK ----
+        else:
+            wm_image = st.file_uploader(
+                "Upload watermark image (PNG recommended for transparency)",
+                type=["png", "jpg", "jpeg", "webp"],
+                key="wm_img_upload",
             )
+
+            if wm_image:
+                st.image(wm_image, caption="Watermark preview", width=200)
+
+                c1, c2 = st.columns(2)
+                opacity = c1.slider("Opacity", 0.05, 1.0, 0.25)
+                scale_pct = c2.slider("Scale (%)", 10, 100, 40)
+
+                position = st.selectbox(
+                    "Position",
+                    ["Center", "Top Left", "Top Right",
+                     "Bottom Left", "Bottom Right", "Tile (repeat)"],
+                )
+
+                if st.button("💧 Add Image Watermark", type="primary", use_container_width=True):
+                    with st.spinner("Applying image watermark…"):
+                        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+                        raw_bytes = wm_image.read()
+
+                        # Pre-process image: apply opacity via alpha channel
+                        wm_transparent = make_transparent_image(raw_bytes, opacity)
+
+                        for page in doc:
+                            rect = page.rect
+
+                            # Determine watermark dimensions
+                            tmp_img = Image.open(io.BytesIO(raw_bytes))
+                            wm_w, wm_h = tmp_img.size
+                            scale = scale_pct / 100
+                            nw = rect.width * scale
+                            nh = nw * (wm_h / wm_w)
+
+                            if position == "Tile (repeat)":
+                                y = 0.0
+                                while y < rect.height:
+                                    x = 0.0
+                                    while x < rect.width:
+                                        target = fitz.Rect(x, y, x + nw, y + nh)
+                                        page.insert_image(target, stream=wm_transparent, overlay=True)
+                                        x += nw + 20
+                                    y += nh + 20
+                            else:
+                                pos_rects = {
+                                    "Center": fitz.Rect(
+                                        (rect.width - nw) / 2, (rect.height - nh) / 2,
+                                        (rect.width + nw) / 2, (rect.height + nh) / 2,
+                                    ),
+                                    "Top Left": fitz.Rect(20, 20, 20 + nw, 20 + nh),
+                                    "Top Right": fitz.Rect(
+                                        rect.width - nw - 20, 20,
+                                        rect.width - 20, 20 + nh,
+                                    ),
+                                    "Bottom Left": fitz.Rect(
+                                        20, rect.height - nh - 20,
+                                        20 + nw, rect.height - 20,
+                                    ),
+                                    "Bottom Right": fitz.Rect(
+                                        rect.width - nw - 20, rect.height - nh - 20,
+                                        rect.width - 20, rect.height - 20,
+                                    ),
+                                }
+                                target = pos_rects[position]
+                                page.insert_image(target, stream=wm_transparent, overlay=True)
+
+                        output = doc.tobytes()
+                        doc.close()
+
+                    st.success("✅ Image watermark added to all pages")
+                    st.download_button(
+                        "⬇️ Download Watermarked PDF",
+                        data=output,
+                        file_name=f"watermarked_{file.name}",
+                        mime="application/pdf",
+                        use_container_width=True,
+                    )
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -694,7 +793,7 @@ elif tool == "protect":
 st.markdown("---")
 st.markdown(
     '<div style="text-align:center; color:#666; font-size:0.85rem;">'
-    'PDF Suite v1.0 · Built with Streamlit + PyMuPDF · '
+    'PDF Suite v1.1 · Built with Streamlit + PyMuPDF · '
     '<a href="https://github.com/RehmozAyub/tools-for-everyone" style="color:#667eea;">GitHub</a>'
     "</div>",
     unsafe_allow_html=True,
