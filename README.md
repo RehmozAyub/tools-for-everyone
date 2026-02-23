@@ -24,3 +24,7 @@ All-in-one PDF toolkit — merge, split, compress, extract text, convert to/from
 ### 📁 Bulk File Renamer
 Rename multiple files at once with powerful rules — find & replace, regex patterns, prefix/suffix, sequential numbering, date stamps, case conversion, extension control, and trim/clean. Sidebar-driven UI with live preview, duplicate detection, and ZIP download.  
 → See [`Bulk File Renamer/`](Bulk%20File%20Renamer/) for setup & usage instructions.
+
+### 📱 QR Code Studio
+Generate & decode QR codes — text, URLs, WiFi networks, vCard contacts, emails, and batch mode. Customizable colors, error correction, and border. Export as PNG or SVG. Decode from uploaded images or camera with auto-parsing of WiFi/vCard/URL payloads.  
+→ See [`QR Code Studio/`](QR%20Code%20Studio/) for setup & usage instructions.
