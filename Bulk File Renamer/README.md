@@ -1,6 +1,6 @@
 # 📁 Bulk File Renamer
 
-A powerful Streamlit-based bulk file renaming tool. Upload files via drag-and-drop, apply flexible renaming rules, preview changes instantly, and download renamed files as a ZIP.
+A powerful Streamlit-based bulk file renaming tool. Upload files via drag-and-drop, pick a renaming rule from the sidebar, preview changes instantly, and download renamed files as a ZIP.
 
 ## Features
 
@@ -9,11 +9,11 @@ A powerful Streamlit-based bulk file renaming tool. Upload files via drag-and-dr
 | **Find & Replace** | Simple text substitution with optional case sensitivity |
 | **Regex Patterns** | Full regex support with capture groups for advanced renaming |
 | **Prefix / Suffix** | Add text before or after the filename stem |
-| **Sequential Numbering** | Auto-number files with configurable start, step, padding, and position |
-| **Date Stamp** | Add date/time stamps in multiple formats (prefix or suffix) |
+| **Sequential Numbering** | Auto-number files with configurable start, step, padding, position, and full-replace mode |
+| **Date Stamp** | Add date/time stamps in multiple formats (prefix or suffix) with custom date picker |
 | **Case Conversion** | lowercase, UPPERCASE, Title Case, snake_case, camelCase, kebab-case |
-| **Extension Control** | Keep, change, remove, or add extra file extensions |
-| **Trim / Pad** | Remove characters from start/end, replace spaces with underscores/dashes |
+| **Extension Control** | Change, remove, or add extra file extensions |
+| **Trim / Clean** | Remove characters from start/end, replace spaces, strip special characters |
 | **Live Preview** | See old → new names in real-time before committing |
 | **Duplicate Detection** | Warns when rules produce identical filenames |
 | **ZIP Download** | Download all renamed files in a single ZIP archive |
@@ -26,7 +26,7 @@ A powerful Streamlit-based bulk file renaming tool. Upload files via drag-and-dr
 pip install -r requirements.txt
 
 # 2. Run the app
-streamlit run app.py
+streamlit run bulk_rename.py
 ```
 
 The app will open in your browser at `http://localhost:8501`.
@@ -34,40 +34,29 @@ The app will open in your browser at `http://localhost:8501`.
 ## How It Works
 
 1. **Upload** — Drag-and-drop or browse to select files.
-2. **Configure** — Set up renaming rules across the tabbed interface. Rules apply top-to-bottom.
-3. **Preview** — Instantly see how every filename will change.
-4. **Download** — Generate a ZIP with all files renamed.
-
-## Rule Application Order
-
-Rules are applied in this sequence:
-
-1. Find & Replace
-2. Regex substitution
-3. Trim characters
-4. Replace spaces
-5. Case conversion
-6. Prefix / Suffix
-7. Sequential numbering
-8. Date stamp
-9. Extension handling
+2. **Select Rule** — Pick a renaming rule from the sidebar.
+3. **Configure** — Set up rule parameters in the main panel.
+4. **Preview** — Instantly see how every filename will change.
+5. **Download** — Generate a ZIP with all files renamed.
 
 ## Examples
 
-**Add a project prefix + sequential numbers:**
-- Prefix: `project_`
-- Sequential: start=1, step=1, pad=3, position=suffix
-- `report.pdf` → `project_report_001.pdf`
+**Add a project prefix:**
+- Rule: Prefix / Suffix → Prefix: `project_`
+- `report.pdf` → `project_report.pdf`
 
-**Regex — extract dates from filenames:**
+**Sequential numbering (replace names):**
+- Rule: Sequential Numbering → Replace entire filename ✓, Start: 1, Pad: 3
+- `messy file.jpg` → `001.jpg`
+
+**Regex — reorder date in filename:**
 - Pattern: `^(\d{4})(\d{2})(\d{2})_(.+)`
 - Replace: `\4_\1-\2-\3`
 - `20250115_meeting.txt` → `meeting_2025-01-15.txt`
 
-**Clean messy filenames:**
-- Replace spaces with `_`
-- Case: snake_case
-- `My Cool File (Final).docx` → `my_cool_file_(final).docx`
+**Clean up filenames:**
+- Rule: Trim / Clean → Replace spaces with `_`, Strip special characters ✓
+- `My Cool File (Final).docx` → `My_Cool_File_Final.docx`
 
 ## License
 
