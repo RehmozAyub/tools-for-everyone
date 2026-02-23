@@ -1,0 +1,113 @@
+name: Build Windows EXE
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - tool_dir: 'Audio Transcriber'
+            tool_name: 'AudioTranscriber'
+            script: 'audio_transcriber_streamlit.py'
+            hidden_imports: '--hidden-import openai --hidden-import pydub --hidden-import pydub.utils --hidden-import dotenv'
+          - tool_dir: 'Bulk File Renamer'
+            tool_name: 'BulkFileRenamer'
+            script: 'app.py'
+            hidden_imports: ''
+          - tool_dir: 'PDF Suite'
+            tool_name: 'PDFSuite'
+            script: 'pdf_suite.py'
+            hidden_imports: '--hidden-import fitz --hidden-import fitz.fitz --hidden-import PIL --hidden-import PIL.Image'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install -r "${{ matrix.tool_dir }}/requirements.txt"
+
+      - name: Generate Streamlit launcher
+        shell: python
+        run: |
+          import os, textwrap
+          code = textwrap.dedent("""
+              import sys
+              import os
+
+              if getattr(sys, "frozen", False):
+                  bundle_dir = os.path.dirname(sys.executable)
+              else:
+                  bundle_dir = os.path.dirname(os.path.abspath(__file__))
+
+              os.chdir(bundle_dir)
+
+              import streamlit.web.cli as stcli
+
+              if __name__ == "__main__":
+                  sys.argv = [
+                      "streamlit", "run",
+                      os.path.join(bundle_dir, "{script}"),
+                      "--server.headless", "true",
+                      "--browser.gatherUsageStats", "false",
+                  ]
+                  stcli.main()
+          """).strip().format(script="${{ matrix.script }}")
+          launcher_path = os.path.join("${{ matrix.tool_dir }}", "launcher.py")
+          with open(launcher_path, "w") as f:
+              f.write(code)
+          print(f"Created: {launcher_path}")
+
+      - name: Build EXE with PyInstaller
+        run: |
+          cd "${{ matrix.tool_dir }}"
+          pyinstaller --name "${{ matrix.tool_name }}" `
+            --onedir `
+            --clean `
+            --collect-data streamlit `
+            --copy-metadata streamlit `
+            --hidden-import streamlit `
+            ${{ matrix.hidden_imports }} `
+            --add-data "${{ matrix.script }};." `
+            launcher.py
+
+      - name: Compress build output
+        run: |
+          Compress-Archive -Path "${{ matrix.tool_dir }}/dist/${{ matrix.tool_name }}" -DestinationPath "${{ matrix.tool_dir }}/dist/${{ matrix.tool_name }}.zip"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.tool_name }}
+          path: "${{ matrix.tool_dir }}/dist/${{ matrix.tool_name }}.zip"
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*.zip
+          generate_release_notes: true
