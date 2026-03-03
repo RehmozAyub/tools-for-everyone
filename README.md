@@ -8,6 +8,7 @@ Some of these tools require a .env file for configuration, which you can easily 
 
 If you have any questions, need help, or want to share your experience, feel free to reach out to me.
 Instagram: @rehmozdoesstuff
+LinkedIn: https://www.linkedin.com/in/rehmozayub/
 
 ---
 
