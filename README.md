@@ -18,7 +18,7 @@ Transcribe audio files using a Streamlit web interface.
 → See [`Audio Transcriber/`](Audio%20Transcriber/)
 
 ### 📄 PDF Suite
-All-in-one PDF toolkit — merge, split, compress, extract text, convert to/from images, rotate, watermark, add page numbers, and password-protect PDFs. Clean Streamlit UI.  
+All-in-one PDF toolkit with **17 tools** — merge, split, organize pages, compress, extract text, convert to/from images, extract embedded images, rotate, crop, resize, watermark, sign, add page numbers, edit metadata, password-protect, and unlock PDFs. Clean Streamlit UI, everything runs locally.  
 → See [`PDF Suite/`](PDF%20Suite/) for setup & usage instructions.
 
 ### 📁 Bulk File Renamer

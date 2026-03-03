@@ -1,6 +1,8 @@
 """
-PDF Suite — Your all-in-one PDF toolkit
-Features: Merge, Split, Compress, Extract Text, PDF↔Images, Rotate, Watermark, Page Numbers, Protect
+PDF Suite v2.0 — Your all-in-one PDF toolkit
+Features: Merge, Split, Compress, Extract Text, PDF↔Images, Rotate, Watermark,
+          Page Numbers, Protect, Unlock, Organize Pages, Edit Metadata,
+          Extract Images, Crop Pages, Resize Pages, Sign PDF
 Built with Streamlit + PyMuPDF
 """
 
@@ -9,6 +11,7 @@ import fitz  # PyMuPDF
 from PIL import Image
 import io
 import zipfile
+import json
 from datetime import datetime
 
 # ─── Page Config ───
@@ -71,14 +74,21 @@ st.markdown('<div class="sub-header">Your all-in-one PDF toolkit — merge, spli
 TOOLS = {
     "🔗 Merge PDFs": "merge",
     "✂️ Split PDF": "split",
+    "📑 Organize Pages": "organize",
     "🗜️ Compress PDF": "compress",
     "📝 Extract Text": "extract_text",
     "🖼️ PDF → Images": "pdf_to_images",
     "📄 Images → PDF": "images_to_pdf",
+    "🎨 Extract Images": "extract_images",
     "🔄 Rotate Pages": "rotate",
+    "✂️ Crop Pages": "crop",
+    "📐 Resize Pages": "resize",
     "💧 Add Watermark": "watermark",
+    "✒️ Sign PDF": "sign",
     "🔢 Page Numbers": "page_numbers",
+    "📋 Edit Metadata": "metadata",
     "🔒 Protect PDF": "protect",
+    "🔓 Unlock PDF": "unlock",
 }
 
 with st.sidebar:
@@ -243,6 +253,84 @@ elif tool == "split":
                         mime="application/zip",
                         use_container_width=True,
                     )
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ORGANIZE PAGES
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+elif tool == "organize":
+    st.markdown("### 📑 Organize Pages")
+    st.markdown("Reorder, delete, duplicate, or reverse pages in a PDF.")
+
+    file = st.file_uploader("Upload PDF", type=["pdf"], key="organize_upload")
+
+    if file:
+        pdf_bytes = file.read()
+        info = get_pdf_info(pdf_bytes)
+        show_pdf_info(file.name, info)
+
+        mode = st.radio(
+            "Operation",
+            ["Reorder pages", "Delete pages", "Duplicate pages", "Reverse all pages"],
+            horizontal=True,
+        )
+
+        if mode == "Reorder pages":
+            st.markdown("Enter the new page order as comma-separated numbers (e.g. `3, 1, 2, 5, 4`).")
+            order_input = st.text_input(
+                "New page order",
+                ", ".join(str(i) for i in range(1, info["pages"] + 1)),
+            )
+            try:
+                new_order = [int(p.strip()) - 1 for p in order_input.split(",") if p.strip()]
+            except ValueError:
+                st.error("Enter valid page numbers.")
+                new_order = []
+
+        elif mode == "Delete pages":
+            delete_input = st.text_input("Pages to delete (comma-separated)", "")
+            try:
+                delete_pages = {int(p.strip()) - 1 for p in delete_input.split(",") if p.strip()}
+            except ValueError:
+                st.error("Enter valid page numbers.")
+                delete_pages = set()
+            new_order = [i for i in range(info["pages"]) if i not in delete_pages]
+
+        elif mode == "Duplicate pages":
+            dup_input = st.text_input("Pages to duplicate (comma-separated)", "1")
+            try:
+                dup_pages = [int(p.strip()) - 1 for p in dup_input.split(",") if p.strip()]
+            except ValueError:
+                st.error("Enter valid page numbers.")
+                dup_pages = []
+            new_order = []
+            for i in range(info["pages"]):
+                new_order.append(i)
+                if i in dup_pages:
+                    new_order.append(i)
+
+        else:  # Reverse
+            new_order = list(range(info["pages"] - 1, -1, -1))
+
+        if st.button("📑 Apply Changes", type="primary", use_container_width=True):
+            with st.spinner("Reorganizing…"):
+                doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+                new_doc = fitz.open()
+                for p in new_order:
+                    if 0 <= p < len(doc):
+                        new_doc.insert_pdf(doc, from_page=p, to_page=p)
+                output = new_doc.tobytes()
+                new_doc.close()
+                doc.close()
+
+            st.success(f"✅ New PDF has {len(new_order)} pages")
+            st.download_button(
+                "⬇️ Download Organized PDF",
+                data=output,
+                file_name=f"organized_{file.name}",
+                mime="application/pdf",
+                use_container_width=True,
+            )
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -472,6 +560,70 @@ elif tool == "images_to_pdf":
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# EXTRACT IMAGES
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+elif tool == "extract_images":
+    st.markdown("### 🎨 Extract Images")
+    st.markdown("Extract all embedded images from a PDF file.")
+
+    file = st.file_uploader("Upload PDF", type=["pdf"], key="extract_img_upload")
+
+    if file:
+        pdf_bytes = file.read()
+        info = get_pdf_info(pdf_bytes)
+        show_pdf_info(file.name, info)
+
+        min_size = st.slider("Minimum image size (pixels)", 10, 500, 50,
+                             help="Skip tiny images (icons, bullets) below this dimension.")
+
+        if st.button("🎨 Extract Now", type="primary", use_container_width=True):
+            with st.spinner("Extracting images…"):
+                doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+                zbuf = io.BytesIO()
+                count = 0
+                preview_shown = 0
+
+                with zipfile.ZipFile(zbuf, "w", zipfile.ZIP_DEFLATED) as zf:
+                    for page_idx, page in enumerate(doc):
+                        for img_info in page.get_images(full=True):
+                            xref = img_info[0]
+                            try:
+                                base = doc.extract_image(xref)
+                                if not base:
+                                    continue
+                                img_data = base["image"]
+                                ext = base["ext"]
+                                pil = Image.open(io.BytesIO(img_data))
+                                w, h = pil.size
+                                if w < min_size or h < min_size:
+                                    continue
+
+                                count += 1
+                                fname = f"page{page_idx + 1}_img{count}.{ext}"
+                                zf.writestr(fname, img_data)
+
+                                if preview_shown < 6:
+                                    st.image(pil, caption=f"{fname} ({w}×{h})", width=250)
+                                    preview_shown += 1
+                            except Exception:
+                                continue
+
+                doc.close()
+
+            if count > 0:
+                st.success(f"✅ Extracted {count} images")
+                st.download_button(
+                    "⬇️ Download All Images (ZIP)",
+                    data=zbuf.getvalue(),
+                    file_name=f"{file.name.replace('.pdf', '')}_extracted_images.zip",
+                    mime="application/zip",
+                    use_container_width=True,
+                )
+            else:
+                st.warning("No images found in this PDF (or all below minimum size).")
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # ROTATE PAGES
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 elif tool == "rotate":
@@ -517,6 +669,161 @@ elif tool == "rotate":
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CROP PAGES
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+elif tool == "crop":
+    st.markdown("### ✂️ Crop Pages")
+    st.markdown("Trim page margins or set custom crop areas.")
+
+    file = st.file_uploader("Upload PDF", type=["pdf"], key="crop_upload")
+
+    if file:
+        pdf_bytes = file.read()
+        info = get_pdf_info(pdf_bytes)
+        show_pdf_info(file.name, info)
+
+        crop_mode = st.radio("Crop mode", ["Uniform margins", "Auto-crop whitespace"], horizontal=True)
+
+        if crop_mode == "Uniform margins":
+            st.markdown("Set how many points to trim from each edge (72 pt = 1 inch).")
+            c1, c2, c3, c4 = st.columns(4)
+            top = c1.number_input("Top (pt)", 0, 500, 36)
+            bottom = c2.number_input("Bottom (pt)", 0, 500, 36)
+            left = c3.number_input("Left (pt)", 0, 500, 36)
+            right = c4.number_input("Right (pt)", 0, 500, 36)
+
+        scope = st.radio("Apply to", ["All pages", "Specific pages"], horizontal=True, key="crop_scope")
+        target_pages = list(range(info["pages"]))
+        if scope == "Specific pages":
+            inp = st.text_input("Page numbers (comma-separated)", "1", key="crop_pages")
+            try:
+                target_pages = [int(p.strip()) - 1 for p in inp.split(",") if p.strip()]
+            except ValueError:
+                st.error("Enter valid page numbers.")
+                target_pages = []
+
+        if st.button("✂️ Crop Now", type="primary", use_container_width=True):
+            with st.spinner("Cropping…"):
+                doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+
+                for idx in target_pages:
+                    if 0 <= idx < len(doc):
+                        page = doc[idx]
+                        rect = page.rect
+
+                        if crop_mode == "Auto-crop whitespace":
+                            # Get bounding box of all content on the page
+                            blocks = page.get_text("blocks")
+                            if blocks:
+                                x0 = min(b[0] for b in blocks)
+                                y0 = min(b[1] for b in blocks)
+                                x1 = max(b[2] for b in blocks)
+                                y1 = max(b[3] for b in blocks)
+                                padding = 18  # 0.25 inch padding
+                                new_rect = fitz.Rect(
+                                    max(0, x0 - padding),
+                                    max(0, y0 - padding),
+                                    min(rect.width, x1 + padding),
+                                    min(rect.height, y1 + padding),
+                                )
+                            else:
+                                new_rect = rect
+                        else:
+                            new_rect = fitz.Rect(
+                                rect.x0 + left,
+                                rect.y0 + top,
+                                rect.x1 - right,
+                                rect.y1 - bottom,
+                            )
+
+                        page.set_cropbox(new_rect)
+
+                output = doc.tobytes()
+                doc.close()
+
+            st.success(f"✅ Cropped {len(target_pages)} page(s)")
+            st.download_button(
+                "⬇️ Download Cropped PDF",
+                data=output,
+                file_name=f"cropped_{file.name}",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# RESIZE PAGES
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+elif tool == "resize":
+    st.markdown("### 📐 Resize Pages")
+    st.markdown("Change page dimensions to a standard or custom size.")
+
+    file = st.file_uploader("Upload PDF", type=["pdf"], key="resize_upload")
+
+    if file:
+        pdf_bytes = file.read()
+        info = get_pdf_info(pdf_bytes)
+        show_pdf_info(file.name, info)
+
+        size_presets = {
+            "A4 (210 × 297 mm)": "a4",
+            "A3 (297 × 420 mm)": "a3",
+            "A5 (148 × 210 mm)": "a5",
+            "Letter (8.5 × 11 in)": "letter",
+            "Legal (8.5 × 14 in)": "legal",
+            "Custom": "custom",
+        }
+
+        choice = st.selectbox("Target page size", list(size_presets.keys()))
+        orientation = st.radio("Orientation", ["Portrait", "Landscape"], horizontal=True)
+
+        if size_presets[choice] == "custom":
+            c1, c2 = st.columns(2)
+            cw = c1.number_input("Width (mm)", 50, 1000, 210)
+            ch = c2.number_input("Height (mm)", 50, 1000, 297)
+            target_w = cw * 72 / 25.4
+            target_h = ch * 72 / 25.4
+        else:
+            r = fitz.paper_rect(size_presets[choice])
+            target_w, target_h = r.width, r.height
+
+        if orientation == "Landscape":
+            target_w, target_h = max(target_w, target_h), min(target_w, target_h)
+        else:
+            target_w, target_h = min(target_w, target_h), max(target_w, target_h)
+
+        if st.button("📐 Resize Now", type="primary", use_container_width=True):
+            with st.spinner("Resizing…"):
+                src = fitz.open(stream=pdf_bytes, filetype="pdf")
+                dst = fitz.open()
+
+                for page in src:
+                    new_page = dst.new_page(width=target_w, height=target_h)
+                    src_rect = page.rect
+                    # Scale the source page to fit the new page, centered
+                    scale = min(target_w / src_rect.width, target_h / src_rect.height)
+                    nw = src_rect.width * scale
+                    nh = src_rect.height * scale
+                    xo = (target_w - nw) / 2
+                    yo = (target_h - nh) / 2
+                    dest_rect = fitz.Rect(xo, yo, xo + nw, yo + nh)
+                    new_page.show_pdf_page(dest_rect, src, page.number)
+
+                output = dst.tobytes()
+                dst.close()
+                src.close()
+
+            st.success(f"✅ Resized {info['pages']} pages to {choice}")
+            st.download_button(
+                "⬇️ Download Resized PDF",
+                data=output,
+                file_name=f"resized_{file.name}",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # WATERMARK
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 elif tool == "watermark":
@@ -530,7 +837,6 @@ elif tool == "watermark":
 
         wm_type = st.radio("Watermark type", ["✍️ Text", "🖼️ Image"], horizontal=True)
 
-        # ---- TEXT WATERMARK ----
         if wm_type == "✍️ Text":
             c1, c2 = st.columns(2)
             wm_text = c1.text_input("Watermark text", "CONFIDENTIAL")
@@ -550,7 +856,6 @@ elif tool == "watermark":
 
                     for page in doc:
                         rect = page.rect
-                        # Use morph for arbitrary-angle rotation (rotate= only allows 0/90/180/270)
                         center = fitz.Point(rect.width / 2, rect.height / 2)
                         page.insert_text(
                             fitz.Point(rect.width / 4, rect.height / 2),
@@ -574,7 +879,6 @@ elif tool == "watermark":
                     use_container_width=True,
                 )
 
-        # ---- IMAGE WATERMARK ----
         else:
             wm_image = st.file_uploader(
                 "Upload watermark image (PNG recommended for transparency)",
@@ -599,14 +903,10 @@ elif tool == "watermark":
                     with st.spinner("Applying image watermark…"):
                         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
                         raw_bytes = wm_image.read()
-
-                        # Pre-process image: apply opacity via alpha channel
                         wm_transparent = make_transparent_image(raw_bytes, opacity)
 
                         for page in doc:
                             rect = page.rect
-
-                            # Determine watermark dimensions
                             tmp_img = Image.open(io.BytesIO(raw_bytes))
                             wm_w, wm_h = tmp_img.size
                             scale = scale_pct / 100
@@ -656,6 +956,99 @@ elif tool == "watermark":
                         mime="application/pdf",
                         use_container_width=True,
                     )
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# SIGN PDF
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+elif tool == "sign":
+    st.markdown("### ✒️ Sign PDF")
+    st.markdown("Add a signature image to one or more pages of a PDF.")
+
+    file = st.file_uploader("Upload PDF", type=["pdf"], key="sign_upload")
+
+    if file:
+        pdf_bytes = file.read()
+        info = get_pdf_info(pdf_bytes)
+        show_pdf_info(file.name, info)
+
+        sig_image = st.file_uploader(
+            "Upload signature image (PNG with transparent background recommended)",
+            type=["png", "jpg", "jpeg", "webp"],
+            key="sig_img_upload",
+        )
+
+        if sig_image:
+            st.image(sig_image, caption="Signature preview", width=200)
+
+            c1, c2 = st.columns(2)
+            sig_width_pct = c1.slider("Signature width (% of page)", 5, 50, 20)
+            position = c2.selectbox(
+                "Position",
+                ["Bottom Right", "Bottom Left", "Bottom Center",
+                 "Top Right", "Top Left", "Top Center", "Center"],
+                key="sig_pos",
+            )
+
+            scope = st.radio("Apply to", ["Last page only", "All pages", "Specific pages"],
+                             horizontal=True, key="sig_scope")
+
+            target_pages = [info["pages"] - 1]
+            if scope == "All pages":
+                target_pages = list(range(info["pages"]))
+            elif scope == "Specific pages":
+                inp = st.text_input("Page numbers (comma-separated)", str(info["pages"]), key="sig_pages")
+                try:
+                    target_pages = [int(p.strip()) - 1 for p in inp.split(",") if p.strip()]
+                except ValueError:
+                    st.error("Enter valid page numbers.")
+                    target_pages = []
+
+            if st.button("✒️ Add Signature", type="primary", use_container_width=True):
+                with st.spinner("Adding signature…"):
+                    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+                    sig_bytes = sig_image.read()
+                    sig_pil = Image.open(io.BytesIO(sig_bytes))
+                    sig_w, sig_h = sig_pil.size
+                    aspect = sig_h / sig_w
+
+                    for idx in target_pages:
+                        if 0 <= idx < len(doc):
+                            page = doc[idx]
+                            rect = page.rect
+                            nw = rect.width * (sig_width_pct / 100)
+                            nh = nw * aspect
+                            margin = 30
+
+                            pos_map = {
+                                "Bottom Right": fitz.Rect(rect.width - nw - margin, rect.height - nh - margin,
+                                                          rect.width - margin, rect.height - margin),
+                                "Bottom Left": fitz.Rect(margin, rect.height - nh - margin,
+                                                         margin + nw, rect.height - margin),
+                                "Bottom Center": fitz.Rect((rect.width - nw) / 2, rect.height - nh - margin,
+                                                           (rect.width + nw) / 2, rect.height - margin),
+                                "Top Right": fitz.Rect(rect.width - nw - margin, margin,
+                                                       rect.width - margin, margin + nh),
+                                "Top Left": fitz.Rect(margin, margin, margin + nw, margin + nh),
+                                "Top Center": fitz.Rect((rect.width - nw) / 2, margin,
+                                                        (rect.width + nw) / 2, margin + nh),
+                                "Center": fitz.Rect((rect.width - nw) / 2, (rect.height - nh) / 2,
+                                                    (rect.width + nw) / 2, (rect.height + nh) / 2),
+                            }
+
+                            page.insert_image(pos_map[position], stream=sig_bytes, overlay=True)
+
+                    output = doc.tobytes()
+                    doc.close()
+
+                st.success(f"✅ Signature added to {len(target_pages)} page(s)")
+                st.download_button(
+                    "⬇️ Download Signed PDF",
+                    data=output,
+                    file_name=f"signed_{file.name}",
+                    mime="application/pdf",
+                    use_container_width=True,
+                )
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -733,6 +1126,62 @@ elif tool == "page_numbers":
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# EDIT METADATA
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+elif tool == "metadata":
+    st.markdown("### 📋 Edit Metadata")
+    st.markdown("View and edit PDF document properties — title, author, subject, keywords, and more.")
+
+    file = st.file_uploader("Upload PDF", type=["pdf"], key="meta_upload")
+
+    if file:
+        pdf_bytes = file.read()
+        info = get_pdf_info(pdf_bytes)
+        show_pdf_info(file.name, info)
+
+        meta = info["metadata"]
+
+        st.markdown("#### Current Metadata")
+        st.json(meta)
+
+        st.markdown("#### Edit Fields")
+        st.markdown("Leave a field empty to clear it, or enter a new value.")
+
+        c1, c2 = st.columns(2)
+        new_title = c1.text_input("Title", meta.get("title", ""))
+        new_author = c2.text_input("Author", meta.get("author", ""))
+
+        c3, c4 = st.columns(2)
+        new_subject = c3.text_input("Subject", meta.get("subject", ""))
+        new_keywords = c4.text_input("Keywords", meta.get("keywords", ""))
+
+        new_creator = st.text_input("Creator", meta.get("creator", ""))
+
+        if st.button("📋 Save Metadata", type="primary", use_container_width=True):
+            with st.spinner("Updating metadata…"):
+                doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+                doc.set_metadata({
+                    "title": new_title,
+                    "author": new_author,
+                    "subject": new_subject,
+                    "keywords": new_keywords,
+                    "creator": new_creator,
+                    "producer": meta.get("producer", ""),
+                })
+                output = doc.tobytes()
+                doc.close()
+
+            st.success("✅ Metadata updated")
+            st.download_button(
+                "⬇️ Download PDF",
+                data=output,
+                file_name=f"edited_{file.name}",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # PROTECT PDF
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 elif tool == "protect":
@@ -789,11 +1238,54 @@ elif tool == "protect":
             st.warning("Enter a user password to continue.")
 
 
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# UNLOCK PDF
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+elif tool == "unlock":
+    st.markdown("### 🔓 Unlock PDF")
+    st.markdown("Remove password protection from a PDF. You must know the password.")
+
+    file = st.file_uploader("Upload protected PDF", type=["pdf"], key="unlock_upload")
+
+    if file:
+        pdf_bytes = file.read()
+        password = st.text_input("Enter the PDF password", type="password", key="unlock_pw")
+
+        if password and st.button("🔓 Unlock Now", type="primary", use_container_width=True):
+            with st.spinner("Unlocking…"):
+                try:
+                    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+                    auth_result = doc.authenticate(password)
+
+                    if auth_result == 0:
+                        st.error("❌ Incorrect password. Please try again.")
+                    else:
+                        # Save without encryption
+                        output = doc.tobytes(
+                            encryption=fitz.PDF_ENCRYPT_NONE,
+                        )
+                        doc.close()
+
+                        st.success("✅ PDF unlocked — encryption removed")
+                        st.download_button(
+                            "⬇️ Download Unlocked PDF",
+                            data=output,
+                            file_name=f"unlocked_{file.name}",
+                            mime="application/pdf",
+                            use_container_width=True,
+                        )
+                except Exception as e:
+                    st.error(f"❌ Failed to unlock: {e}")
+
+        elif not password:
+            st.warning("Enter the password to unlock the PDF.")
+
+
 # ─── Footer ───
 st.markdown("---")
 st.markdown(
     '<div style="text-align:center; color:#666; font-size:0.85rem;">'
-    'PDF Suite v1.1 · Built with Streamlit + PyMuPDF · '
+    'PDF Suite v2.0 · Built with Streamlit + PyMuPDF · '
     '<a href="https://github.com/RehmozAyub/tools-for-everyone" style="color:#667eea;">GitHub</a>'
     "</div>",
     unsafe_allow_html=True,
