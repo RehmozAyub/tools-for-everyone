@@ -32,3 +32,7 @@ Generate & decode QR codes — text, URLs, WiFi networks, vCard contacts, emails
 ### 🛡️ Metadata Scrubber
 Inspect & strip metadata from images (JPG, PNG, WebP, TIFF, BMP) and documents (DOCX, PDF, XLSX, PPTX). Unified single-page UI — upload multiple files, view per-file metadata in expanders with privacy risk alerts and GPS maps, strip individually or batch-download all cleaned files as ZIP.  
 → See [`Metadata Scrubber/`](Metadata%20Scrubber/) for setup & usage instructions.
+
+### 💳 Virtual Card Manager
+Generate Luhn-valid test card numbers with spending caps, expiry dates, and local-only tracking — so you never share real banking details with random apps. Visual card UI, freeze/unfreeze, spending progress bar, CSV export, and links to real virtual-card providers (Privacy.com, Revolut, Wise). Zero network calls, everything stays on your machine.  
+→ See [`Virtual Card Manager/`](Virtual%20Card%20Manager/) for setup & usage instructions.
