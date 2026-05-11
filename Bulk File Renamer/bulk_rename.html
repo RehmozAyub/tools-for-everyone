@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bulk File Renamer</title>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<style>
+  :root {
+    --bg: #0e1117; --surface: #1a1a2e; --text: #e0e0e0; --text-muted: #888;
+    --accent: #667eea; --accent2: #764ba2; --green: #27ae60; --red: #e74c3c; --radius: 12px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 280px; min-width: 280px; background: var(--bg); border-right: 1px solid #222; padding: 24px; overflow-y: auto; }
+  .main { flex: 1; padding: 32px 40px; overflow-y: auto; }
+  .main-header { font-size: 2.5rem; font-weight: 700; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; margin-bottom: 0.2rem; }
+  .sub-header { text-align: center; color: #888; margin-bottom: 2rem; font-size: 1.05rem; }
+  h2 { font-size: 1.1rem; margin-bottom: 12px; }
+  h3 { font-size: 1rem; color: var(--text-muted); margin-bottom: 8px; }
+  .divider { border: none; border-top: 1px solid #333; margin: 16px 0; }
+  label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px; }
+  input[type="text"], input[type="number"], select { width: 100%; padding: 10px 12px; background: var(--surface); border: 1px solid #333; border-radius: 8px; color: var(--text); font-size: 0.95rem; outline: none; }
+  input:focus, select:focus { border-color: var(--accent); }
+  .form-group { margin-bottom: 12px; }
+  .form-row { display: flex; gap: 12px; }
+  .form-row > * { flex: 1; }
+  .checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem; color: var(--text); margin-bottom: 0; }
+  .checkbox-label input { accent-color: var(--accent); width: 16px; height: 16px; }
+  .btn { padding: 10px 16px; border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+  .btn:hover { opacity: 0.85; }
+  .btn-primary { width: 100%; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; padding: 12px; font-size: 1rem; }
+  .radio-group { display: flex; gap: 0; margin-bottom: 4px; flex-wrap: wrap; }
+  .radio-group label { display: flex; align-items: center; padding: 8px 14px; background: var(--surface); border: 1px solid #333; cursor: pointer; font-size: 0.85rem; color: var(--text); margin-bottom: 0; white-space: nowrap; }
+  .radio-group label:first-child { border-radius: 8px 0 0 8px; }
+  .radio-group label:last-child { border-radius: 0 8px 8px 0; }
+  .radio-group input[type="radio"] { display: none; }
+  .radio-group input[type="radio"]:checked + span { color: var(--accent); font-weight: 700; }
+  .tool-item { padding: 10px 14px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; margin-bottom: 4px; transition: background 0.2s; }
+  .tool-item:hover { background: #1a1a2e; }
+  .tool-item.active { background: var(--accent); color: white; }
+  .drop-zone { border: 2px dashed #444; border-radius: 12px; padding: 40px; text-align: center; color: var(--text-muted); cursor: pointer; transition: border-color 0.2s; margin-bottom: 16px; }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); }
+  .drop-zone input { display: none; }
+  .success-msg { background: #1a2a1a; border-left: 4px solid #27ae60; padding: 10px 16px; border-radius: 0 8px 8px 0; font-size: 0.9rem; color: #95d5b2; margin: 12px 0; }
+  .warning-msg { background: #2a2a1a; border-left: 4px solid #f39c12; padding: 10px 16px; border-radius: 0 8px 8px 0; font-size: 0.9rem; color: #f5d6a0; margin: 12px 0; }
+  .info-msg { background: #1a2a3a; border-left: 4px solid var(--accent); padding: 10px 16px; border-radius: 0 8px 8px 0; font-size: 0.9rem; color: var(--text-muted); margin: 12px 0; }
+  .preview-table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  .preview-table th { text-align: left; padding: 8px 12px; border-bottom: 2px solid #333; font-size: 0.85rem; color: var(--text-muted); }
+  .preview-table td { padding: 8px 12px; border-bottom: 1px solid #222; font-family: monospace; font-size: 0.9rem; }
+  .changed { color: var(--accent); }
+  .unchanged { color: var(--text-muted); }
+  .dup-warn { color: var(--red); font-weight: bold; font-size: 0.8rem; }
+  .footer { text-align: center; color: #666; font-size: 0.85rem; margin-top: 40px; }
+  .footer a { color: var(--accent); text-decoration: none; }
+  @media (max-width: 900px) {
+    .app { flex-direction: column; }
+    .sidebar { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid #222; }
+    .main { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <h2>🧰 Renaming Rule</h2>
+    <div id="toolList">
+      <div class="tool-item active" onclick="selectTool('find_replace')">🔤 Find & Replace</div>
+      <div class="tool-item" onclick="selectTool('regex')">🔣 Regex Pattern</div>
+      <div class="tool-item" onclick="selectTool('prefix_suffix')">📎 Prefix / Suffix</div>
+      <div class="tool-item" onclick="selectTool('numbering')">🔢 Sequential Numbering</div>
+      <div class="tool-item" onclick="selectTool('date_stamp')">📅 Date Stamp</div>
+      <div class="tool-item" onclick="selectTool('case')">🔠 Case Conversion</div>
+      <div class="tool-item" onclick="selectTool('extension')">🔧 Extension</div>
+      <div class="tool-item" onclick="selectTool('trim')">✂️ Trim / Clean</div>
+    </div>
+    <hr class="divider">
+    <h3>ℹ️ About</h3>
+    <p style="font-size:0.85rem; color:var(--text-muted);">Free, open-source bulk file renamer. No file uploads to external servers — <b>everything runs locally in your browser.</b></p>
+    <hr class="divider">
+    <p style="font-size:0.85rem;">Made with ❤️ by <a href="https://github.com/RehmozAyub" style="color:var(--accent); text-decoration:none;">RehmozAyub</a></p>
+  </div>
+
+  <div class="main">
+    <div class="main-header">📁 Bulk File Renamer</div>
+    <div class="sub-header">Rename multiple files at once — regex, numbering, dates & more</div>
+
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <p>📁 Drag & drop files here (or click to browse)</p>
+      <p style="font-size:0.8rem; margin-top:8px;">Upload all the files you want to rename</p>
+      <input type="file" id="fileInput" multiple>
+    </div>
+
+    <div id="fileCount"></div>
+
+    <!-- Rule panels -->
+    <div id="rulePanel">
+      <!-- Find & Replace -->
+      <div class="rule-section" id="rule-find_replace">
+        <h2>🔤 Find & Replace</h2>
+        <p style="color:var(--text-muted); margin-bottom:12px;">Simple text substitution in filenames.</p>
+        <div class="form-row">
+          <div class="form-group"><label>Find</label><input type="text" id="findText" oninput="updatePreview()"></div>
+          <div class="form-group"><label>Replace with</label><input type="text" id="replaceText" oninput="updatePreview()"></div>
+        </div>
+        <label class="checkbox-label"><input type="checkbox" id="findCase" checked onchange="updatePreview()"><span>Case-sensitive</span></label>
+      </div>
+
+      <!-- Regex -->
+      <div class="rule-section" id="rule-regex" style="display:none;">
+        <h2>🔣 Regex Pattern</h2>
+        <p style="color:var(--text-muted); margin-bottom:12px;">Apply a regex pattern to the filename stem.</p>
+        <div class="form-row">
+          <div class="form-group"><label>Regex pattern</label><input type="text" id="regexPattern" placeholder="(\d+)" oninput="updatePreview()"></div>
+          <div class="form-group"><label>Replacement</label><input type="text" id="regexReplace" placeholder="NUM_$1" oninput="updatePreview()"></div>
+        </div>
+        <label class="checkbox-label"><input type="checkbox" id="regexIgnoreCase" onchange="updatePreview()"><span>Ignore case</span></label>
+      </div>
+
+      <!-- Prefix / Suffix -->
+      <div class="rule-section" id="rule-prefix_suffix" style="display:none;">
+        <h2>📎 Prefix / Suffix</h2>
+        <p style="color:var(--text-muted); margin-bottom:12px;">Add text before or after the filename stem.</p>
+        <div class="form-row">
+          <div class="form-group"><label>Prefix</label><input type="text" id="prefixText" oninput="updatePreview()"></div>
+          <div class="form-group"><label>Suffix (before extension)</label><input type="text" id="suffixText" oninput="updatePreview()"></div>
+        </div>
+      </div>
+
+      <!-- Sequential Numbering -->
+      <div class="rule-section" id="rule-numbering" style="display:none;">
+        <h2>🔢 Sequential Numbering</h2>
+        <p style="color:var(--text-muted); margin-bottom:12px;">Automatically number files with configurable format.</p>
+        <div class="form-row">
+          <div class="form-group"><label>Start at</label><input type="number" id="seqStart" value="1" oninput="updatePreview()"></div>
+          <div class="form-group"><label>Step</label><input type="number" id="seqStep" value="1" min="1" oninput="updatePreview()"></div>
+          <div class="form-group"><label>Zero-pad width</label><input type="number" id="seqPad" value="3" min="1" max="10" oninput="updatePreview()"></div>
+        </div>
+        <div class="form-group">
+          <label>Position</label>
+          <div class="radio-group">
+            <label><input type="radio" name="seqPos" value="Prefix" checked onchange="updatePreview()"><span>Prefix</span></label>
+            <label><input type="radio" name="seqPos" value="Suffix" onchange="updatePreview()"><span>Suffix</span></label>
+          </div>
+        </div>
+        <div class="form-group"><label>Separator</label><input type="text" id="seqSep" value="_" oninput="updatePreview()"></div>
+        <label class="checkbox-label"><input type="checkbox" id="seqReplace" onchange="updatePreview()"><span>Replace entire filename with number only</span></label>
+      </div>
+
+      <!-- Date Stamp -->
+      <div class="rule-section" id="rule-date_stamp" style="display:none;">
+        <h2>📅 Date Stamp</h2>
+        <p style="color:var(--text-muted); margin-bottom:12px;">Add a date or timestamp to filenames.</p>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Date format</label>
+            <select id="dateFormat" onchange="updatePreview()">
+              <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+              <option value="YYYYMMDD">YYYYMMDD</option>
+              <option value="DD-MM-YYYY">DD-MM-YYYY</option>
+              <option value="MM-DD-YYYY">MM-DD-YYYY</option>
+              <option value="YYYY-MM-DD_HH-mm-ss">YYYY-MM-DD_HH-mm-ss</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Position</label>
+            <div class="radio-group">
+              <label><input type="radio" name="datePos" value="Prefix" checked onchange="updatePreview()"><span>Prefix</span></label>
+              <label><input type="radio" name="datePos" value="Suffix" onchange="updatePreview()"><span>Suffix</span></label>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Separator</label><input type="text" id="dateSep" value="_" oninput="updatePreview()"></div>
+          <div class="form-group"><label>Date</label><input type="date" id="dateValue" oninput="updatePreview()"></div>
+        </div>
+      </div>
+
+      <!-- Case Conversion -->
+      <div class="rule-section" id="rule-case" style="display:none;">
+        <h2>🔠 Case Conversion</h2>
+        <p style="color:var(--text-muted); margin-bottom:12px;">Change the letter casing of filenames.</p>
+        <div class="form-group">
+          <label>Convert to</label>
+          <select id="caseMode" onchange="updatePreview()">
+            <option value="lowercase">lowercase</option>
+            <option value="UPPERCASE">UPPERCASE</option>
+            <option value="Title Case">Title Case</option>
+            <option value="snake_case">snake_case</option>
+            <option value="camelCase">camelCase</option>
+            <option value="kebab-case">kebab-case</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Extension -->
+      <div class="rule-section" id="rule-extension" style="display:none;">
+        <h2>🔧 Extension</h2>
+        <p style="color:var(--text-muted); margin-bottom:12px;">Change, remove, or add file extensions.</p>
+        <div class="form-group">
+          <label>Action</label>
+          <div class="radio-group">
+            <label><input type="radio" name="extMode" value="change" checked onchange="updatePreview()"><span>Change</span></label>
+            <label><input type="radio" name="extMode" value="remove" onchange="updatePreview()"><span>Remove</span></label>
+            <label><input type="radio" name="extMode" value="add" onchange="updatePreview()"><span>Add extra</span></label>
+          </div>
+        </div>
+        <div class="form-group"><label>New / extra extension</label><input type="text" id="newExt" placeholder=".txt, .bak" oninput="updatePreview()"></div>
+      </div>
+
+      <!-- Trim / Clean -->
+      <div class="rule-section" id="rule-trim" style="display:none;">
+        <h2>✂️ Trim / Clean</h2>
+        <p style="color:var(--text-muted); margin-bottom:12px;">Remove characters, replace spaces, and clean up filenames.</p>
+        <div class="form-row">
+          <div class="form-group"><label>Remove first N chars</label><input type="number" id="trimStart" value="0" min="0" oninput="updatePreview()"></div>
+          <div class="form-group"><label>Remove last N chars (stem)</label><input type="number" id="trimEnd" value="0" min="0" oninput="updatePreview()"></div>
+        </div>
+        <div class="form-group">
+          <label>Replace spaces with</label>
+          <select id="spaceReplace" onchange="updatePreview()">
+            <option value="">(don't replace)</option>
+            <option value="_">_</option>
+            <option value="-">-</option>
+            <option value=".">.</option>
+            <option value="remove">(remove spaces)</option>
+          </select>
+        </div>
+        <label class="checkbox-label"><input type="checkbox" id="stripSpecial" onchange="updatePreview()"><span>Strip special characters (keep letters, numbers, _ , - , .)</span></label>
+      </div>
+    </div>
+
+    <!-- Preview -->
+    <div id="previewSection" style="display:none;">
+      <hr class="divider">
+      <h2>👀 Preview</h2>
+      <div id="previewContent"></div>
+      <div id="previewStats"></div>
+
+      <hr class="divider">
+      <h2>📥 Download</h2>
+      <button class="btn btn-primary" onclick="downloadZip()">🚀 Generate Renamed ZIP</button>
+    </div>
+
+    <div class="footer">
+      Bulk File Renamer v1.0 · Built with HTML + JavaScript ·
+      <a href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a>
+    </div>
+  </div>
+</div>
+
+<script>
+let uploadedFiles = [];
+let currentTool = 'find_replace';
+
+// ─── File Handling ───
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
+fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+function handleFiles(files) {
+  uploadedFiles = Array.from(files);
+  document.getElementById('fileCount').innerHTML = `<div class="success-msg">${uploadedFiles.length} file(s) uploaded</div>`;
+  document.getElementById('previewSection').style.display = 'block';
+  updatePreview();
+}
+
+// Set today's date
+document.getElementById('dateValue').value = new Date().toISOString().slice(0, 10);
+
+// ─── Tool Selection ───
+function selectTool(tool) {
+  currentTool = tool;
+  document.querySelectorAll('.tool-item').forEach(el => el.classList.remove('active'));
+  event.target.classList.add('active');
+  document.querySelectorAll('.rule-section').forEach(el => el.style.display = 'none');
+  document.getElementById('rule-' + tool).style.display = 'block';
+  updatePreview();
+}
+
+// ─── Helpers ───
+function splitName(name) {
+  const lastDot = name.lastIndexOf('.');
+  if (lastDot <= 0) return [name, ''];
+  return [name.slice(0, lastDot), name.slice(lastDot)];
+}
+
+// ─── Apply Rules ───
+function applyRule(names) {
+  switch (currentTool) {
+    case 'find_replace': return applyFindReplace(names);
+    case 'regex': return applyRegex(names);
+    case 'prefix_suffix': return applyPrefixSuffix(names);
+    case 'numbering': return applyNumbering(names);
+    case 'date_stamp': return applyDateStamp(names);
+    case 'case': return applyCaseConversion(names);
+    case 'extension': return applyExtension(names);
+    case 'trim': return applyTrim(names);
+    default: return names;
+  }
+}
+
+function applyFindReplace(names) {
+  const find = document.getElementById('findText').value;
+  const replace = document.getElementById('replaceText').value;
+  const caseSensitive = document.getElementById('findCase').checked;
+  return names.map(name => {
+    const [stem, ext] = splitName(name);
+    if (!find) return stem + ext;
+    let newStem;
+    if (caseSensitive) {
+      newStem = stem.split(find).join(replace);
+    } else {
+      newStem = stem.replace(new RegExp(find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), replace);
+    }
+    return newStem + ext;
+  });
+}
+
+function applyRegex(names) {
+  const pattern = document.getElementById('regexPattern').value;
+  const replacement = document.getElementById('regexReplace').value;
+  const ignoreCase = document.getElementById('regexIgnoreCase').checked;
+  return names.map(name => {
+    const [stem, ext] = splitName(name);
+    if (!pattern) return stem + ext;
+    try {
+      const flags = 'g' + (ignoreCase ? 'i' : '');
+      const newStem = stem.replace(new RegExp(pattern, flags), replacement);
+      return newStem + ext;
+    } catch { return stem + ext; }
+  });
+}
+
+function applyPrefixSuffix(names) {
+  const prefix = document.getElementById('prefixText').value;
+  const suffix = document.getElementById('suffixText').value;
+  return names.map(name => {
+    const [stem, ext] = splitName(name);
+    return prefix + stem + suffix + ext;
+  });
+}
+
+function applyNumbering(names) {
+  const start = parseInt(document.getElementById('seqStart').value) || 1;
+  const step = parseInt(document.getElementById('seqStep').value) || 1;
+  const pad = parseInt(document.getElementById('seqPad').value) || 3;
+  const position = document.querySelector('input[name="seqPos"]:checked').value;
+  const sep = document.getElementById('seqSep').value;
+  const replaceAll = document.getElementById('seqReplace').checked;
+  return names.map((name, idx) => {
+    const [stem, ext] = splitName(name);
+    const num = String(start + idx * step).padStart(pad, '0');
+    if (replaceAll) return num + ext;
+    if (position === 'Prefix') return num + sep + stem + ext;
+    return stem + sep + num + ext;
+  });
+}
+
+function applyDateStamp(names) {
+  const fmt = document.getElementById('dateFormat').value;
+  const position = document.querySelector('input[name="datePos"]:checked').value;
+  const sep = document.getElementById('dateSep').value;
+  const dateStr = document.getElementById('dateValue').value;
+  const d = dateStr ? new Date(dateStr) : new Date();
+
+  const Y = d.getFullYear(), M = String(d.getMonth() + 1).padStart(2, '0'), D = String(d.getDate()).padStart(2, '0');
+  const h = String(d.getHours()).padStart(2, '0'), m = String(d.getMinutes()).padStart(2, '0'), s = String(d.getSeconds()).padStart(2, '0');
+
+  let stamp;
+  switch (fmt) {
+    case 'YYYY-MM-DD': stamp = `${Y}-${M}-${D}`; break;
+    case 'YYYYMMDD': stamp = `${Y}${M}${D}`; break;
+    case 'DD-MM-YYYY': stamp = `${D}-${M}-${Y}`; break;
+    case 'MM-DD-YYYY': stamp = `${M}-${D}-${Y}`; break;
+    case 'YYYY-MM-DD_HH-mm-ss': stamp = `${Y}-${M}-${D}_${h}-${m}-${s}`; break;
+    default: stamp = `${Y}-${M}-${D}`;
+  }
+
+  return names.map(name => {
+    const [stem, ext] = splitName(name);
+    if (position === 'Prefix') return stamp + sep + stem + ext;
+    return stem + sep + stamp + ext;
+  });
+}
+
+function applyCaseConversion(names) {
+  const mode = document.getElementById('caseMode').value;
+  return names.map(name => {
+    const [stem, ext] = splitName(name);
+    let newStem;
+    switch (mode) {
+      case 'lowercase': newStem = stem.toLowerCase(); break;
+      case 'UPPERCASE': newStem = stem.toUpperCase(); break;
+      case 'Title Case': newStem = stem.replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()); break;
+      case 'snake_case':
+        newStem = stem.replace(/[\s\-]+/g, '_').toLowerCase();
+        newStem = newStem.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
+        break;
+      case 'camelCase':
+        const parts = stem.split(/[\s_\-]+/);
+        newStem = parts[0].toLowerCase() + parts.slice(1).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('');
+        break;
+      case 'kebab-case':
+        newStem = stem.replace(/[\s_]+/g, '-').toLowerCase();
+        newStem = newStem.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+        break;
+      default: newStem = stem;
+    }
+    return newStem + ext;
+  });
+}
+
+function applyExtension(names) {
+  const mode = document.querySelector('input[name="extMode"]:checked').value;
+  let newExt = document.getElementById('newExt').value;
+  return names.map(name => {
+    const [stem, ext] = splitName(name);
+    if (mode === 'remove') return stem;
+    if (mode === 'change') {
+      if (!newExt) return stem + ext;
+      return stem + (newExt.startsWith('.') ? newExt : '.' + newExt);
+    }
+    if (mode === 'add') {
+      if (!newExt) return stem + ext;
+      const extra = newExt.startsWith('.') ? newExt : '.' + newExt;
+      return stem + ext + extra;
+    }
+    return name;
+  });
+}
+
+function applyTrim(names) {
+  const trimStart = parseInt(document.getElementById('trimStart').value) || 0;
+  const trimEnd = parseInt(document.getElementById('trimEnd').value) || 0;
+  const spaceReplace = document.getElementById('spaceReplace').value;
+  const stripSpecial = document.getElementById('stripSpecial').checked;
+  return names.map(name => {
+    let [stem, ext] = splitName(name);
+    if (trimStart > 0) stem = stem.slice(trimStart);
+    if (trimEnd > 0 && trimEnd < stem.length) stem = stem.slice(0, -trimEnd);
+    if (spaceReplace === 'remove') stem = stem.replace(/ /g, '');
+    else if (spaceReplace) stem = stem.replace(/ /g, spaceReplace);
+    if (stripSpecial) stem = stem.replace(/[^\w\-.]/g, '');
+    return stem + ext;
+  });
+}
+
+// ─── Preview ───
+function updatePreview() {
+  if (!uploadedFiles.length) return;
+  const names = uploadedFiles.map(f => f.name);
+  const newNames = applyRule(names);
+
+  const dups = {};
+  newNames.forEach(n => { dups[n] = (dups[n] || 0) + 1; });
+  const dupSet = new Set(Object.keys(dups).filter(k => dups[k] > 1));
+
+  let html = '<table class="preview-table"><tr><th></th><th>Original</th><th></th><th>New Name</th></tr>';
+  let changedCount = 0;
+  for (let i = 0; i < names.length; i++) {
+    const changed = names[i] !== newNames[i];
+    if (changed) changedCount++;
+    const icon = changed ? '🔄' : '✅';
+    const cls = changed ? 'changed' : 'unchanged';
+    const dupTag = dupSet.has(newNames[i]) ? ' <span class="dup-warn">⚠️ DUPLICATE</span>' : '';
+    html += `<tr><td>${icon}</td><td class="unchanged">${escapeHTML(names[i])}</td><td>→</td><td class="${cls}">${escapeHTML(newNames[i])}${dupTag}</td></tr>`;
+  }
+  html += '</table>';
+
+  document.getElementById('previewContent').innerHTML = html;
+
+  let statsHtml = `<p style="color:var(--text-muted); font-size:0.85rem;">📊 ${changedCount}/${names.length} file(s) will be renamed.</p>`;
+  if (dupSet.size) statsHtml += `<div class="warning-msg">⚠️ Some renamed files have identical names. Adjust your rules to avoid overwrites.</div>`;
+  document.getElementById('previewStats').innerHTML = statsHtml;
+}
+
+// ─── Download ZIP ───
+function downloadZip() {
+  if (!uploadedFiles.length) return;
+  const names = uploadedFiles.map(f => f.name);
+  const newNames = applyRule(names);
+
+  const zip = new JSZip();
+  const promises = uploadedFiles.map((file, i) => {
+    return new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        zip.file(newNames[i], e.target.result);
+        resolve();
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  });
+
+  Promise.all(promises).then(() => {
+    zip.generateAsync({ type: 'blob' }).then(blob => {
+      const a = document.createElement('a');
+      const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15);
+      a.href = URL.createObjectURL(blob);
+      a.download = `renamed_files_${ts}.zip`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+  });
+}
+
+function escapeHTML(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+</script>
+</body>
+</html>

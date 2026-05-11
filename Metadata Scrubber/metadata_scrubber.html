@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Metadata Scrubber</title>
+<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<style>
+  :root {
+    --bg: #0e1117; --surface: #1a1a2e; --text: #e0e0e0; --text-muted: #888;
+    --accent: #667eea; --accent2: #764ba2; --green: #27ae60; --red: #e74c3c; --radius: 12px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 300px; min-width: 300px; background: var(--bg); border-right: 1px solid #222; padding: 24px; overflow-y: auto; }
+  .main { flex: 1; padding: 32px 40px; overflow-y: auto; }
+  .main-header { font-size: 2.5rem; font-weight: 700; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; margin-bottom: 0.2rem; }
+  .sub-header { text-align: center; color: #888; margin-bottom: 2rem; font-size: 1.05rem; }
+  h2 { font-size: 1.1rem; margin-bottom: 12px; }
+  h3 { font-size: 1rem; color: var(--text-muted); margin-bottom: 8px; }
+  .divider { border: none; border-top: 1px solid #333; margin: 16px 0; }
+  .checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem; color: var(--text); margin-bottom: 8px; }
+  .checkbox-label input { accent-color: var(--accent); width: 16px; height: 16px; }
+  .btn { padding: 10px 16px; border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+  .btn:hover { opacity: 0.85; }
+  .btn-primary { width: 100%; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; padding: 12px; font-size: 1rem; margin-top: 8px; }
+  .btn-sm { padding: 6px 14px; font-size: 0.85rem; border-radius: 6px; }
+  .btn-strip { background: var(--red); color: white; }
+  .btn-download { background: var(--green); color: white; }
+  .btn-export { width: 100%; background: var(--surface); color: var(--text); border: 1px solid #444; padding: 10px; }
+  .drop-zone { border: 2px dashed #444; border-radius: 12px; padding: 40px; text-align: center; color: var(--text-muted); cursor: pointer; transition: border-color 0.2s; margin-bottom: 16px; }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); }
+  .drop-zone input { display: none; }
+  .file-card { background: var(--surface); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; border: 1px solid #222; }
+  .file-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; cursor: pointer; }
+  .file-header h3 { margin-bottom: 0; color: var(--text); font-size: 1rem; }
+  .file-body { display: none; }
+  .file-body.open { display: block; }
+  .meta-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 8px 0; }
+  .meta-table th { text-align: left; padding: 6px 10px; border-bottom: 2px solid #333; color: var(--text-muted); font-weight: 600; }
+  .meta-table td { padding: 6px 10px; border-bottom: 1px solid #222; word-break: break-all; }
+  .meta-table td:first-child { color: var(--accent); white-space: nowrap; }
+  .privacy-warn { padding: 8px 12px; border-radius: 8px; background: #2a1a1a; border-left: 4px solid #e74c3c; margin: 8px 0; color: #e8a0a0; font-size: 0.85rem; }
+  .privacy-ok { padding: 8px 12px; border-radius: 8px; background: #1a2a1a; border-left: 4px solid #2ecc71; margin: 8px 0; color: #a0e8a0; font-size: 0.85rem; }
+  .success-msg { background: #1a2a1a; border-left: 4px solid #27ae60; padding: 10px 16px; border-radius: 0 8px 8px 0; font-size: 0.9rem; color: #95d5b2; margin: 8px 0; }
+  .info-msg { background: #1a2a3a; border-left: 4px solid var(--accent); padding: 10px 16px; border-radius: 0 8px 8px 0; font-size: 0.9rem; color: var(--text-muted); margin: 8px 0; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  .stat-card { background: var(--surface); border-radius: var(--radius); padding: 12px; text-align: center; }
+  .stat-label { font-size: 0.8rem; color: var(--text-muted); }
+  .stat-value { font-size: 1.3rem; font-weight: 700; }
+  .section-header { font-size: 0.85rem; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin: 12px 0 6px; padding-bottom: 4px; border-bottom: 1px solid #333; }
+  .tag-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; margin-left: 8px; }
+  .tag-badge.warn { background: #e74c3c33; color: #e74c3c; }
+  .tag-badge.ok { background: #27ae6033; color: #27ae60; }
+  .tag-badge.info { background: #667eea33; color: #667eea; }
+  .gps-link { color: var(--accent); text-decoration: none; font-size: 0.85rem; }
+  .gps-link:hover { text-decoration: underline; }
+  .actions-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .toast { position: fixed; top: 20px; right: 20px; background: var(--green); color: white; padding: 12px 24px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; z-index: 9999; animation: toast-in 0.3s ease, toast-out 0.3s ease 2s forwards; }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes toast-out { from { opacity: 1; } to { opacity: 0; } }
+  .footer { text-align: center; color: #666; font-size: 0.85rem; margin-top: 40px; }
+  .footer a { color: var(--accent); text-decoration: none; }
+  @media (max-width: 900px) {
+    .app { flex-direction: column; }
+    .sidebar { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid #222; }
+    .main { padding: 20px; }
+    .stats { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <h2>🛡️ Options</h2>
+    <label class="checkbox-label"><input type="checkbox" id="preserveOrientation" checked><span>Preserve image orientation</span></label>
+    <hr class="divider">
+    <h2>📤 Batch Actions</h2>
+    <button class="btn btn-export" onclick="stripAll()">🧹 Strip All Metadata</button>
+    <button class="btn btn-export" onclick="downloadAllZip()" style="margin-top:8px;">⬇️ Download All Cleaned (ZIP)</button>
+    <hr class="divider">
+    <h3>📋 Supported Formats</h3>
+    <p style="font-size:0.85rem; color:var(--text-muted);">
+      <b>Images:</b> JPG, PNG, WebP, TIFF, BMP<br>
+      <b>Documents:</b> DOCX, PDF, XLSX, PPTX
+    </p>
+    <hr class="divider">
+    <h3>ℹ️ About</h3>
+    <p style="font-size:0.85rem; color:var(--text-muted);">Free, open-source metadata scrubber. No file uploads to external servers — <b>everything runs locally in your browser.</b></p>
+    <hr class="divider">
+    <p style="font-size:0.85rem;">Made with ❤️ by <a href="https://github.com/RehmozAyub" style="color:var(--accent); text-decoration:none;">RehmozAyub</a></p>
+  </div>
+
+  <div class="main">
+    <div class="main-header">🛡️ Metadata Scrubber</div>
+    <div class="sub-header">Inspect & strip metadata from images and documents — protect your privacy</div>
+
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <p>📁 Drag & drop files here (or click to browse)</p>
+      <p style="font-size:0.8rem; margin-top:8px;">Images (JPG, PNG, WebP) and Documents (DOCX, PDF, XLSX, PPTX)</p>
+      <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.webp,.tiff,.bmp,.docx,.pdf,.xlsx,.pptx">
+    </div>
+
+    <div id="statsRow" style="display:none;">
+      <div class="stats">
+        <div class="stat-card"><div class="stat-label">Files</div><div class="stat-value" id="statFiles">0</div></div>
+        <div class="stat-card"><div class="stat-label">With Risks</div><div class="stat-value" id="statRisks" style="color:#e74c3c;">0</div></div>
+        <div class="stat-card"><div class="stat-label">Clean</div><div class="stat-value" id="statClean" style="color:#27ae60;">0</div></div>
+      </div>
+    </div>
+
+    <div id="fileList"></div>
+
+    <div class="footer">
+      Metadata Scrubber v1.0 · Built with HTML + JavaScript ·
+      <a href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const SENSITIVE_IMAGE_TAGS = new Set([
+  'GPSLatitude', 'GPSLongitude', 'GPSLatitudeRef', 'GPSLongitudeRef',
+  'GPSAltitude', 'GPSTimeStamp', 'GPSDateStamp', 'latitude', 'longitude',
+  'BodySerialNumber', 'CameraSerialNumber', 'SerialNumber',
+  'LensSerialNumber', 'ImageUniqueID',
+  'CameraOwnerName', 'OwnerName', 'Artist', 'Copyright',
+  'XPAuthor', 'XPComment',
+]);
+const SENSITIVE_DOC_PROPS = new Set(['author', 'last_modified_by', 'creator', 'producer', 'company', 'manager', 'category', 'dc:creator', 'cp:lastModifiedBy']);
+const IMAGE_EXTS = new Set(['jpg', 'jpeg', 'png', 'webp', 'tiff', 'bmp']);
+const DOC_EXTS = new Set(['docx', 'pdf', 'xlsx', 'pptx']);
+const FORMAT_ICONS = { docx: '📝', pdf: '📄', xlsx: '📊', pptx: '📽️', jpg: '🖼️', jpeg: '🖼️', png: '🖼️', webp: '🖼️', tiff: '🖼️', bmp: '🖼️' };
+
+let fileEntries = [];
+
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
+fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+function getExt(name) { const p = name.lastIndexOf('.'); return p > 0 ? name.slice(p + 1).toLowerCase() : ''; }
+
+async function handleFiles(files) {
+  fileEntries = [];
+  for (const file of files) {
+    const ext = getExt(file.name);
+    if (!IMAGE_EXTS.has(ext) && !DOC_EXTS.has(ext)) continue;
+    const bytes = await file.arrayBuffer();
+    fileEntries.push({ name: file.name, ext, bytes: new Uint8Array(bytes), type: file.type, metadata: null, risks: [], stripped: null });
+  }
+  if (!fileEntries.length) return;
+
+  for (let i = 0; i < fileEntries.length; i++) {
+    await inspectFile(fileEntries[i]);
+  }
+  render();
+}
+
+async function inspectFile(entry) {
+  const ext = entry.ext;
+  entry.metadata = {};
+  entry.risks = [];
+
+  if (IMAGE_EXTS.has(ext)) {
+    try {
+      const exif = await exifr.parse(entry.bytes.buffer, { gps: true, ifd0: true, exif: true, iptc: true, xmp: true, tiff: true });
+      if (exif) {
+        entry.metadata = {};
+        for (const [k, v] of Object.entries(exif)) {
+          if (v === undefined || v === null) continue;
+          const strVal = typeof v === 'object' && !Array.isArray(v) ? JSON.stringify(v) : String(v);
+          entry.metadata[k] = strVal;
+          if (SENSITIVE_IMAGE_TAGS.has(k)) entry.risks.push([k, strVal]);
+        }
+      }
+    } catch (e) { entry.metadata = { error: 'Could not parse metadata' }; }
+  } else if (ext === 'pdf') {
+    try {
+      const pdfDoc = await PDFLib.PDFDocument.load(entry.bytes, { ignoreEncryption: true });
+      const fields = ['Title', 'Author', 'Subject', 'Creator', 'Producer', 'Keywords', 'CreationDate', 'ModificationDate'];
+      for (const f of fields) {
+        const getter = 'get' + f;
+        try {
+          const v = pdfDoc[getter]?.();
+          if (v) {
+            const sv = v instanceof Date ? v.toISOString() : String(v);
+            entry.metadata[f] = sv;
+            if (['Author', 'Creator', 'Producer'].includes(f)) entry.risks.push([f, sv]);
+          }
+        } catch {}
+      }
+      entry.metadata['Pages'] = String(pdfDoc.getPageCount());
+    } catch (e) { entry.metadata = { error: 'Could not parse PDF: ' + e.message }; }
+  } else if (ext === 'docx' || ext === 'xlsx' || ext === 'pptx') {
+    try {
+      const zip = await JSZip.loadAsync(entry.bytes);
+      const coreXmlFile = zip.file('docProps/core.xml');
+      if (coreXmlFile) {
+        const coreXml = await coreXmlFile.async('string');
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(coreXml, 'text/xml');
+        const tags = ['dc:title', 'dc:subject', 'dc:creator', 'cp:lastModifiedBy', 'cp:keywords', 'cp:category', 'dcterms:created', 'dcterms:modified', 'cp:revision', 'dc:description'];
+        for (const tag of tags) {
+          const el = doc.getElementsByTagName(tag)[0];
+          if (el && el.textContent.trim()) {
+            entry.metadata[tag] = el.textContent.trim();
+            if (SENSITIVE_DOC_PROPS.has(tag)) entry.risks.push([tag, el.textContent.trim()]);
+          }
+        }
+      }
+      const appXmlFile = zip.file('docProps/app.xml');
+      if (appXmlFile) {
+        const appXml = await appXmlFile.async('string');
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(appXml, 'text/xml');
+        for (const tag of ['Company', 'Manager', 'Application', 'AppVersion', 'Template']) {
+          const el = doc.getElementsByTagName(tag)[0];
+          if (el && el.textContent.trim()) {
+            entry.metadata[tag] = el.textContent.trim();
+            if (['Company', 'Manager'].includes(tag)) entry.risks.push([tag, el.textContent.trim()]);
+          }
+        }
+      }
+    } catch (e) { entry.metadata = { error: 'Could not parse document: ' + e.message }; }
+  }
+}
+
+async function stripFileMetadata(idx) {
+  const entry = fileEntries[idx];
+  const ext = entry.ext;
+
+  if (IMAGE_EXTS.has(ext)) {
+    const blob = new Blob([entry.bytes], { type: entry.type });
+    const img = await createImageBitmap(blob);
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    const mimeMap = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', bmp: 'image/png', tiff: 'image/png' };
+    const mime = mimeMap[ext] || 'image/png';
+    const quality = mime === 'image/jpeg' ? 0.95 : undefined;
+    const dataUrl = canvas.toDataURL(mime, quality);
+    const res = await fetch(dataUrl);
+    entry.stripped = new Uint8Array(await res.arrayBuffer());
+    entry.strippedExt = (ext === 'bmp' || ext === 'tiff') ? 'png' : ext;
+  } else if (ext === 'pdf') {
+    try {
+      const pdfDoc = await PDFLib.PDFDocument.load(entry.bytes);
+      pdfDoc.setTitle(''); pdfDoc.setAuthor(''); pdfDoc.setSubject('');
+      pdfDoc.setCreator(''); pdfDoc.setProducer(''); pdfDoc.setKeywords([]);
+      const saved = await pdfDoc.save();
+      entry.stripped = new Uint8Array(saved);
+      entry.strippedExt = 'pdf';
+    } catch { entry.stripped = null; }
+  } else if (ext === 'docx' || ext === 'xlsx' || ext === 'pptx') {
+    try {
+      const zip = await JSZip.loadAsync(entry.bytes);
+      const coreFile = zip.file('docProps/core.xml');
+      if (coreFile) {
+        let xml = await coreFile.async('string');
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(xml, 'text/xml');
+        const clearTags = ['dc:creator', 'cp:lastModifiedBy', 'dc:title', 'dc:subject', 'cp:keywords', 'cp:category', 'dc:description', 'cp:contentStatus'];
+        for (const tag of clearTags) {
+          const el = doc.getElementsByTagName(tag)[0];
+          if (el) el.textContent = '';
+        }
+        const revEl = doc.getElementsByTagName('cp:revision')[0];
+        if (revEl) revEl.textContent = '1';
+        const ser = new XMLSerializer();
+        zip.file('docProps/core.xml', ser.serializeToString(doc));
+      }
+      const appFile = zip.file('docProps/app.xml');
+      if (appFile) {
+        let xml = await appFile.async('string');
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(xml, 'text/xml');
+        for (const tag of ['Company', 'Manager', 'Template']) {
+          const el = doc.getElementsByTagName(tag)[0];
+          if (el) el.textContent = '';
+        }
+        const ser = new XMLSerializer();
+        zip.file('docProps/app.xml', ser.serializeToString(doc));
+      }
+      const result = await zip.generateAsync({ type: 'uint8array' });
+      entry.stripped = result;
+      entry.strippedExt = ext;
+    } catch { entry.stripped = null; }
+  }
+
+  showToast(`Metadata stripped from ${entry.name}`);
+  render();
+}
+
+async function stripAll() {
+  for (let i = 0; i < fileEntries.length; i++) {
+    if (!fileEntries[i].stripped) await stripFileMetadata(i);
+  }
+  showToast('All files stripped!');
+  render();
+}
+
+function downloadFile(idx) {
+  const entry = fileEntries[idx];
+  const data = entry.stripped || entry.bytes;
+  const ext = entry.stripped ? (entry.strippedExt || entry.ext) : entry.ext;
+  const baseName = entry.name.replace(/\.[^.]+$/, '');
+  const suffix = entry.stripped ? '_clean' : '';
+  const name = `${baseName}${suffix}.${ext}`;
+  const blob = new Blob([data]);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+async function downloadAllZip() {
+  const zip = new JSZip();
+  for (const entry of fileEntries) {
+    if (!entry.stripped) await stripFileMetadata(fileEntries.indexOf(entry));
+    const ext = entry.strippedExt || entry.ext;
+    const baseName = entry.name.replace(/\.[^.]+$/, '');
+    zip.file(`${baseName}_clean.${ext}`, entry.stripped || entry.bytes);
+  }
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `cleaned_files_${new Date().toISOString().slice(0, 10)}.zip`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function render() {
+  if (!fileEntries.length) return;
+  document.getElementById('statsRow').style.display = 'block';
+  document.getElementById('statFiles').textContent = fileEntries.length;
+  const withRisks = fileEntries.filter(e => e.risks.length > 0).length;
+  document.getElementById('statRisks').textContent = withRisks;
+  document.getElementById('statClean').textContent = fileEntries.filter(e => e.stripped).length;
+
+  let html = '';
+  for (let i = 0; i < fileEntries.length; i++) {
+    const entry = fileEntries[i];
+    const icon = FORMAT_ICONS[entry.ext] || '📁';
+    const tagCount = Object.keys(entry.metadata).length;
+    const riskBadge = entry.risks.length > 0
+      ? `<span class="tag-badge warn">⚠️ ${entry.risks.length} risk(s)</span>`
+      : `<span class="tag-badge ok">✓ Clean</span>`;
+    const strippedBadge = entry.stripped ? '<span class="tag-badge info">🧹 Stripped</span>' : '';
+
+    html += `<div class="file-card">
+      <div class="file-header" onclick="toggleFile(${i})">
+        <h3>${icon} ${escapeHTML(entry.name)} ${riskBadge} ${strippedBadge}</h3>
+        <span style="color:var(--text-muted); font-size:0.85rem;">${tagCount} properties ▾</span>
+      </div>
+      <div class="file-body" id="file-body-${i}">`;
+
+    if (entry.risks.length > 0) {
+      html += '<div class="privacy-warn"><b>⚠️ Privacy Risks Found:</b><br>';
+      for (const [k, v] of entry.risks) html += `• <b>${escapeHTML(k)}:</b> ${escapeHTML(v)}<br>`;
+      html += '</div>';
+    } else {
+      html += '<div class="privacy-ok">✅ No obvious privacy risks detected.</div>';
+    }
+
+    if (Object.keys(entry.metadata).length) {
+      html += '<table class="meta-table"><tr><th>Property</th><th>Value</th></tr>';
+      for (const [k, v] of Object.entries(entry.metadata)) {
+        const isSensitive = SENSITIVE_IMAGE_TAGS.has(k) || SENSITIVE_DOC_PROPS.has(k) || ['Company', 'Manager', 'Author', 'Creator', 'Producer'].includes(k);
+        const style = isSensitive ? ' style="color:#e74c3c;"' : '';
+        html += `<tr><td${style}>${escapeHTML(k)}</td><td>${escapeHTML(String(v).slice(0, 200))}</td></tr>`;
+      }
+      html += '</table>';
+    }
+
+    if (entry.metadata.latitude && entry.metadata.longitude) {
+      const lat = parseFloat(entry.metadata.latitude);
+      const lon = parseFloat(entry.metadata.longitude);
+      if (!isNaN(lat) && !isNaN(lon)) {
+        html += `<p style="margin:8px 0;"><a class="gps-link" href="https://www.google.com/maps?q=${lat},${lon}" target="_blank">📍 View on Google Maps (${lat.toFixed(4)}, ${lon.toFixed(4)})</a></p>`;
+      }
+    }
+
+    html += `<div class="actions-row">`;
+    if (!entry.stripped) {
+      html += `<button class="btn btn-sm btn-strip" onclick="stripFileMetadata(${i})">🧹 Strip Metadata</button>`;
+    }
+    html += `<button class="btn btn-sm btn-download" onclick="downloadFile(${i})">${entry.stripped ? '⬇️ Download Clean' : '⬇️ Download Original'}</button>`;
+    html += `</div></div></div>`;
+  }
+  document.getElementById('fileList').innerHTML = html;
+}
+
+function toggleFile(idx) {
+  const body = document.getElementById('file-body-' + idx);
+  body.classList.toggle('open');
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
+function escapeHTML(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+</script>
+</body>
+</html>
