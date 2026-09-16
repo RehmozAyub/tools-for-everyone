@@ -4,118 +4,82 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Metadata Scrubber</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="../assets/theme.css">
 <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <style>
-  :root {
-    --bg: #0e1117; --surface: #1a1a2e; --text: #e0e0e0; --text-muted: #888;
-    --accent: #667eea; --accent2: #764ba2; --green: #27ae60; --red: #e74c3c; --radius: 12px;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-  .app { display: flex; min-height: 100vh; }
-  .sidebar { width: 300px; min-width: 300px; background: var(--bg); border-right: 1px solid #222; padding: 24px; overflow-y: auto; }
-  .main { flex: 1; padding: 32px 40px; overflow-y: auto; }
-  .main-header { font-size: 2.5rem; font-weight: 700; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; margin-bottom: 0.2rem; }
-  .sub-header { text-align: center; color: #888; margin-bottom: 2rem; font-size: 1.05rem; }
-  h2 { font-size: 1.1rem; margin-bottom: 12px; }
-  h3 { font-size: 1rem; color: var(--text-muted); margin-bottom: 8px; }
-  .divider { border: none; border-top: 1px solid #333; margin: 16px 0; }
-  .checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem; color: var(--text); margin-bottom: 8px; }
-  .checkbox-label input { accent-color: var(--accent); width: 16px; height: 16px; }
-  .btn { padding: 10px 16px; border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
-  .btn:hover { opacity: 0.85; }
-  .btn-primary { width: 100%; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; padding: 12px; font-size: 1rem; margin-top: 8px; }
-  .btn-sm { padding: 6px 14px; font-size: 0.85rem; border-radius: 6px; }
-  .btn-strip { background: var(--red); color: white; }
-  .btn-download { background: var(--green); color: white; }
-  .btn-export { width: 100%; background: var(--surface); color: var(--text); border: 1px solid #444; padding: 10px; }
-  .drop-zone { border: 2px dashed #444; border-radius: 12px; padding: 40px; text-align: center; color: var(--text-muted); cursor: pointer; transition: border-color 0.2s; margin-bottom: 16px; }
-  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); }
-  .drop-zone input { display: none; }
-  .file-card { background: var(--surface); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; border: 1px solid #222; }
-  .file-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; cursor: pointer; }
-  .file-header h3 { margin-bottom: 0; color: var(--text); font-size: 1rem; }
+  .file-card { background: var(--surface); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px; border: 1px solid var(--border); }
+  .file-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; cursor: pointer; }
+  .file-header h3 { margin-bottom: 0; color: var(--text); font-size: 1rem; text-transform: none; letter-spacing: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .file-body { display: none; }
   .file-body.open { display: block; }
   .meta-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 8px 0; }
-  .meta-table th { text-align: left; padding: 6px 10px; border-bottom: 2px solid #333; color: var(--text-muted); font-weight: 600; }
-  .meta-table td { padding: 6px 10px; border-bottom: 1px solid #222; word-break: break-all; }
+  .meta-table th { text-align: left; padding: 6px 10px; border-bottom: 2px solid var(--border-strong); color: var(--text-muted); font-weight: 600; }
+  .meta-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); word-break: break-all; }
   .meta-table td:first-child { color: var(--accent); white-space: nowrap; }
-  .privacy-warn { padding: 8px 12px; border-radius: 8px; background: #2a1a1a; border-left: 4px solid #e74c3c; margin: 8px 0; color: #e8a0a0; font-size: 0.85rem; }
-  .privacy-ok { padding: 8px 12px; border-radius: 8px; background: #1a2a1a; border-left: 4px solid #2ecc71; margin: 8px 0; color: #a0e8a0; font-size: 0.85rem; }
-  .success-msg { background: #1a2a1a; border-left: 4px solid #27ae60; padding: 10px 16px; border-radius: 0 8px 8px 0; font-size: 0.9rem; color: #95d5b2; margin: 8px 0; }
-  .info-msg { background: #1a2a3a; border-left: 4px solid var(--accent); padding: 10px 16px; border-radius: 0 8px 8px 0; font-size: 0.9rem; color: var(--text-muted); margin: 8px 0; }
-  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
-  .stat-card { background: var(--surface); border-radius: var(--radius); padding: 12px; text-align: center; }
-  .stat-label { font-size: 0.8rem; color: var(--text-muted); }
-  .stat-value { font-size: 1.3rem; font-weight: 700; }
-  .section-header { font-size: 0.85rem; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin: 12px 0 6px; padding-bottom: 4px; border-bottom: 1px solid #333; }
-  .tag-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; margin-left: 8px; }
-  .tag-badge.warn { background: #e74c3c33; color: #e74c3c; }
-  .tag-badge.ok { background: #27ae6033; color: #27ae60; }
-  .tag-badge.info { background: #667eea33; color: #667eea; }
-  .gps-link { color: var(--accent); text-decoration: none; font-size: 0.85rem; }
+  .privacy-warn { padding: 10px 14px; border-radius: var(--radius-sm); background: var(--danger-tint); border-left: 3px solid var(--danger); margin: 8px 0; color: var(--danger); font-size: 0.85rem; }
+  .privacy-ok { padding: 10px 14px; border-radius: var(--radius-sm); background: var(--success-tint); border-left: 3px solid var(--success); margin: 8px 0; color: var(--success); font-size: 0.85rem; display: flex; align-items: center; gap: 8px; }
+  .section-header { font-size: 0.85rem; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin: 12px 0 6px; padding-bottom: 4px; border-bottom: 1px solid var(--border-strong); }
+  .tag-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: var(--radius-pill); font-size: 0.72rem; font-weight: 600; }
+  .tag-badge.warn { background: var(--danger-tint); color: var(--danger); }
+  .tag-badge.ok { background: var(--success-tint); color: var(--success); }
+  .tag-badge.info { background: var(--accent-tint); color: var(--accent); }
+  .gps-link { color: var(--accent); text-decoration: none; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px; }
   .gps-link:hover { text-decoration: underline; }
   .actions-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-  .toast { position: fixed; top: 20px; right: 20px; background: var(--green); color: white; padding: 12px 24px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; z-index: 9999; animation: toast-in 0.3s ease, toast-out 0.3s ease 2s forwards; }
-  @keyframes toast-in { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes toast-out { from { opacity: 1; } to { opacity: 0; } }
-  .footer { text-align: center; color: #666; font-size: 0.85rem; margin-top: 40px; }
-  .footer a { color: var(--accent); text-decoration: none; }
-  @media (max-width: 900px) {
-    .app { flex-direction: column; }
-    .sidebar { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid #222; }
-    .main { padding: 20px; }
-    .stats { grid-template-columns: 1fr 1fr; }
-  }
 </style>
 </head>
 <body>
 <div class="app">
   <div class="sidebar">
-    <h2>🛡️ Options</h2>
+    <a class="hub-link" href="../index.html"><i class="ph ph-arrow-left"></i> All tools</a>
+    <h2><i class="ph ph-shield-check"></i> Options</h2>
     <label class="checkbox-label"><input type="checkbox" id="preserveOrientation" checked><span>Preserve image orientation</span></label>
     <hr class="divider">
-    <h2>📤 Batch Actions</h2>
-    <button class="btn btn-export" onclick="stripAll()">🧹 Strip All Metadata</button>
-    <button class="btn btn-export" onclick="downloadAllZip()" style="margin-top:8px;">⬇️ Download All Cleaned (ZIP)</button>
+    <h2><i class="ph ph-stack"></i> Batch Actions</h2>
+    <button class="btn btn-export" onclick="stripAll()"><i class="ph ph-broom"></i> Strip all metadata</button>
+    <button class="btn btn-export" onclick="downloadAllZip()" style="margin-top:8px;"><i class="ph ph-download-simple"></i> Download all cleaned (ZIP)</button>
     <hr class="divider">
-    <h3>📋 Supported Formats</h3>
+    <h3><i class="ph ph-list-bullets"></i> Supported Formats</h3>
     <p style="font-size:0.85rem; color:var(--text-muted);">
       <b>Images:</b> JPG, PNG, WebP, TIFF, BMP<br>
       <b>Documents:</b> DOCX, PDF, XLSX, PPTX
     </p>
     <hr class="divider">
-    <h3>ℹ️ About</h3>
-    <p style="font-size:0.85rem; color:var(--text-muted);">Free, open-source metadata scrubber. No file uploads to external servers — <b>everything runs locally in your browser.</b></p>
+    <h3>About</h3>
+    <p style="font-size:0.85rem; color:var(--text-muted);">Free, open-source metadata scrubber. No file uploads to any server. Everything runs locally in your browser.</p>
     <hr class="divider">
-    <p style="font-size:0.85rem;">Made with ❤️ by <a href="https://github.com/RehmozAyub" style="color:var(--accent); text-decoration:none;">RehmozAyub</a></p>
+    <p style="font-size:0.85rem;">Made by <a href="https://github.com/RehmozAyub" style="color:var(--accent); text-decoration:none;">RehmozAyub</a></p>
   </div>
 
   <div class="main">
-    <div class="main-header">🛡️ Metadata Scrubber</div>
-    <div class="sub-header">Inspect & strip metadata from images and documents — protect your privacy</div>
+    <h1><i class="ph ph-shield-check"></i> Metadata Scrubber</h1>
+    <div class="sub-header">Inspect and strip metadata from images and documents to protect your privacy.</div>
 
     <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-      <p>📁 Drag & drop files here (or click to browse)</p>
-      <p style="font-size:0.8rem; margin-top:8px;">Images (JPG, PNG, WebP) and Documents (DOCX, PDF, XLSX, PPTX)</p>
+      <i class="ph ph-upload-simple"></i>
+      <p>Drag & drop files here, or click to browse</p>
+      <p style="font-size:0.8rem; margin-top:8px;">Images (JPG, PNG, WebP) and documents (DOCX, PDF, XLSX, PPTX)</p>
       <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.webp,.tiff,.bmp,.docx,.pdf,.xlsx,.pptx">
     </div>
 
     <div id="statsRow" style="display:none;">
       <div class="stats">
         <div class="stat-card"><div class="stat-label">Files</div><div class="stat-value" id="statFiles">0</div></div>
-        <div class="stat-card"><div class="stat-label">With Risks</div><div class="stat-value" id="statRisks" style="color:#e74c3c;">0</div></div>
-        <div class="stat-card"><div class="stat-label">Clean</div><div class="stat-value" id="statClean" style="color:#27ae60;">0</div></div>
+        <div class="stat-card"><div class="stat-label">With Risks</div><div class="stat-value" id="statRisks" style="color:var(--danger);">0</div></div>
+        <div class="stat-card"><div class="stat-label">Clean</div><div class="stat-value" id="statClean" style="color:var(--success);">0</div></div>
       </div>
     </div>
 
     <div id="fileList"></div>
 
     <div class="footer">
-      Metadata Scrubber v1.0 · Built with HTML + JavaScript ·
+      Metadata Scrubber v1.0 · Built with HTML and JavaScript ·
       <a href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a>
     </div>
   </div>
@@ -133,7 +97,7 @@ const SENSITIVE_IMAGE_TAGS = new Set([
 const SENSITIVE_DOC_PROPS = new Set(['author', 'last_modified_by', 'creator', 'producer', 'company', 'manager', 'category', 'dc:creator', 'cp:lastModifiedBy']);
 const IMAGE_EXTS = new Set(['jpg', 'jpeg', 'png', 'webp', 'tiff', 'bmp']);
 const DOC_EXTS = new Set(['docx', 'pdf', 'xlsx', 'pptx']);
-const FORMAT_ICONS = { docx: '📝', pdf: '📄', xlsx: '📊', pptx: '📽️', jpg: '🖼️', jpeg: '🖼️', png: '🖼️', webp: '🖼️', tiff: '🖼️', bmp: '🖼️' };
+const FORMAT_ICONS = { docx: 'file-doc', pdf: 'file-pdf', xlsx: 'file-xls', pptx: 'file-ppt', jpg: 'file-image', jpeg: 'file-image', png: 'file-image', webp: 'file-image', tiff: 'file-image', bmp: 'file-image' };
 
 let fileEntries = [];
 
@@ -303,7 +267,7 @@ async function stripAll() {
   for (let i = 0; i < fileEntries.length; i++) {
     if (!fileEntries[i].stripped) await stripFileMetadata(i);
   }
-  showToast('All files stripped!');
+  showToast('All files stripped');
   render();
 }
 
@@ -349,33 +313,33 @@ function render() {
   let html = '';
   for (let i = 0; i < fileEntries.length; i++) {
     const entry = fileEntries[i];
-    const icon = FORMAT_ICONS[entry.ext] || '📁';
+    const icon = FORMAT_ICONS[entry.ext] || 'file';
     const tagCount = Object.keys(entry.metadata).length;
     const riskBadge = entry.risks.length > 0
-      ? `<span class="tag-badge warn">⚠️ ${entry.risks.length} risk(s)</span>`
-      : `<span class="tag-badge ok">✓ Clean</span>`;
-    const strippedBadge = entry.stripped ? '<span class="tag-badge info">🧹 Stripped</span>' : '';
+      ? `<span class="tag-badge warn"><i class="ph ph-warning"></i> ${entry.risks.length} risk(s)</span>`
+      : `<span class="tag-badge ok"><i class="ph ph-check"></i> Clean</span>`;
+    const strippedBadge = entry.stripped ? '<span class="tag-badge info"><i class="ph ph-broom"></i> Stripped</span>' : '';
 
     html += `<div class="file-card">
       <div class="file-header" onclick="toggleFile(${i})">
-        <h3>${icon} ${escapeHTML(entry.name)} ${riskBadge} ${strippedBadge}</h3>
-        <span style="color:var(--text-muted); font-size:0.85rem;">${tagCount} properties ▾</span>
+        <h3><i class="ph ph-${icon}"></i> ${escapeHTML(entry.name)} ${riskBadge} ${strippedBadge}</h3>
+        <span style="color:var(--text-muted); font-size:0.85rem; display:flex; align-items:center; gap:4px;">${tagCount} properties <i class="ph ph-caret-down"></i></span>
       </div>
       <div class="file-body" id="file-body-${i}">`;
 
     if (entry.risks.length > 0) {
-      html += '<div class="privacy-warn"><b>⚠️ Privacy Risks Found:</b><br>';
-      for (const [k, v] of entry.risks) html += `• <b>${escapeHTML(k)}:</b> ${escapeHTML(v)}<br>`;
+      html += '<div class="privacy-warn"><b><i class="ph ph-warning"></i> Privacy risks found</b><br>';
+      for (const [k, v] of entry.risks) html += `&bull; <b>${escapeHTML(k)}:</b> ${escapeHTML(v)}<br>`;
       html += '</div>';
     } else {
-      html += '<div class="privacy-ok">✅ No obvious privacy risks detected.</div>';
+      html += '<div class="privacy-ok"><i class="ph ph-check-circle"></i> No obvious privacy risks detected.</div>';
     }
 
     if (Object.keys(entry.metadata).length) {
       html += '<table class="meta-table"><tr><th>Property</th><th>Value</th></tr>';
       for (const [k, v] of Object.entries(entry.metadata)) {
         const isSensitive = SENSITIVE_IMAGE_TAGS.has(k) || SENSITIVE_DOC_PROPS.has(k) || ['Company', 'Manager', 'Author', 'Creator', 'Producer'].includes(k);
-        const style = isSensitive ? ' style="color:#e74c3c;"' : '';
+        const style = isSensitive ? ' style="color:var(--danger);"' : '';
         html += `<tr><td${style}>${escapeHTML(k)}</td><td>${escapeHTML(String(v).slice(0, 200))}</td></tr>`;
       }
       html += '</table>';
@@ -385,15 +349,15 @@ function render() {
       const lat = parseFloat(entry.metadata.latitude);
       const lon = parseFloat(entry.metadata.longitude);
       if (!isNaN(lat) && !isNaN(lon)) {
-        html += `<p style="margin:8px 0;"><a class="gps-link" href="https://www.google.com/maps?q=${lat},${lon}" target="_blank">📍 View on Google Maps (${lat.toFixed(4)}, ${lon.toFixed(4)})</a></p>`;
+        html += `<p style="margin:8px 0;"><a class="gps-link" href="https://www.google.com/maps?q=${lat},${lon}" target="_blank"><i class="ph ph-map-pin"></i> View on Google Maps (${lat.toFixed(4)}, ${lon.toFixed(4)})</a></p>`;
       }
     }
 
     html += `<div class="actions-row">`;
     if (!entry.stripped) {
-      html += `<button class="btn btn-sm btn-strip" onclick="stripFileMetadata(${i})">🧹 Strip Metadata</button>`;
+      html += `<button class="btn btn-sm btn-strip" onclick="stripFileMetadata(${i})"><i class="ph ph-broom"></i> Strip metadata</button>`;
     }
-    html += `<button class="btn btn-sm btn-download" onclick="downloadFile(${i})">${entry.stripped ? '⬇️ Download Clean' : '⬇️ Download Original'}</button>`;
+    html += `<button class="btn btn-sm btn-download" onclick="downloadFile(${i})"><i class="ph ph-download-simple"></i> ${entry.stripped ? 'Download clean' : 'Download original'}</button>`;
     html += `</div></div></div>`;
   }
   document.getElementById('fileList').innerHTML = html;
@@ -407,7 +371,7 @@ function toggleFile(idx) {
 function showToast(msg) {
   const t = document.createElement('div');
   t.className = 'toast';
-  t.textContent = msg;
+  t.innerHTML = `<i class="ph ph-check-circle"></i> ${msg}`;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 2500);
 }

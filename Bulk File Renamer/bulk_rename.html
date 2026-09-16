@@ -4,90 +4,50 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bulk File Renamer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="../assets/theme.css">
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
-  :root {
-    --bg: #0e1117; --surface: #1a1a2e; --text: #e0e0e0; --text-muted: #888;
-    --accent: #667eea; --accent2: #764ba2; --green: #27ae60; --red: #e74c3c; --radius: 12px;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-  .app { display: flex; min-height: 100vh; }
-  .sidebar { width: 280px; min-width: 280px; background: var(--bg); border-right: 1px solid #222; padding: 24px; overflow-y: auto; }
-  .main { flex: 1; padding: 32px 40px; overflow-y: auto; }
-  .main-header { font-size: 2.5rem; font-weight: 700; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; margin-bottom: 0.2rem; }
-  .sub-header { text-align: center; color: #888; margin-bottom: 2rem; font-size: 1.05rem; }
-  h2 { font-size: 1.1rem; margin-bottom: 12px; }
-  h3 { font-size: 1rem; color: var(--text-muted); margin-bottom: 8px; }
-  .divider { border: none; border-top: 1px solid #333; margin: 16px 0; }
-  label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px; }
-  input[type="text"], input[type="number"], select { width: 100%; padding: 10px 12px; background: var(--surface); border: 1px solid #333; border-radius: 8px; color: var(--text); font-size: 0.95rem; outline: none; }
-  input:focus, select:focus { border-color: var(--accent); }
-  .form-group { margin-bottom: 12px; }
-  .form-row { display: flex; gap: 12px; }
-  .form-row > * { flex: 1; }
-  .checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem; color: var(--text); margin-bottom: 0; }
-  .checkbox-label input { accent-color: var(--accent); width: 16px; height: 16px; }
-  .btn { padding: 10px 16px; border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
-  .btn:hover { opacity: 0.85; }
-  .btn-primary { width: 100%; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; padding: 12px; font-size: 1rem; }
-  .radio-group { display: flex; gap: 0; margin-bottom: 4px; flex-wrap: wrap; }
-  .radio-group label { display: flex; align-items: center; padding: 8px 14px; background: var(--surface); border: 1px solid #333; cursor: pointer; font-size: 0.85rem; color: var(--text); margin-bottom: 0; white-space: nowrap; }
-  .radio-group label:first-child { border-radius: 8px 0 0 8px; }
-  .radio-group label:last-child { border-radius: 0 8px 8px 0; }
-  .radio-group input[type="radio"] { display: none; }
-  .radio-group input[type="radio"]:checked + span { color: var(--accent); font-weight: 700; }
-  .tool-item { padding: 10px 14px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; margin-bottom: 4px; transition: background 0.2s; }
-  .tool-item:hover { background: #1a1a2e; }
-  .tool-item.active { background: var(--accent); color: white; }
-  .drop-zone { border: 2px dashed #444; border-radius: 12px; padding: 40px; text-align: center; color: var(--text-muted); cursor: pointer; transition: border-color 0.2s; margin-bottom: 16px; }
-  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); }
-  .drop-zone input { display: none; }
-  .success-msg { background: #1a2a1a; border-left: 4px solid #27ae60; padding: 10px 16px; border-radius: 0 8px 8px 0; font-size: 0.9rem; color: #95d5b2; margin: 12px 0; }
-  .warning-msg { background: #2a2a1a; border-left: 4px solid #f39c12; padding: 10px 16px; border-radius: 0 8px 8px 0; font-size: 0.9rem; color: #f5d6a0; margin: 12px 0; }
-  .info-msg { background: #1a2a3a; border-left: 4px solid var(--accent); padding: 10px 16px; border-radius: 0 8px 8px 0; font-size: 0.9rem; color: var(--text-muted); margin: 12px 0; }
   .preview-table { width: 100%; border-collapse: collapse; margin: 12px 0; }
-  .preview-table th { text-align: left; padding: 8px 12px; border-bottom: 2px solid #333; font-size: 0.85rem; color: var(--text-muted); }
-  .preview-table td { padding: 8px 12px; border-bottom: 1px solid #222; font-family: monospace; font-size: 0.9rem; }
+  .preview-table th { text-align: left; padding: 8px 12px; border-bottom: 2px solid var(--border-strong); font-size: 0.85rem; color: var(--text-muted); }
+  .preview-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); font-family: var(--font-mono); font-size: 0.88rem; }
   .changed { color: var(--accent); }
   .unchanged { color: var(--text-muted); }
-  .dup-warn { color: var(--red); font-weight: bold; font-size: 0.8rem; }
-  .footer { text-align: center; color: #666; font-size: 0.85rem; margin-top: 40px; }
-  .footer a { color: var(--accent); text-decoration: none; }
-  @media (max-width: 900px) {
-    .app { flex-direction: column; }
-    .sidebar { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid #222; }
-    .main { padding: 20px; }
-  }
+  .dup-warn { color: var(--danger); font-weight: 600; font-size: 0.8rem; }
 </style>
 </head>
 <body>
 <div class="app">
   <div class="sidebar">
-    <h2>🧰 Renaming Rule</h2>
+    <a class="hub-link" href="../index.html"><i class="ph ph-arrow-left"></i> All tools</a>
+    <h2><i class="ph ph-folders"></i> Renaming rule</h2>
     <div id="toolList">
-      <div class="tool-item active" onclick="selectTool('find_replace')">🔤 Find & Replace</div>
-      <div class="tool-item" onclick="selectTool('regex')">🔣 Regex Pattern</div>
-      <div class="tool-item" onclick="selectTool('prefix_suffix')">📎 Prefix / Suffix</div>
-      <div class="tool-item" onclick="selectTool('numbering')">🔢 Sequential Numbering</div>
-      <div class="tool-item" onclick="selectTool('date_stamp')">📅 Date Stamp</div>
-      <div class="tool-item" onclick="selectTool('case')">🔠 Case Conversion</div>
-      <div class="tool-item" onclick="selectTool('extension')">🔧 Extension</div>
-      <div class="tool-item" onclick="selectTool('trim')">✂️ Trim / Clean</div>
+      <div class="tool-item active" onclick="selectTool('find_replace')"><i class="ph ph-magnifying-glass"></i> Find & Replace</div>
+      <div class="tool-item" onclick="selectTool('regex')"><i class="ph ph-brackets-curly"></i> Regex Pattern</div>
+      <div class="tool-item" onclick="selectTool('prefix_suffix')"><i class="ph ph-text-indent"></i> Prefix / Suffix</div>
+      <div class="tool-item" onclick="selectTool('numbering')"><i class="ph ph-list-numbers"></i> Sequential Numbering</div>
+      <div class="tool-item" onclick="selectTool('date_stamp')"><i class="ph ph-calendar-blank"></i> Date Stamp</div>
+      <div class="tool-item" onclick="selectTool('case')"><i class="ph ph-text-aa"></i> Case Conversion</div>
+      <div class="tool-item" onclick="selectTool('extension')"><i class="ph ph-wrench"></i> Extension</div>
+      <div class="tool-item" onclick="selectTool('trim')"><i class="ph ph-scissors"></i> Trim / Clean</div>
     </div>
     <hr class="divider">
-    <h3>ℹ️ About</h3>
-    <p style="font-size:0.85rem; color:var(--text-muted);">Free, open-source bulk file renamer. No file uploads to external servers — <b>everything runs locally in your browser.</b></p>
+    <h3>About</h3>
+    <p style="font-size:0.85rem; color:var(--text-muted);">Free, open-source bulk file renamer. No file uploads to any server. Everything runs locally in your browser.</p>
     <hr class="divider">
-    <p style="font-size:0.85rem;">Made with ❤️ by <a href="https://github.com/RehmozAyub" style="color:var(--accent); text-decoration:none;">RehmozAyub</a></p>
+    <p style="font-size:0.85rem;">Made by <a href="https://github.com/RehmozAyub" style="color:var(--accent); text-decoration:none;">RehmozAyub</a></p>
   </div>
 
   <div class="main">
-    <div class="main-header">📁 Bulk File Renamer</div>
-    <div class="sub-header">Rename multiple files at once — regex, numbering, dates & more</div>
+    <h1><i class="ph ph-folders"></i> Bulk File Renamer</h1>
+    <div class="sub-header">Rename multiple files at once. Regex, numbering, dates, and more.</div>
 
     <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-      <p>📁 Drag & drop files here (or click to browse)</p>
+      <i class="ph ph-upload-simple"></i>
+      <p>Drag & drop files here, or click to browse</p>
       <p style="font-size:0.8rem; margin-top:8px;">Upload all the files you want to rename</p>
       <input type="file" id="fileInput" multiple>
     </div>
@@ -98,7 +58,7 @@
     <div id="rulePanel">
       <!-- Find & Replace -->
       <div class="rule-section" id="rule-find_replace">
-        <h2>🔤 Find & Replace</h2>
+        <h2><i class="ph ph-magnifying-glass"></i> Find & Replace</h2>
         <p style="color:var(--text-muted); margin-bottom:12px;">Simple text substitution in filenames.</p>
         <div class="form-row">
           <div class="form-group"><label>Find</label><input type="text" id="findText" oninput="updatePreview()"></div>
@@ -109,7 +69,7 @@
 
       <!-- Regex -->
       <div class="rule-section" id="rule-regex" style="display:none;">
-        <h2>🔣 Regex Pattern</h2>
+        <h2><i class="ph ph-brackets-curly"></i> Regex Pattern</h2>
         <p style="color:var(--text-muted); margin-bottom:12px;">Apply a regex pattern to the filename stem.</p>
         <div class="form-row">
           <div class="form-group"><label>Regex pattern</label><input type="text" id="regexPattern" placeholder="(\d+)" oninput="updatePreview()"></div>
@@ -120,7 +80,7 @@
 
       <!-- Prefix / Suffix -->
       <div class="rule-section" id="rule-prefix_suffix" style="display:none;">
-        <h2>📎 Prefix / Suffix</h2>
+        <h2><i class="ph ph-text-indent"></i> Prefix / Suffix</h2>
         <p style="color:var(--text-muted); margin-bottom:12px;">Add text before or after the filename stem.</p>
         <div class="form-row">
           <div class="form-group"><label>Prefix</label><input type="text" id="prefixText" oninput="updatePreview()"></div>
@@ -130,8 +90,8 @@
 
       <!-- Sequential Numbering -->
       <div class="rule-section" id="rule-numbering" style="display:none;">
-        <h2>🔢 Sequential Numbering</h2>
-        <p style="color:var(--text-muted); margin-bottom:12px;">Automatically number files with configurable format.</p>
+        <h2><i class="ph ph-list-numbers"></i> Sequential Numbering</h2>
+        <p style="color:var(--text-muted); margin-bottom:12px;">Automatically number files with a configurable format.</p>
         <div class="form-row">
           <div class="form-group"><label>Start at</label><input type="number" id="seqStart" value="1" oninput="updatePreview()"></div>
           <div class="form-group"><label>Step</label><input type="number" id="seqStep" value="1" min="1" oninput="updatePreview()"></div>
@@ -150,7 +110,7 @@
 
       <!-- Date Stamp -->
       <div class="rule-section" id="rule-date_stamp" style="display:none;">
-        <h2>📅 Date Stamp</h2>
+        <h2><i class="ph ph-calendar-blank"></i> Date Stamp</h2>
         <p style="color:var(--text-muted); margin-bottom:12px;">Add a date or timestamp to filenames.</p>
         <div class="form-row">
           <div class="form-group">
@@ -179,7 +139,7 @@
 
       <!-- Case Conversion -->
       <div class="rule-section" id="rule-case" style="display:none;">
-        <h2>🔠 Case Conversion</h2>
+        <h2><i class="ph ph-text-aa"></i> Case Conversion</h2>
         <p style="color:var(--text-muted); margin-bottom:12px;">Change the letter casing of filenames.</p>
         <div class="form-group">
           <label>Convert to</label>
@@ -196,7 +156,7 @@
 
       <!-- Extension -->
       <div class="rule-section" id="rule-extension" style="display:none;">
-        <h2>🔧 Extension</h2>
+        <h2><i class="ph ph-wrench"></i> Extension</h2>
         <p style="color:var(--text-muted); margin-bottom:12px;">Change, remove, or add file extensions.</p>
         <div class="form-group">
           <label>Action</label>
@@ -211,7 +171,7 @@
 
       <!-- Trim / Clean -->
       <div class="rule-section" id="rule-trim" style="display:none;">
-        <h2>✂️ Trim / Clean</h2>
+        <h2><i class="ph ph-scissors"></i> Trim / Clean</h2>
         <p style="color:var(--text-muted); margin-bottom:12px;">Remove characters, replace spaces, and clean up filenames.</p>
         <div class="form-row">
           <div class="form-group"><label>Remove first N chars</label><input type="number" id="trimStart" value="0" min="0" oninput="updatePreview()"></div>
@@ -234,17 +194,17 @@
     <!-- Preview -->
     <div id="previewSection" style="display:none;">
       <hr class="divider">
-      <h2>👀 Preview</h2>
+      <h2><i class="ph ph-eye"></i> Preview</h2>
       <div id="previewContent"></div>
       <div id="previewStats"></div>
 
       <hr class="divider">
-      <h2>📥 Download</h2>
-      <button class="btn btn-primary" onclick="downloadZip()">🚀 Generate Renamed ZIP</button>
+      <h2><i class="ph ph-download-simple"></i> Download</h2>
+      <button class="btn btn-primary" onclick="downloadZip()"><i class="ph ph-package"></i> Generate renamed ZIP</button>
     </div>
 
     <div class="footer">
-      Bulk File Renamer v1.0 · Built with HTML + JavaScript ·
+      Bulk File Renamer v1.0 · Built with HTML and JavaScript ·
       <a href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a>
     </div>
   </div>
@@ -254,7 +214,7 @@
 let uploadedFiles = [];
 let currentTool = 'find_replace';
 
-// ─── File Handling ───
+// File handling
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 
@@ -265,7 +225,7 @@ fileInput.addEventListener('change', e => handleFiles(e.target.files));
 
 function handleFiles(files) {
   uploadedFiles = Array.from(files);
-  document.getElementById('fileCount').innerHTML = `<div class="success-msg">${uploadedFiles.length} file(s) uploaded</div>`;
+  document.getElementById('fileCount').innerHTML = `<div class="success-msg"><i class="ph ph-check-circle"></i> ${uploadedFiles.length} file(s) uploaded</div>`;
   document.getElementById('previewSection').style.display = 'block';
   updatePreview();
 }
@@ -273,24 +233,24 @@ function handleFiles(files) {
 // Set today's date
 document.getElementById('dateValue').value = new Date().toISOString().slice(0, 10);
 
-// ─── Tool Selection ───
+// Tool selection
 function selectTool(tool) {
   currentTool = tool;
   document.querySelectorAll('.tool-item').forEach(el => el.classList.remove('active'));
-  event.target.classList.add('active');
+  event.target.closest('.tool-item').classList.add('active');
   document.querySelectorAll('.rule-section').forEach(el => el.style.display = 'none');
   document.getElementById('rule-' + tool).style.display = 'block';
   updatePreview();
 }
 
-// ─── Helpers ───
+// Helpers
 function splitName(name) {
   const lastDot = name.lastIndexOf('.');
   if (lastDot <= 0) return [name, ''];
   return [name.slice(0, lastDot), name.slice(lastDot)];
 }
 
-// ─── Apply Rules ───
+// Apply rules
 function applyRule(names) {
   switch (currentTool) {
     case 'find_replace': return applyFindReplace(names);
@@ -451,7 +411,7 @@ function applyTrim(names) {
   });
 }
 
-// ─── Preview ───
+// Preview
 function updatePreview() {
   if (!uploadedFiles.length) return;
   const names = uploadedFiles.map(f => f.name);
@@ -466,21 +426,21 @@ function updatePreview() {
   for (let i = 0; i < names.length; i++) {
     const changed = names[i] !== newNames[i];
     if (changed) changedCount++;
-    const icon = changed ? '🔄' : '✅';
+    const icon = changed ? '<i class="ph ph-pencil-simple" style="color:var(--accent);"></i>' : '<i class="ph ph-check" style="color:var(--success);"></i>';
     const cls = changed ? 'changed' : 'unchanged';
-    const dupTag = dupSet.has(newNames[i]) ? ' <span class="dup-warn">⚠️ DUPLICATE</span>' : '';
-    html += `<tr><td>${icon}</td><td class="unchanged">${escapeHTML(names[i])}</td><td>→</td><td class="${cls}">${escapeHTML(newNames[i])}${dupTag}</td></tr>`;
+    const dupTag = dupSet.has(newNames[i]) ? ' <span class="dup-warn"><i class="ph ph-warning"></i> DUPLICATE</span>' : '';
+    html += `<tr><td>${icon}</td><td class="unchanged">${escapeHTML(names[i])}</td><td><i class="ph ph-arrow-right"></i></td><td class="${cls}">${escapeHTML(newNames[i])}${dupTag}</td></tr>`;
   }
   html += '</table>';
 
   document.getElementById('previewContent').innerHTML = html;
 
-  let statsHtml = `<p style="color:var(--text-muted); font-size:0.85rem;">📊 ${changedCount}/${names.length} file(s) will be renamed.</p>`;
-  if (dupSet.size) statsHtml += `<div class="warning-msg">⚠️ Some renamed files have identical names. Adjust your rules to avoid overwrites.</div>`;
+  let statsHtml = `<p style="color:var(--text-muted); font-size:0.85rem;">${changedCount}/${names.length} file(s) will be renamed.</p>`;
+  if (dupSet.size) statsHtml += `<div class="warning-msg"><i class="ph ph-warning"></i> Some renamed files have identical names. Adjust your rules to avoid overwrites.</div>`;
   document.getElementById('previewStats').innerHTML = statsHtml;
 }
 
-// ─── Download ZIP ───
+// Download ZIP
 function downloadZip() {
   if (!uploadedFiles.length) return;
   const names = uploadedFiles.map(f => f.name);

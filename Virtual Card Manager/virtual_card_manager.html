@@ -4,303 +4,74 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Virtual Card Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="../assets/theme.css">
 <style>
-  :root {
-    --bg: #0e1117;
-    --surface: #1a1a2e;
-    --surface2: #16213e;
-    --text: #e0e0e0;
-    --text-muted: #888;
-    --accent: #667eea;
-    --accent2: #764ba2;
-    --green: #27ae60;
-    --red: #e74c3c;
-    --orange: #f39c12;
-    --cyan: #00d2ff;
-    --radius: 12px;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-  }
-
-  /* ── Layout ── */
-  .app { display: flex; min-height: 100vh; }
-  .sidebar {
-    width: 340px;
-    min-width: 340px;
-    background: var(--bg);
-    border-right: 1px solid #222;
-    padding: 24px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-  .main {
-    flex: 1;
-    padding: 32px 40px;
-    overflow-y: auto;
-  }
-
-  /* ── Typography ── */
-  h1 { font-size: 1.8rem; margin-bottom: 4px; }
-  h1 span { font-size: 1.8rem; }
-  .caption { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px; }
-  h2 { font-size: 1.1rem; margin-bottom: 12px; color: var(--text); }
-  h3 { font-size: 1rem; margin-bottom: 8px; color: var(--text-muted); }
-  .divider { border: none; border-top: 1px solid #333; margin: 16px 0; }
-
-  /* ── Form Controls ── */
-  label {
-    display: block;
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    margin-bottom: 4px;
-  }
-  input[type="text"],
-  input[type="number"],
-  select {
-    width: 100%;
-    padding: 10px 12px;
-    background: var(--surface);
-    border: 1px solid #333;
-    border-radius: 8px;
-    color: var(--text);
-    font-size: 0.95rem;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  input:focus, select:focus {
-    border-color: var(--accent);
-  }
-  .slider-container { margin-bottom: 0; }
-  input[type="range"] {
-    width: 100%;
-    accent-color: var(--accent);
-  }
-  .slider-value {
-    text-align: right;
-    font-size: 0.85rem;
-    color: var(--accent);
-    margin-top: 2px;
-  }
-  .form-group { margin-bottom: 12px; }
-
-  /* ── Buttons ── */
-  .btn {
-    padding: 10px 16px;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: opacity 0.2s, transform 0.1s;
-    white-space: nowrap;
-  }
-  .btn:hover { opacity: 0.85; }
-  .btn:active { transform: scale(0.97); }
-  .btn-primary {
-    width: 100%;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    color: white;
-    padding: 12px;
-    font-size: 1rem;
-  }
-  .btn-sm {
-    padding: 6px 12px;
-    font-size: 0.8rem;
-    border-radius: 6px;
-  }
-  .btn-freeze { background: #2980b9; color: white; }
-  .btn-unfreeze { background: var(--orange); color: #000; }
-  .btn-charge { background: var(--green); color: white; }
-  .btn-reset { background: #555; color: white; }
-  .btn-delete { background: var(--red); color: white; }
-  .btn-export {
-    width: 100%;
-    background: var(--surface);
-    color: var(--text);
-    border: 1px solid #444;
-  }
-  .btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  /* ── Stats Row ── */
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-    margin-bottom: 24px;
-  }
-  .stat-card {
-    background: var(--surface);
-    border-radius: var(--radius);
-    padding: 16px;
-    text-align: center;
-  }
-  .stat-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px; }
-  .stat-value { font-size: 1.5rem; font-weight: 700; }
-
-  /* ── Card Visual ── */
   .card-wrapper { margin-bottom: 24px; }
   .test-banner {
-    background: var(--orange);
-    color: #000;
-    text-align: center;
-    padding: 4px;
-    font-size: 11px;
-    border-radius: 8px 8px 0 0;
-    font-weight: bold;
-    letter-spacing: 1px;
+    background: var(--warning); color: var(--on-accent);
+    text-align: center; padding: 5px; font-size: 11px;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    font-weight: 700; letter-spacing: 0.06em;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
   }
   .card-box {
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-    border-radius: 0 0 16px 16px;
-    padding: 24px;
-    color: white;
-    font-family: 'Courier New', monospace;
-    position: relative;
-    overflow: hidden;
-    min-height: 180px;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    padding: 24px; color: #fff; font-family: var(--font-mono);
+    position: relative; overflow: hidden; min-height: 180px;
   }
   .card-box::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -50%;
-    width: 100%;
-    height: 100%;
+    content: ''; position: absolute; top: -50%; right: -50%; width: 100%; height: 100%;
     background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 60%);
     pointer-events: none;
   }
-  .card-nickname { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
+  .card-nickname { font-size: 16px; font-weight: 700; margin-bottom: 4px; font-family: var(--font-display); }
   .card-network { font-size: 12px; opacity: 0.7; text-transform: uppercase; letter-spacing: 2px; }
   .card-number { font-size: 22px; letter-spacing: 3px; margin: 16px 0; }
   .card-details { display: flex; gap: 40px; flex-wrap: wrap; }
   .card-detail { font-size: 13px; opacity: 0.85; }
-  .cap-bar { background: rgba(255,255,255,0.15); border-radius: 8px; height: 8px; margin-top: 10px; overflow: hidden; }
-  .cap-fill { height: 100%; border-radius: 8px; transition: width 0.3s; }
-  .cap-fill-ok { background: var(--cyan); }
-  .cap-fill-warn { background: var(--orange); }
-  .cap-fill-danger { background: var(--red); }
-  .frozen-badge { background: var(--red); padding: 2px 10px; border-radius: 12px; font-size: 11px; display: inline-block; margin-left: 8px; }
-  .active-badge { background: var(--green); padding: 2px 10px; border-radius: 12px; font-size: 11px; display: inline-block; margin-left: 8px; }
-  .purpose-note { color: var(--text-muted); font-size: 0.85rem; margin-top: 8px; }
+  .cap-bar { background: rgba(255,255,255,0.15); border-radius: var(--radius-pill); height: 8px; margin-top: 10px; overflow: hidden; }
+  .cap-fill { height: 100%; border-radius: var(--radius-pill); transition: width 0.3s; }
+  .cap-fill-ok { background: #4fc3e8; }
+  .cap-fill-warn { background: var(--warning); }
+  .cap-fill-danger { background: var(--danger); }
+  .frozen-badge, .active-badge {
+    padding: 2px 10px; border-radius: var(--radius-pill); font-size: 11px;
+    display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; font-family: var(--font-body);
+  }
+  .frozen-badge { background: var(--danger-fill); }
+  .active-badge { background: var(--success-fill); }
+  .purpose-note { color: var(--text-muted); font-size: 0.85rem; margin-top: 8px; display: flex; align-items: center; gap: 6px; }
 
-  /* ── Card Actions ── */
-  .card-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    margin-top: 12px;
-    flex-wrap: wrap;
-  }
-  .charge-input {
-    width: 100px;
-    padding: 6px 8px;
-    background: var(--surface);
-    border: 1px solid #444;
-    border-radius: 6px;
-    color: var(--text);
-    font-size: 0.85rem;
-  }
+  .card-actions { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+  .charge-input { width: 100px; padding: 6px 8px; background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); color: var(--text); font-size: 0.85rem; }
 
-  /* ── Info Box ── */
-  .info-box {
-    background: #1a2a3a;
-    border-left: 4px solid var(--accent);
-    padding: 16px;
-    border-radius: 0 8px 8px 0;
-    color: var(--text-muted);
-    font-size: 0.9rem;
-  }
+  .provider-links a { color: var(--accent); text-decoration: none; }
+  .provider-links a:hover { text-decoration: underline; }
+  .provider-links li { margin-bottom: 6px; list-style: none; }
+  .provider-links li::before { content: "\2192  "; color: var(--text-muted); }
 
-  /* ── Provider Links ── */
-  .provider-links a {
-    color: var(--accent);
-    text-decoration: none;
-  }
-  .provider-links a:hover {
-    text-decoration: underline;
-  }
-  .provider-links li {
-    margin-bottom: 6px;
-    list-style: none;
-  }
-  .provider-links li::before {
-    content: "→ ";
-    color: var(--text-muted);
-  }
-
-  /* ── Footer ── */
-  .footer {
-    text-align: center;
-    color: var(--text-muted);
-    font-size: 0.8rem;
-    margin-top: 40px;
-    padding: 20px;
-    opacity: 0.6;
-  }
-  .footer a { color: var(--accent); text-decoration: none; }
-
-  /* ── Empty State ── */
-  .empty-state {
-    background: var(--surface);
-    border-radius: var(--radius);
-    padding: 40px;
-    text-align: center;
-    color: var(--text-muted);
-    font-size: 1.1rem;
-  }
-
-  /* ── Toast ── */
-  .toast {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: var(--green);
-    color: white;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    z-index: 9999;
-    animation: toast-in 0.3s ease, toast-out 0.3s ease 2s forwards;
-  }
-  @keyframes toast-in { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes toast-out { from { opacity: 1; } to { opacity: 0; } }
-
-  /* ── Responsive ── */
-  @media (max-width: 900px) {
-    .app { flex-direction: column; }
-    .sidebar { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid #222; }
-    .main { padding: 20px; }
-    .stats { grid-template-columns: repeat(2, 1fr); }
-    .card-details { gap: 20px; }
-  }
+  .empty-state { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 40px; text-align: center; color: var(--text-muted); font-size: 1.05rem; }
 </style>
 </head>
 <body>
 <div class="app">
   <!-- Sidebar -->
   <div class="sidebar">
-    <div>
-      <h2>➕ Create New Card</h2>
-    </div>
+    <a class="hub-link" href="../index.html"><i class="ph ph-arrow-left"></i> All tools</a>
+    <h2><i class="ph ph-plus-circle"></i> Create New Card</h2>
 
     <div class="form-group">
-      <label for="nickname">Card Nickname</label>
+      <label for="nickname">Card nickname</label>
       <input type="text" id="nickname" placeholder="e.g. Netflix Trial">
     </div>
 
     <div class="form-group">
-      <label for="network">Card Network</label>
+      <label for="network">Card network</label>
       <select id="network">
         <option>Visa (Test)</option>
         <option>Mastercard (Test)</option>
@@ -313,67 +84,67 @@
       <label for="currency">Currency</label>
       <select id="currency">
         <option value="USD|$">USD ($)</option>
-        <option value="EUR|€">EUR (€)</option>
-        <option value="GBP|£">GBP (£)</option>
-        <option value="INR|₹">INR (₹)</option>
-        <option value="JPY|¥">JPY (¥)</option>
+        <option value="EUR|&euro;">EUR (&euro;)</option>
+        <option value="GBP|&pound;">GBP (&pound;)</option>
+        <option value="INR|&#8377;">INR (&#8377;)</option>
+        <option value="JPY|&yen;">JPY (&yen;)</option>
         <option value="CAD|C$">CAD (C$)</option>
         <option value="AUD|A$">AUD (A$)</option>
       </select>
     </div>
 
     <div class="form-group">
-      <label for="spending_cap">Spending Cap</label>
+      <label for="spending_cap">Spending cap</label>
       <input type="number" id="spending_cap" min="1" max="100000" value="50" step="5">
     </div>
 
     <div class="form-group slider-container">
-      <label for="months_valid">Valid For (months)</label>
+      <label for="months_valid">Valid for (months)</label>
       <input type="range" id="months_valid" min="1" max="36" value="12">
       <div class="slider-value" id="months_label">12 months</div>
     </div>
 
     <div class="form-group">
-      <label for="purpose">Purpose / Notes</label>
+      <label for="purpose">Purpose / notes</label>
       <input type="text" id="purpose" placeholder="e.g. Free trial signup">
     </div>
 
-    <button class="btn btn-primary" onclick="generateCard()">🔐 Generate Card</button>
+    <button class="btn btn-primary" onclick="generateCard()"><i class="ph ph-lock-key"></i> Generate card</button>
 
     <hr class="divider">
 
     <div>
-      <h2>🔗 Real Virtual Card Providers</h2>
+      <h2><i class="ph ph-link-simple"></i> Real Virtual Card Providers</h2>
       <ul class="provider-links">
-        <li><a href="https://privacy.com" target="_blank">Privacy.com</a> — Free virtual cards (US)</li>
-        <li><a href="https://revolut.com" target="_blank">Revolut</a> — Disposable & virtual cards (EU/UK)</li>
-        <li><a href="https://wise.com" target="_blank">Wise</a> — Multi-currency virtual cards</li>
-        <li><a href="https://mysudo.com" target="_blank">MySudo</a> — Privacy-focused virtual cards</li>
-        <li><a href="https://eno.capitalone.com" target="_blank">Capital One Eno</a> — Free virtual numbers</li>
+        <li><a href="https://privacy.com" target="_blank">Privacy.com</a> - free virtual cards (US)</li>
+        <li><a href="https://revolut.com" target="_blank">Revolut</a> - disposable and virtual cards (EU/UK)</li>
+        <li><a href="https://wise.com" target="_blank">Wise</a> - multi-currency virtual cards</li>
+        <li><a href="https://mysudo.com" target="_blank">MySudo</a> - privacy-focused virtual cards</li>
+        <li><a href="https://eno.capitalone.com" target="_blank">Capital One Eno</a> - free virtual numbers</li>
       </ul>
     </div>
 
     <hr class="divider">
 
     <div>
-      <h2>📤 Export</h2>
-      <button class="btn btn-export" onclick="exportCSV()" id="exportBtn" disabled>⬇️ Download CSV</button>
+      <h2><i class="ph ph-export"></i> Export</h2>
+      <button class="btn btn-export" onclick="exportCSV()" id="exportBtn" disabled><i class="ph ph-download-simple"></i> Download CSV</button>
     </div>
 
     <hr class="divider">
-    <h3>ℹ️ About</h3>
+    <h3>About</h3>
     <p style="font-size:0.85rem; color:var(--text-muted);">
-      Free, open-source virtual card manager. No network calls — everything stays in your browser's local storage.
+      Free, open-source virtual card manager. No network calls. Everything stays in your browser's local storage.
     </p>
     <p style="font-size:0.85rem;">
-      Made with ❤️ by <a href="https://github.com/RehmozAyub" style="color:var(--accent); text-decoration:none;">RehmozAyub</a>
+      Made by <a href="https://github.com/RehmozAyub" style="color:var(--accent); text-decoration:none;">RehmozAyub</a>
     </p>
   </div>
 
   <!-- Main Content -->
   <div class="main">
-    <h1><span>💳</span> Virtual Card Manager</h1>
-    <p class="caption">Generate test card numbers with spending caps — everything stays on your machine.</p>
+    <h1><i class="ph ph-credit-card"></i> Virtual Card Manager</h1>
+    <p class="caption">Generate test card numbers with spending caps. Everything stays on your machine.</p>
 
     <div id="statsRow" style="display:none;">
       <div class="stats">
@@ -400,18 +171,18 @@
     <div id="cardList"></div>
 
     <div class="footer">
-      ⚠️ These are <b>test/virtual numbers only</b> — they will NOT process real payments.<br>
+      <i class="ph ph-warning" style="color:var(--warning);"></i> These are <b>test and virtual numbers only</b>. They will not process real payments.<br>
       For real virtual cards, use services like
       <a href="https://privacy.com">Privacy.com</a>,
       <a href="https://revolut.com">Revolut</a>, or
       <a href="https://wise.com">Wise</a>.<br>
-      All data is stored locally in your browser — nothing leaves your machine.
+      All data is stored locally in your browser. Nothing leaves your machine.
     </div>
   </div>
 </div>
 
 <script>
-// ─── Constants ───
+// Constants
 const CARD_PREFIXES = {
   "Visa (Test)": ["4539", "4556", "4916", "4532", "4929"],
   "Mastercard (Test)": ["5425", "5399", "5168", "5490", "5206"],
@@ -428,7 +199,7 @@ const CARD_LENGTHS = {
 
 const STORAGE_KEY = "virtual_card_manager_cards";
 
-// ─── Helpers ───
+// Helpers
 function luhnChecksum(cardNumber) {
   const digits = cardNumber.split("").map(Number);
   const oddDigits = [];
@@ -482,7 +253,7 @@ function maskCardNumber(num) {
   return "•••• •••• •••• " + num.slice(-4);
 }
 
-// ─── Storage ───
+// Storage
 function loadCards() {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
@@ -493,16 +264,16 @@ function saveCards(cards) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
 }
 
-// ─── Toast ───
+// Toast
 function showToast(msg) {
   const t = document.createElement("div");
   t.className = "toast";
-  t.textContent = msg;
+  t.innerHTML = `<i class="ph ph-check-circle"></i> ${msg}`;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 2500);
 }
 
-// ─── Generate Card ───
+// Generate card
 function generateCard() {
   const nickname = document.getElementById("nickname").value || `Card #${cards.length + 1}`;
   const network = document.getElementById("network").value;
@@ -529,14 +300,14 @@ function generateCard() {
   cards.unshift(card);
   saveCards(cards);
   render();
-  showToast(`${card.nickname} created!`);
+  showToast(`${card.nickname} created`);
 
   // Reset form
   document.getElementById("nickname").value = "";
   document.getElementById("purpose").value = "";
 }
 
-// ─── Card Actions ───
+// Card actions
 function freezeCard(idx) {
   cards[idx].status = "frozen";
   saveCards(cards);
@@ -555,7 +326,7 @@ function logCharge(idx) {
   if (!amount || amount <= 0) return;
   const remaining = cards[idx].spending_cap - (cards[idx].spent || 0);
   if (amount > remaining) {
-    showToast("Amount exceeds remaining cap!");
+    showToast("Amount exceeds remaining cap");
     return;
   }
   cards[idx].spent = (cards[idx].spent || 0) + amount;
@@ -575,7 +346,7 @@ function deleteCard(idx) {
   render();
 }
 
-// ─── Export CSV ───
+// Export CSV
 function exportCSV() {
   if (!cards.length) return;
   const headers = ["nickname", "network", "masked_number", "expiry", "spending_cap", "spent", "remaining", "purpose", "status", "created"];
@@ -606,7 +377,7 @@ function exportCSV() {
   URL.revokeObjectURL(url);
 }
 
-// ─── Render ───
+// Render
 function render() {
   const statsRow = document.getElementById("statsRow");
   const cardList = document.getElementById("cardList");
@@ -654,7 +425,7 @@ function render() {
 
     html += `
       <div class="card-wrapper">
-        <div class="test-banner">⚠️ TEST CARD — NOT A REAL PAYMENT METHOD</div>
+        <div class="test-banner"><i class="ph ph-warning"></i> TEST CARD - NOT A REAL PAYMENT METHOD</div>
         <div class="card-box">
           <div class="card-nickname">${escapeHTML(card.nickname)} ${statusBadge}</div>
           <div class="card-network">${escapeHTML(card.network)}</div>
@@ -670,15 +441,15 @@ function render() {
         </div>
         <div class="card-actions">
           <input type="number" class="charge-input" id="charge-${idx}" min="0" max="${remaining > 0 ? remaining : 0.01}" step="1" value="0" placeholder="Amount">
-          <button class="btn btn-sm btn-charge" onclick="logCharge(${idx})" ${isFrozen ? 'disabled' : ''}>💰 Log Charge</button>
+          <button class="btn btn-sm btn-charge" onclick="logCharge(${idx})" ${isFrozen ? 'disabled' : ''}><i class="ph ph-coin"></i> Log charge</button>
           ${isFrozen
-            ? `<button class="btn btn-sm btn-unfreeze" onclick="unfreezeCard(${idx})">☀️ Unfreeze</button>`
-            : `<button class="btn btn-sm btn-freeze" onclick="freezeCard(${idx})">🧊 Freeze</button>`
+            ? `<button class="btn btn-sm btn-unfreeze" onclick="unfreezeCard(${idx})"><i class="ph ph-sun"></i> Unfreeze</button>`
+            : `<button class="btn btn-sm btn-freeze" onclick="freezeCard(${idx})"><i class="ph ph-snowflake"></i> Freeze</button>`
           }
-          <button class="btn btn-sm btn-reset" onclick="resetSpend(${idx})">🔄 Reset</button>
-          <button class="btn btn-sm btn-delete" onclick="deleteCard(${idx})">🗑️ Delete</button>
+          <button class="btn btn-sm btn-reset" onclick="resetSpend(${idx})"><i class="ph ph-arrow-counter-clockwise"></i> Reset</button>
+          <button class="btn btn-sm btn-delete" onclick="deleteCard(${idx})"><i class="ph ph-trash"></i> Delete</button>
         </div>
-        ${card.purpose ? `<div class="purpose-note">📝 ${escapeHTML(card.purpose)}</div>` : ""}
+        ${card.purpose ? `<div class="purpose-note"><i class="ph ph-note"></i> ${escapeHTML(card.purpose)}</div>` : ""}
       </div>
     `;
   }
@@ -691,7 +462,7 @@ function escapeHTML(str) {
   return div.innerHTML;
 }
 
-// ─── Init ───
+// Init
 let cards = loadCards();
 
 document.getElementById("months_valid").addEventListener("input", function () {

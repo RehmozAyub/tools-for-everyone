@@ -4,92 +4,41 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QR Code Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="../assets/theme.css">
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
-  :root {
-    --bg: #0e1117; --surface: #1a1a2e; --text: #e0e0e0; --text-muted: #888;
-    --accent: #667eea; --accent2: #764ba2; --green: #2d6a4f; --radius: 12px;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-  .app { display: flex; min-height: 100vh; }
-  .sidebar { width: 300px; min-width: 300px; background: var(--bg); border-right: 1px solid #222; padding: 24px; overflow-y: auto; }
-  .main { flex: 1; padding: 32px 40px; overflow-y: auto; }
-  .main-header { font-size: 2.5rem; font-weight: 700; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; margin-bottom: 0.2rem; }
-  .sub-header { text-align: center; color: #888; margin-bottom: 2rem; font-size: 1.05rem; }
-  h2 { font-size: 1.1rem; margin-bottom: 12px; }
-  h3 { font-size: 1rem; color: var(--text-muted); margin-bottom: 8px; }
-  .divider { border: none; border-top: 1px solid #333; margin: 16px 0; }
-  label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px; }
-  input[type="text"], input[type="email"], input[type="password"], select, textarea {
-    width: 100%; padding: 10px 12px; background: var(--surface); border: 1px solid #333; border-radius: 8px; color: var(--text); font-size: 0.95rem; outline: none; font-family: inherit; resize: vertical;
-  }
-  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
-  input[type="range"] { width: 100%; accent-color: var(--accent); }
-  input[type="color"] { width: 60px; height: 36px; border: 1px solid #333; border-radius: 6px; background: var(--surface); cursor: pointer; }
-  .form-group { margin-bottom: 12px; }
-  .form-row { display: flex; gap: 12px; }
-  .form-row > * { flex: 1; }
-  .slider-value { text-align: right; font-size: 0.85rem; color: var(--accent); margin-top: 2px; }
-  .btn { padding: 10px 16px; border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; white-space: nowrap; }
-  .btn:hover { opacity: 0.85; }
-  .btn-primary { width: 100%; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; padding: 12px; font-size: 1rem; }
-  .btn-download { width: 100%; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; padding: 10px; margin-top: 8px; }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .radio-group { display: flex; gap: 0; margin-bottom: 12px; }
-  .radio-group label { display: flex; align-items: center; padding: 8px 14px; background: var(--surface); border: 1px solid #333; cursor: pointer; font-size: 0.85rem; color: var(--text); margin-bottom: 0; white-space: nowrap; }
-  .radio-group label:first-child { border-radius: 8px 0 0 8px; }
-  .radio-group label:last-child { border-radius: 0 8px 8px 0; }
-  .radio-group input[type="radio"] { display: none; }
-  .radio-group input[type="radio"]:checked + span { color: var(--accent); font-weight: 700; }
-  .tabs { display: flex; gap: 0; margin-bottom: 16px; flex-wrap: wrap; }
-  .tab { padding: 10px 18px; background: var(--surface); border: 1px solid #333; cursor: pointer; font-size: 0.9rem; color: var(--text-muted); transition: all 0.2s; }
-  .tab:first-child { border-radius: 8px 0 0 8px; }
-  .tab:last-child { border-radius: 0 8px 8px 0; }
-  .tab.active { background: var(--accent); color: white; border-color: var(--accent); }
   .preview-area { display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; margin-top: 20px; }
-  .qr-preview { background: white; padding: 16px; border-radius: 12px; display: inline-block; }
+  .qr-preview { background: #fff; padding: 16px; border-radius: var(--radius-md); display: inline-block; }
   .qr-preview canvas, .qr-preview img, .qr-preview svg { display: block; }
   .download-area { flex: 1; min-width: 200px; }
-  .decoded-box { padding: 1rem; border-radius: 8px; background: #1a2a1a; border: 1px solid #2d6a4f; color: #95d5b2; font-family: monospace; word-break: break-all; margin: 8px 0; }
-  .info-msg { background: #1a2a3a; border-left: 4px solid var(--accent); padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 0.9rem; color: var(--text-muted); margin: 12px 0; }
-  .error-msg { background: #2a1a1a; border-left: 4px solid #e74c3c; padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 0.9rem; color: #e88; margin: 12px 0; }
-  .success-msg { background: #1a2a1a; border-left: 4px solid #27ae60; padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 0.9rem; color: #95d5b2; margin: 12px 0; }
-  .tool-info { padding: 0.8rem 1rem; border-radius: 8px; background: #1a1a2e; border-left: 4px solid #667eea; margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-muted); }
-  .payload-preview { background: var(--surface); border: 1px solid #333; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 0.85rem; color: var(--text-muted); white-space: pre-wrap; word-break: break-all; margin: 8px 0; }
-  .checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem; color: var(--text); margin-bottom: 0; }
-  .checkbox-label input { accent-color: var(--accent); width: 16px; height: 16px; }
-  .footer { text-align: center; color: #666; font-size: 0.85rem; margin-top: 40px; }
-  .footer a { color: var(--accent); text-decoration: none; }
-  .drop-zone { border: 2px dashed #444; border-radius: 12px; padding: 40px; text-align: center; color: var(--text-muted); cursor: pointer; transition: border-color 0.2s; margin: 12px 0; }
-  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); }
-  .drop-zone input { display: none; }
+  .decoded-box { padding: 1rem; border-radius: var(--radius-sm); background: var(--success-tint); border: 1px solid var(--success); color: var(--success); font-family: var(--font-mono); word-break: break-all; margin: 8px 0; }
+  .payload-preview { background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 12px; font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted); white-space: pre-wrap; word-break: break-all; margin: 8px 0; }
   .batch-preview { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin: 16px 0; }
   .batch-preview .qr-preview { padding: 8px; text-align: center; }
   .batch-preview .qr-preview canvas { margin: 0 auto; }
   .batch-caption { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
-  @media (max-width: 900px) {
-    .app { flex-direction: column; }
-    .sidebar { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid #222; }
-    .main { padding: 20px; }
-    .preview-area { flex-direction: column; }
-  }
+  @media (max-width: 900px) { .preview-area { flex-direction: column; } }
 </style>
 </head>
 <body>
 <div class="app">
   <div class="sidebar">
-    <h2>🧰 Mode</h2>
+    <a class="hub-link" href="../index.html"><i class="ph ph-arrow-left"></i> All tools</a>
+    <h2><i class="ph ph-arrows-left-right"></i> Mode</h2>
     <div class="radio-group">
-      <label><input type="radio" name="mode" value="generate" checked onchange="switchMode('generate')"><span>✨ Generate</span></label>
-      <label><input type="radio" name="mode" value="decode" onchange="switchMode('decode')"><span>🔍 Decode</span></label>
+      <label><input type="radio" name="mode" value="generate" checked onchange="switchMode('generate')"><span><i class="ph ph-sparkle"></i> Generate</span></label>
+      <label><input type="radio" name="mode" value="decode" onchange="switchMode('decode')"><span><i class="ph ph-magnifying-glass"></i> Decode</span></label>
     </div>
     <hr class="divider">
 
     <div id="generateSettings">
-      <h2>⚙️ Settings</h2>
+      <h2><i class="ph ph-faders"></i> Settings</h2>
       <div class="form-group">
         <label>Error correction</label>
         <select id="ecc">
@@ -127,35 +76,35 @@
     </div>
 
     <hr class="divider">
-    <h3>ℹ️ About</h3>
-    <p style="font-size:0.85rem; color:var(--text-muted);">Free, open-source QR code tool. No file uploads to external servers — <b>everything runs locally in your browser.</b></p>
+    <h3>About</h3>
+    <p style="font-size:0.85rem; color:var(--text-muted);">Free, open-source QR code tool. No file uploads to any server. Everything runs locally in your browser.</p>
     <hr class="divider">
-    <p style="font-size:0.85rem;">Made with ❤️ by <a href="https://github.com/RehmozAyub" style="color:var(--accent); text-decoration:none;">RehmozAyub</a></p>
+    <p style="font-size:0.85rem;">Made by <a href="https://github.com/RehmozAyub" style="color:var(--accent); text-decoration:none;">RehmozAyub</a></p>
   </div>
 
   <div class="main">
-    <div class="main-header">📱 QR Code Studio</div>
-    <div class="sub-header">Generate & decode QR codes — text, URLs, WiFi, contacts & more</div>
+    <h1><i class="ph ph-qr-code"></i> QR Code Studio</h1>
+    <div class="sub-header">Generate and scan QR codes for text, URLs, WiFi, and contacts.</div>
 
     <!-- GENERATE MODE -->
     <div id="generateMode">
       <div class="tabs" id="payloadTabs">
-        <div class="tab active" onclick="switchPayload('text')">📝 Text / URL</div>
-        <div class="tab" onclick="switchPayload('wifi')">📶 WiFi</div>
-        <div class="tab" onclick="switchPayload('vcard')">👤 vCard</div>
-        <div class="tab" onclick="switchPayload('email')">📧 Email</div>
-        <div class="tab" onclick="switchPayload('batch')">📦 Batch</div>
+        <div class="tab active" onclick="switchPayload('text')"><i class="ph ph-text-aa"></i> Text / URL</div>
+        <div class="tab" onclick="switchPayload('wifi')"><i class="ph ph-wifi-high"></i> WiFi</div>
+        <div class="tab" onclick="switchPayload('vcard')"><i class="ph ph-user"></i> vCard</div>
+        <div class="tab" onclick="switchPayload('email')"><i class="ph ph-envelope-simple"></i> Email</div>
+        <div class="tab" onclick="switchPayload('batch')"><i class="ph ph-package"></i> Batch</div>
       </div>
 
       <!-- Text / URL -->
       <div id="payload-text" class="payload-section">
-        <h2>📝 Text / URL</h2>
-        <textarea id="textInput" rows="4" placeholder="https://example.com or any text…"></textarea>
+        <h2><i class="ph ph-text-aa"></i> Text / URL</h2>
+        <textarea id="textInput" rows="4" placeholder="https://example.com or any text"></textarea>
       </div>
 
       <!-- WiFi -->
       <div id="payload-wifi" class="payload-section" style="display:none;">
-        <h2>📶 WiFi Network</h2>
+        <h2><i class="ph ph-wifi-high"></i> WiFi Network</h2>
         <p style="color:var(--text-muted); margin-bottom:12px;">Generate a QR code that lets people join your WiFi instantly.</p>
         <div class="form-row">
           <div class="form-group"><label>Network name (SSID)</label><input type="text" id="wifiSSID" placeholder="MyWiFi"></div>
@@ -167,7 +116,7 @@
 
       <!-- vCard -->
       <div id="payload-vcard" class="payload-section" style="display:none;">
-        <h2>👤 vCard Contact</h2>
+        <h2><i class="ph ph-user"></i> vCard Contact</h2>
         <p style="color:var(--text-muted); margin-bottom:12px;">Generate a QR code that adds a contact when scanned.</p>
         <div class="form-row">
           <div class="form-group"><label>First name</label><input type="text" id="vcardFirst" placeholder="John"></div>
@@ -187,7 +136,7 @@
 
       <!-- Email -->
       <div id="payload-email" class="payload-section" style="display:none;">
-        <h2>📧 Email</h2>
+        <h2><i class="ph ph-envelope-simple"></i> Email</h2>
         <p style="color:var(--text-muted); margin-bottom:12px;">Generate a QR code that opens a pre-filled email.</p>
         <div class="form-group"><label>To address</label><input type="email" id="emailTo" placeholder="hello@example.com"></div>
         <div class="form-group"><label>Subject</label><input type="text" id="emailSubject" placeholder="Meeting follow-up"></div>
@@ -196,18 +145,18 @@
 
       <!-- Batch -->
       <div id="payload-batch" class="payload-section" style="display:none;">
-        <h2>📦 Batch Generate</h2>
+        <h2><i class="ph ph-package"></i> Batch Generate</h2>
         <p style="color:var(--text-muted); margin-bottom:12px;">One QR code per line. Download all as a ZIP.</p>
         <textarea id="batchInput" rows="8" placeholder="https://example.com&#10;https://github.com&#10;Hello World"></textarea>
         <div id="batchInfo" class="info-msg" style="display:none;"></div>
-        <button class="btn btn-primary" onclick="generateBatch()" style="margin-top:12px;">📦 Generate Batch</button>
+        <button class="btn btn-primary" onclick="generateBatch()" style="margin-top:12px;"><i class="ph ph-package"></i> Generate batch</button>
         <div id="batchPreview" class="batch-preview"></div>
         <div id="batchDownload"></div>
       </div>
 
       <!-- Single Generate Button -->
       <div id="singleGenerate" style="margin-top:16px;">
-        <button class="btn btn-primary" onclick="generateQR()">✨ Generate QR Code</button>
+        <button class="btn btn-primary" onclick="generateQR()"><i class="ph ph-sparkle"></i> Generate QR code</button>
       </div>
 
       <!-- QR Preview -->
@@ -218,9 +167,9 @@
             <div class="qr-preview" id="qrPreview"></div>
           </div>
           <div class="download-area">
-            <h2>⬇️ Download</h2>
+            <h2><i class="ph ph-download-simple"></i> Download</h2>
             <div id="downloadButtons"></div>
-            <h3 style="margin-top:16px;">ℹ️ Payload</h3>
+            <h3 style="margin-top:16px;">Payload</h3>
             <div class="payload-preview" id="payloadInfo"></div>
           </div>
         </div>
@@ -229,26 +178,27 @@
 
     <!-- DECODE MODE -->
     <div id="decodeMode" style="display:none;">
-      <h2>🔍 Decode QR Code</h2>
+      <h2><i class="ph ph-magnifying-glass"></i> Decode QR Code</h2>
       <p style="color:var(--text-muted); margin-bottom:16px;">Upload an image containing one or more QR codes.</p>
 
       <div class="drop-zone" id="dropZone" onclick="document.getElementById('decodeFileInput').click()">
-        <p>📁 Click to upload or drag & drop an image</p>
+        <i class="ph ph-upload-simple"></i>
+        <p>Click to upload, or drag and drop an image</p>
         <p style="font-size:0.8rem; margin-top:8px;">Supports PNG, JPG, WebP, BMP</p>
         <input type="file" id="decodeFileInput" accept="image/*">
       </div>
 
       <div id="decodePreview" style="display:none; margin:16px 0;">
-        <img id="decodeImg" style="max-width:400px; border-radius:8px;">
+        <img id="decodeImg" style="max-width:400px; border-radius:var(--radius-sm);">
       </div>
 
-      <button class="btn btn-primary" onclick="decodeQR()" id="decodeBtn" style="display:none;">🔍 Decode Now</button>
+      <button class="btn btn-primary" onclick="decodeQR()" id="decodeBtn" style="display:none;"><i class="ph ph-magnifying-glass"></i> Decode now</button>
 
       <div id="decodeResults"></div>
     </div>
 
     <div class="footer">
-      QR Code Studio v1.0 · Built with HTML + JavaScript ·
+      QR Code Studio v1.0 · Built with HTML and JavaScript ·
       <a href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a>
     </div>
   </div>
@@ -259,7 +209,7 @@ let currentPayload = 'text';
 let currentMode = 'generate';
 let decodeImageData = null;
 
-// ─── Mode Switching ───
+// Mode switching
 function switchMode(mode) {
   currentMode = mode;
   document.getElementById('generateMode').style.display = mode === 'generate' ? 'block' : 'none';
@@ -279,14 +229,14 @@ function switchPayload(type) {
   document.getElementById('qrResult').style.display = 'none';
 }
 
-// ─── Sliders ───
+// Sliders
 document.getElementById('boxSize').addEventListener('input', function() { document.getElementById('boxSizeLabel').textContent = this.value; });
 document.getElementById('border').addEventListener('input', function() { document.getElementById('borderLabel').textContent = this.value; });
 document.getElementById('wifiSecurity').addEventListener('change', function() {
   document.getElementById('wifiPwGroup').style.display = this.value === 'None' ? 'none' : 'block';
 });
 
-// ─── Payload Builders ───
+// Payload builders
 function buildWifiPayload() {
   const ssid = document.getElementById('wifiSSID').value;
   const security = document.getElementById('wifiSecurity').value;
@@ -345,7 +295,7 @@ function getPayload() {
   }
 }
 
-// ─── QR Generation ───
+// QR generation
 function getECCLevel() {
   const val = document.getElementById('ecc').value;
   return { L: 1, M: 0, Q: 3, H: 2 }[val] || 0;
@@ -422,10 +372,10 @@ function generateQR() {
   let btns = '';
 
   if (exportFmt === 'PNG' || exportFmt === 'Both') {
-    btns += `<button class="btn btn-download" onclick="downloadPNG()">⬇️ Download PNG</button>`;
+    btns += `<button class="btn btn-download" onclick="downloadPNG()"><i class="ph ph-download-simple"></i> Download PNG</button>`;
   }
   if (exportFmt === 'SVG' || exportFmt === 'Both') {
-    btns += `<button class="btn btn-download" onclick="downloadSVG()">⬇️ Download SVG</button>`;
+    btns += `<button class="btn btn-download" onclick="downloadSVG()"><i class="ph ph-download-simple"></i> Download SVG</button>`;
   }
   downloadDiv.innerHTML = btns;
   document.getElementById('payloadInfo').textContent = payload;
@@ -456,7 +406,7 @@ function downloadSVG() {
   URL.revokeObjectURL(a.href);
 }
 
-// ─── Batch ───
+// Batch
 function generateBatch() {
   const input = document.getElementById('batchInput').value;
   const items = input.split('\n').map(s => s.trim()).filter(Boolean);
@@ -489,12 +439,12 @@ function generateBatch() {
 
   const dlDiv = document.getElementById('batchDownload');
   const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15);
-  dlDiv.innerHTML = `<div class="success-msg">Generated ${items.length} QR codes</div>`;
+  dlDiv.innerHTML = `<div class="success-msg"><i class="ph ph-check-circle"></i> Generated ${items.length} QR codes</div>`;
 
   zip.generateAsync({ type: 'blob' }).then(blob => {
     const btn = document.createElement('button');
     btn.className = 'btn btn-download';
-    btn.textContent = '⬇️ Download All (ZIP)';
+    btn.innerHTML = '<i class="ph ph-download-simple"></i> Download all (ZIP)';
     btn.onclick = () => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -505,7 +455,7 @@ function generateBatch() {
   });
 }
 
-// ─── Decode ───
+// Decode
 const dropZone = document.getElementById('dropZone');
 const decodeFileInput = document.getElementById('decodeFileInput');
 
@@ -543,27 +493,27 @@ function decodeQR() {
       const data = code.data;
 
       if (data.toUpperCase().startsWith('WIFI:')) {
-        extra = '<p>📶 <b>Detected: WiFi Network</b></p>';
+        extra = '<p><i class="ph ph-wifi-high"></i> <b>Detected: WiFi network</b></p>';
         const info = parseWifi(data);
-        for (const [k, v] of Object.entries(info)) extra += `<p style="margin-left:16px;">• <b>${k}:</b> ${escapeHTML(v)}</p>`;
+        for (const [k, v] of Object.entries(info)) extra += `<p style="margin-left:16px;">&bull; <b>${k}:</b> ${escapeHTML(v)}</p>`;
       } else if (data.includes('BEGIN:VCARD')) {
-        extra = '<p>👤 <b>Detected: Contact Card</b></p>';
+        extra = '<p><i class="ph ph-user"></i> <b>Detected: Contact card</b></p>';
         const info = parseVCard(data);
-        for (const [k, v] of Object.entries(info)) extra += `<p style="margin-left:16px;">• <b>${k}:</b> ${escapeHTML(v)}</p>`;
+        for (const [k, v] of Object.entries(info)) extra += `<p style="margin-left:16px;">&bull; <b>${k}:</b> ${escapeHTML(v)}</p>`;
       } else if (data.startsWith('http://') || data.startsWith('https://')) {
-        extra = `<p>🌐 <b>Detected: URL</b> — <a href="${escapeHTML(data)}" target="_blank" style="color:var(--accent);">${escapeHTML(data)}</a></p>`;
+        extra = `<p><i class="ph ph-globe"></i> <b>Detected: URL</b></p><p><a href="${escapeHTML(data)}" target="_blank" style="color:var(--accent);">${escapeHTML(data)}</a></p>`;
       } else if (data.startsWith('mailto:')) {
-        extra = `<p>📧 <b>Detected: Email</b> — <a href="${escapeHTML(data)}" style="color:var(--accent);">${escapeHTML(data)}</a></p>`;
+        extra = `<p><i class="ph ph-envelope-simple"></i> <b>Detected: Email</b></p><p><a href="${escapeHTML(data)}" style="color:var(--accent);">${escapeHTML(data)}</a></p>`;
       }
 
       resultsDiv.innerHTML = `
-        <div class="success-msg">Found 1 QR code</div>
+        <div class="success-msg"><i class="ph ph-check-circle"></i> Found 1 QR code</div>
         <div class="decoded-box">${escapeHTML(data)}</div>
         ${extra}
         <textarea style="width:100%; margin-top:8px;" rows="3" readonly>${data}</textarea>
       `;
     } else {
-      resultsDiv.innerHTML = `<div class="error-msg">❌ No QR code detected. Tips:<br>• Make sure the QR code is clearly visible<br>• Try a higher resolution image<br>• Ensure good contrast</div>`;
+      resultsDiv.innerHTML = `<div class="error-msg"><i class="ph ph-x-circle"></i> No QR code detected. Tips:<br>&bull; Make sure the QR code is clearly visible<br>&bull; Try a higher resolution image<br>&bull; Ensure good contrast</div>`;
     }
   };
   img.src = decodeImageData;
