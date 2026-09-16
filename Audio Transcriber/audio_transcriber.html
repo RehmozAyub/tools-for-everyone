@@ -30,29 +30,41 @@
 <div class="app">
   <div class="sidebar">
     <a class="hub-link" href="../index.html"><i class="ph ph-arrow-left"></i> All tools</a>
-    <h2><i class="ph ph-faders"></i> Configuration</h2>
-    <div class="form-group">
-      <label>OpenAI API key</label>
-      <input type="password" id="apiKey" placeholder="sk-...">
-      <p style="font-size:.8rem;color:var(--text-muted);margin-top:4px;">Required for transcription. Get yours at <a href="https://platform.openai.com/api-keys" target="_blank" style="color:var(--accent);">platform.openai.com</a></p>
+    <h2><i class="ph ph-cpu"></i> Engine</h2>
+    <div class="radio-group">
+      <label><input type="radio" name="engine" value="openai" checked onchange="switchEngine('openai')"><span><i class="ph ph-cloud"></i> OpenAI API</span></label>
+      <label><input type="radio" name="engine" value="offline" onchange="switchEngine('offline')"><span><i class="ph ph-device-mobile"></i> Offline</span></label>
     </div>
-    <div class="form-group">
-      <label>Language (optional)</label>
-      <select id="language">
-        <option value="">Auto-detect</option>
-        <option value="en">English</option>
-        <option value="es">Spanish</option>
-        <option value="fr">French</option>
-        <option value="de">German</option>
-        <option value="it">Italian</option>
-        <option value="pt">Portuguese</option>
-        <option value="zh">Chinese</option>
-        <option value="ja">Japanese</option>
-        <option value="ko">Korean</option>
-        <option value="ar">Arabic</option>
-        <option value="hi">Hindi</option>
-        <option value="ru">Russian</option>
-      </select>
+
+    <div id="openaiConfig">
+      <div class="form-group">
+        <label>OpenAI API key</label>
+        <input type="password" id="apiKey" placeholder="sk-...">
+        <p style="font-size:.8rem;color:var(--text-muted);margin-top:4px;">Required for transcription. Get yours at <a href="https://platform.openai.com/api-keys" target="_blank" style="color:var(--accent);">platform.openai.com</a></p>
+      </div>
+      <div class="form-group">
+        <label>Language (optional)</label>
+        <select id="language">
+          <option value="">Auto-detect</option>
+          <option value="en">English</option>
+          <option value="es">Spanish</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+          <option value="it">Italian</option>
+          <option value="pt">Portuguese</option>
+          <option value="zh">Chinese</option>
+          <option value="ja">Japanese</option>
+          <option value="ko">Korean</option>
+          <option value="ar">Arabic</option>
+          <option value="hi">Hindi</option>
+          <option value="ru">Russian</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="offlineConfig" style="display:none;">
+      <div class="info-msg"><i class="ph ph-info"></i> Runs a small Whisper model inside your browser. No key, no upload. First use downloads about 40MB once; after that it works offline. English only.</div>
+      <p style="font-size:.8rem;color:var(--text-muted);margin-top:8px;">Tip: offline transcripts are rougher than the API. For quick clean-up, paste the result into another AI for a spelling pass, or use your editor's Find & Replace (Ctrl+H) for repeated fixes.</p>
     </div>
     <hr class="divider">
     <h3><i class="ph ph-list-bullets"></i> Supported Formats</h3>
@@ -65,17 +77,18 @@
       <li>Handles files up to 25MB</li>
       <li>Download transcript as TXT</li>
       <li>Copy to clipboard</li>
+      <li>Offline engine needs no API key</li>
     </ul>
     <hr class="divider">
     <h3>About</h3>
-    <p style="font-size:.85rem;color:var(--text-muted);">Uses OpenAI's Whisper API. Your key and audio go directly from your browser to OpenAI. This site never sees them.</p>
+    <p style="font-size:.85rem;color:var(--text-muted);">OpenAI mode: your key and audio go directly from your browser to OpenAI, this site never sees them. Offline mode: the model runs on your device and nothing is sent anywhere.</p>
     <hr class="divider">
     <p style="font-size:.85rem;">Made by <a href="https://github.com/RehmozAyub" style="color:var(--accent);text-decoration:none;">RehmozAyub</a></p>
   </div>
 
   <div class="main">
     <h1><i class="ph ph-microphone"></i> Audio Transcriber</h1>
-    <div class="sub-header">Transcribe audio files or live recordings with OpenAI Whisper.</div>
+    <div class="sub-header">Transcribe audio files or live recordings, with OpenAI's API or fully offline in your browser.</div>
 
     <div class="mode-tabs">
       <div class="mode-tab active" onclick="switchMode('upload',this)"><i class="ph ph-upload-simple"></i> Upload File</div>
@@ -102,7 +115,7 @@
 
     <!-- Record Mode -->
     <div id="recordMode" style="display:none;">
-      <div class="info-msg"><i class="ph ph-info"></i> Record audio directly from your microphone. The recording will be sent to OpenAI Whisper for transcription.</div>
+      <div class="info-msg"><i class="ph ph-info"></i> Record audio directly from your microphone, then transcribe it with the engine selected above.</div>
 
       <div class="actions-row">
         <button class="btn btn-sm btn-record" id="recordBtn" onclick="startRecording()"><i class="ph ph-record"></i> Start recording</button>
@@ -131,7 +144,7 @@
     </div>
 
     <div class="footer">
-      Audio Transcriber v1.0 · Powered by OpenAI Whisper ·
+      Audio Transcriber v1.1 · OpenAI Whisper or offline in-browser ·
       <a href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a>
     </div>
   </div>
@@ -142,6 +155,15 @@ let uploadedFile = null;
 let mediaRecorder = null;
 let recordedChunks = [];
 let recordedBlob = null;
+let currentEngine = 'openai';
+let offlineTranscriberPromise = null;
+
+// Engine switching
+function switchEngine(engine) {
+  currentEngine = engine;
+  document.getElementById('openaiConfig').style.display = engine === 'openai' ? 'block' : 'none';
+  document.getElementById('offlineConfig').style.display = engine === 'offline' ? 'block' : 'none';
+}
 
 // Drop zone
 const dropZone = document.getElementById('dropZone');
@@ -218,6 +240,12 @@ async function transcribeRecording() {
 }
 
 async function doTranscribe(file) {
+  if (currentEngine === 'offline') await transcribeOffline(file);
+  else await transcribeOnline(file);
+}
+
+// Engine: OpenAI API
+async function transcribeOnline(file) {
   const apiKey = document.getElementById('apiKey').value;
   if (!apiKey) {
     document.getElementById('statusArea').innerHTML = '<div class="error-msg"><i class="ph ph-x-circle"></i> Please enter your OpenAI API key in the sidebar.</div>';
@@ -246,14 +274,66 @@ async function doTranscribe(file) {
     }
 
     const transcript = await response.text();
-    document.getElementById('statusArea').innerHTML = '<div class="success-msg"><i class="ph ph-check-circle"></i> Transcription completed</div>';
-    document.getElementById('transcriptBox').textContent = transcript;
-    document.getElementById('transcriptSection').style.display = 'block';
-    window._transcript = transcript;
-    window._audioFileName = file.name;
+    finishTranscript(transcript, file.name);
   } catch (e) {
     document.getElementById('statusArea').innerHTML = `<div class="error-msg"><i class="ph ph-x-circle"></i> Error: ${e.message}</div>`;
   }
+}
+
+// Engine: offline, in-browser (Transformers.js + quantized Whisper)
+function getOfflineTranscriber() {
+  if (!offlineTranscriberPromise) {
+    offlineTranscriberPromise = (async () => {
+      const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.0/dist/transformers.min.js');
+      return pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en', {
+        progress_callback: (p) => {
+          if (p.status === 'progress' && p.file) {
+            const pct = Math.round(p.progress || 0);
+            const el = document.getElementById('offlineProgress');
+            if (el) el.textContent = `Downloading offline model (${pct}%)...`;
+          }
+        },
+      });
+    })();
+  }
+  return offlineTranscriberPromise;
+}
+
+async function decodeAudioTo16kMono(fileOrBlob) {
+  const arrayBuffer = await fileOrBlob.arrayBuffer();
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  const probeCtx = new AudioCtx();
+  const decoded = await probeCtx.decodeAudioData(arrayBuffer);
+  probeCtx.close();
+  const targetRate = 16000;
+  const offlineCtx = new OfflineAudioContext(1, Math.ceil(decoded.duration * targetRate), targetRate);
+  const source = offlineCtx.createBufferSource();
+  source.buffer = decoded;
+  source.connect(offlineCtx.destination);
+  source.start(0);
+  const rendered = await offlineCtx.startRendering();
+  return rendered.getChannelData(0);
+}
+
+async function transcribeOffline(file) {
+  document.getElementById('statusArea').innerHTML = '<div class="status-bar"><span class="spinner"></span> <span id="offlineProgress">Loading offline model...</span></div>';
+  try {
+    const pcm = await decodeAudioTo16kMono(file);
+    const transcriber = await getOfflineTranscriber();
+    document.getElementById('offlineProgress') && (document.getElementById('offlineProgress').textContent = 'Transcribing...');
+    const result = await transcriber(pcm);
+    finishTranscript((result.text || '').trim(), file.name);
+  } catch (e) {
+    document.getElementById('statusArea').innerHTML = `<div class="error-msg"><i class="ph ph-x-circle"></i> Error: ${e.message}</div>`;
+  }
+}
+
+function finishTranscript(transcript, fileName) {
+  document.getElementById('statusArea').innerHTML = '<div class="success-msg"><i class="ph ph-check-circle"></i> Transcription completed</div>';
+  document.getElementById('transcriptBox').textContent = transcript;
+  document.getElementById('transcriptSection').style.display = 'block';
+  window._transcript = transcript;
+  window._audioFileName = fileName;
 }
 
 // Actions
