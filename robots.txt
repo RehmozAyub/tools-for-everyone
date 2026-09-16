@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://rehmozayub.github.io/tools-for-everyone/sitemap.xml

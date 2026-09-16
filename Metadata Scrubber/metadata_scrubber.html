@@ -3,7 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Metadata Scrubber</title>
+<title>Metadata Scrubber - Remove EXIF and GPS Data From Photos</title>
+<meta name="description" content="See and strip hidden metadata, including GPS location, from images and documents before you share them. Runs entirely in your browser.">
+<link rel="canonical" href="https://rehmozayub.github.io/tools-for-everyone/Metadata%20Scrubber/metadata_scrubber.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Metadata Scrubber - Remove EXIF and GPS Data From Photos">
+<meta property="og:description" content="See and strip hidden metadata, including GPS location, from images and documents before you share them. Runs entirely in your browser.">
+<meta property="og:url" content="https://rehmozayub.github.io/tools-for-everyone/Metadata%20Scrubber/metadata_scrubber.html">
+<meta property="og:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Metadata Scrubber - Remove EXIF and GPS Data From Photos">
+<meta name="twitter:description" content="See and strip hidden metadata, including GPS location, from images and documents before you share them. Runs entirely in your browser.">
+<meta name="twitter:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#0b0d10">
+<link rel="apple-touch-icon" href="../assets/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -80,7 +94,7 @@
 
     <div class="footer">
       Metadata Scrubber v1.0 · Built with HTML and JavaScript ·
-      <a href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a>
+      <a href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a> · <a href="#" onclick="shareThisTool();return false;">Share</a>
     </div>
   </div>
 </div>
@@ -380,6 +394,17 @@ function escapeHTML(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+</script>
+<script>
+function shareThisTool() {
+  const data = { title: document.title, text: 'A free browser tool that never uploads your files.', url: location.href };
+  if (navigator.share) { navigator.share(data).catch(() => {}); return; }
+  navigator.clipboard.writeText(location.href).then(() => showToast('Link copied to clipboard'));
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
 }
 </script>
 </body>

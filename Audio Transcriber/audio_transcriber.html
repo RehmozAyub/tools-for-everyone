@@ -3,7 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Audio Transcriber</title>
+<title>Audio Transcriber - Free Speech to Text, Online or Offline</title>
+<meta name="description" content="Transcribe audio to text with OpenAI Whisper, or fully offline in your browser with no API key. Free, no signup.">
+<link rel="canonical" href="https://rehmozayub.github.io/tools-for-everyone/Audio%20Transcriber/audio_transcriber.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Audio Transcriber - Free Speech to Text, Online or Offline">
+<meta property="og:description" content="Transcribe audio to text with OpenAI Whisper, or fully offline in your browser with no API key. Free, no signup.">
+<meta property="og:url" content="https://rehmozayub.github.io/tools-for-everyone/Audio%20Transcriber/audio_transcriber.html">
+<meta property="og:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Audio Transcriber - Free Speech to Text, Online or Offline">
+<meta name="twitter:description" content="Transcribe audio to text with OpenAI Whisper, or fully offline in your browser with no API key. Free, no signup.">
+<meta name="twitter:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#0b0d10">
+<link rel="apple-touch-icon" href="../assets/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -145,7 +159,7 @@
 
     <div class="footer">
       Audio Transcriber v1.1 · OpenAI Whisper or offline in-browser ·
-      <a href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a>
+      <a href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a> · <a href="#" onclick="shareThisTool();return false;">Share</a>
     </div>
   </div>
 </div>
@@ -359,6 +373,17 @@ function showToast(msg) {
   t.innerHTML = `<i class="ph ph-check-circle"></i> ${msg}`;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 2500);
+}
+</script>
+<script>
+function shareThisTool() {
+  const data = { title: document.title, text: 'A free browser tool that never uploads your files.', url: location.href };
+  if (navigator.share) { navigator.share(data).catch(() => {}); return; }
+  navigator.clipboard.writeText(location.href).then(() => showToast('Link copied to clipboard'));
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
 }
 </script>
 </body>

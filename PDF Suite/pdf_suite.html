@@ -3,7 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PDF Suite</title>
+<title>PDF Suite - Merge, Split & Compress PDF Free, No Upload</title>
+<meta name="description" content="Merge, split, compress, watermark, and edit PDFs for free. Everything happens in your browser, your files are never uploaded anywhere.">
+<link rel="canonical" href="https://rehmozayub.github.io/tools-for-everyone/PDF%20Suite/pdf_suite.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="PDF Suite - Merge, Split & Compress PDF Free, No Upload">
+<meta property="og:description" content="Merge, split, compress, watermark, and edit PDFs for free. Everything happens in your browser, your files are never uploaded anywhere.">
+<meta property="og:url" content="https://rehmozayub.github.io/tools-for-everyone/PDF%20Suite/pdf_suite.html">
+<meta property="og:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="PDF Suite - Merge, Split & Compress PDF Free, No Upload">
+<meta name="twitter:description" content="Merge, split, compress, watermark, and edit PDFs for free. Everything happens in your browser, your files are never uploaded anywhere.">
+<meta name="twitter:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#0b0d10">
+<link rel="apple-touch-icon" href="../assets/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -35,7 +49,7 @@
     <h1><i class="ph ph-file-pdf"></i> PDF Suite</h1>
     <div class="sub-header">Merge, split, compress, and extract. Everything runs locally in your browser.</div>
     <div id="toolContent"></div>
-    <div class="footer">PDF Suite v2.0 · Built with HTML and JavaScript · <a href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a></div>
+    <div class="footer">PDF Suite v2.0 · Built with HTML and JavaScript · <a href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a> · <a href="#" onclick="shareThisTool();return false;">Share</a></div>
   </div>
 </div>
 <script>
@@ -491,6 +505,25 @@ function escapeHTML(str) { const d = document.createElement('div'); d.textConten
 
 initToolList();
 renderTool();
+</script>
+<script>
+function shareThisTool() {
+  const data = { title: document.title, text: 'A free browser tool that never uploads your files.', url: location.href };
+  if (navigator.share) { navigator.share(data).catch(() => {}); return; }
+  navigator.clipboard.writeText(location.href).then(() => showToast('Link copied to clipboard'));
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.innerHTML = '<i class="ph ph-check-circle"></i> ' + msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
+}
 </script>
 </body>
 </html>

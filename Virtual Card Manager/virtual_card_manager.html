@@ -3,7 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Virtual Card Manager</title>
+<title>Virtual Card Manager - Free Test Credit Card Generator</title>
+<meta name="description" content="Generate Luhn-valid test card numbers with spending caps for signups you do not trust. Local only, nothing is sent anywhere.">
+<link rel="canonical" href="https://rehmozayub.github.io/tools-for-everyone/Virtual%20Card%20Manager/virtual_card_manager.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Virtual Card Manager - Free Test Credit Card Generator">
+<meta property="og:description" content="Generate Luhn-valid test card numbers with spending caps for signups you do not trust. Local only, nothing is sent anywhere.">
+<meta property="og:url" content="https://rehmozayub.github.io/tools-for-everyone/Virtual%20Card%20Manager/virtual_card_manager.html">
+<meta property="og:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Virtual Card Manager - Free Test Credit Card Generator">
+<meta name="twitter:description" content="Generate Luhn-valid test card numbers with spending caps for signups you do not trust. Local only, nothing is sent anywhere.">
+<meta name="twitter:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#0b0d10">
+<link rel="apple-touch-icon" href="../assets/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -137,7 +151,7 @@
       Free, open-source virtual card manager. No network calls. Everything stays in your browser's local storage.
     </p>
     <p style="font-size:0.85rem;">
-      Made by <a href="https://github.com/RehmozAyub" style="color:var(--accent); text-decoration:none;">RehmozAyub</a>
+      Made by <a href="https://github.com/RehmozAyub" style="color:var(--accent); text-decoration:none;">RehmozAyub</a> · <a href="#" onclick="shareThisTool();return false;" style="color:var(--accent); text-decoration:none;">Share</a>
     </p>
   </div>
 
@@ -470,6 +484,17 @@ document.getElementById("months_valid").addEventListener("input", function () {
 });
 
 render();
+</script>
+<script>
+function shareThisTool() {
+  const data = { title: document.title, text: 'A free browser tool that never uploads your files.', url: location.href };
+  if (navigator.share) { navigator.share(data).catch(() => {}); return; }
+  navigator.clipboard.writeText(location.href).then(() => showToast('Link copied to clipboard'));
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
+}
 </script>
 </body>
 </html>

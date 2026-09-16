@@ -3,7 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QR Code Studio</title>
+<title>QR Code Studio - Free QR Code Generator and Scanner</title>
+<meta name="description" content="Generate QR codes for links, WiFi, and contacts, or scan one from an image. Free, no signup, nothing leaves your browser.">
+<link rel="canonical" href="https://rehmozayub.github.io/tools-for-everyone/QR%20Code%20Studio/qr_code_studio.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="QR Code Studio - Free QR Code Generator and Scanner">
+<meta property="og:description" content="Generate QR codes for links, WiFi, and contacts, or scan one from an image. Free, no signup, nothing leaves your browser.">
+<meta property="og:url" content="https://rehmozayub.github.io/tools-for-everyone/QR%20Code%20Studio/qr_code_studio.html">
+<meta property="og:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="QR Code Studio - Free QR Code Generator and Scanner">
+<meta name="twitter:description" content="Generate QR codes for links, WiFi, and contacts, or scan one from an image. Free, no signup, nothing leaves your browser.">
+<meta name="twitter:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#0b0d10">
+<link rel="apple-touch-icon" href="../assets/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -199,7 +213,7 @@
 
     <div class="footer">
       QR Code Studio v1.0 · Built with HTML and JavaScript ·
-      <a href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a>
+      <a href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a> · <a href="#" onclick="shareThisTool();return false;">Share</a>
     </div>
   </div>
 </div>
@@ -552,6 +566,25 @@ function escapeHTML(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+</script>
+<script>
+function shareThisTool() {
+  const data = { title: document.title, text: 'A free browser tool that never uploads your files.', url: location.href };
+  if (navigator.share) { navigator.share(data).catch(() => {}); return; }
+  navigator.clipboard.writeText(location.href).then(() => showToast('Link copied to clipboard'));
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.innerHTML = '<i class="ph ph-check-circle"></i> ' + msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
 }
 </script>
 </body>
