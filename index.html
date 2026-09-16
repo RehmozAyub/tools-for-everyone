@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tools for Everyone</title>
+<meta name="description" content="Free, browser-based tools — no install, no server, no account.">
+<style>
+  :root { --bg:#0e1117; --surface:#1a1a2e; --text:#e0e0e0; --text-muted:#888; --accent:#667eea; --accent2:#764ba2; --radius:14px; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+  .wrap{max-width:960px;margin:0 auto;padding:56px 24px 40px}
+  header{text-align:center;margin-bottom:48px}
+  h1{font-size:2.2rem;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:8px}
+  header p{color:var(--text-muted);font-size:1.05rem}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
+  .card{background:var(--surface);border:1px solid #2a2a3e;border-radius:var(--radius);padding:24px;text-decoration:none;color:var(--text);transition:transform .15s ease,border-color .15s ease;display:flex;flex-direction:column;gap:10px}
+  .card:hover{transform:translateY(-3px);border-color:var(--accent)}
+  .card .icon{font-size:2rem}
+  .card h2{font-size:1.15rem}
+  .card p{color:var(--text-muted);font-size:.9rem;line-height:1.5;flex:1}
+  .card .run{font-size:.85rem;color:var(--accent);font-weight:600}
+  .note{margin-top:40px;background:#1a2a3a;border-left:4px solid var(--accent);padding:14px 18px;border-radius:0 8px 8px 0;font-size:.9rem;color:var(--text-muted)}
+  footer{text-align:center;color:#666;font-size:.85rem;margin-top:48px}
+  footer a{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🧰 Tools for Everyone</h1>
+    <p>Free browser tools that run entirely on your device — nothing to install, no account, no server.</p>
+  </header>
+
+  <div class="grid">
+    <a class="card" href="PDF%20Suite/pdf_suite.html">
+      <div class="icon">📄</div>
+      <h2>PDF Suite</h2>
+      <p>Merge, split, organize, compress, rotate, watermark, and more — 17 PDF tools in one page.</p>
+      <span class="run">Open tool →</span>
+    </a>
+
+    <a class="card" href="QR%20Code%20Studio/qr_code_studio.html">
+      <div class="icon">📱</div>
+      <h2>QR Code Studio</h2>
+      <p>Generate and decode QR codes — URLs, WiFi, vCards, batch mode, camera scanning.</p>
+      <span class="run">Open tool →</span>
+    </a>
+
+    <a class="card" href="Bulk%20File%20Renamer/bulk_rename.html">
+      <div class="icon">📁</div>
+      <h2>Bulk File Renamer</h2>
+      <p>Rename many files at once with find & replace, regex, numbering, and case rules.</p>
+      <span class="run">Open tool →</span>
+    </a>
+
+    <a class="card" href="Metadata%20Scrubber/metadata_scrubber.html">
+      <div class="icon">🛡️</div>
+      <h2>Metadata Scrubber</h2>
+      <p>Inspect and strip hidden metadata (including GPS) from images and documents.</p>
+      <span class="run">Open tool →</span>
+    </a>
+
+    <a class="card" href="Audio%20Transcriber/audio_transcriber.html">
+      <div class="icon">🎙️</div>
+      <h2>Audio Transcriber</h2>
+      <p>Transcribe audio files or live recordings using your own OpenAI Whisper API key.</p>
+      <span class="run">Open tool →</span>
+    </a>
+
+    <a class="card" href="Virtual%20Card%20Manager/virtual_card_manager.html">
+      <div class="icon">💳</div>
+      <h2>Virtual Card Manager</h2>
+      <p>Generate Luhn-valid test card numbers with spending caps — zero network calls.</p>
+      <span class="run">Open tool →</span>
+    </a>
+  </div>
+
+  <div class="note">
+    ℹ️ Everything above runs client-side, straight from this page — files never leave your browser (the Audio Transcriber sends audio directly to OpenAI using an API key you provide, not us). Prefer a local desktop app instead? Each tool also has a Python/Streamlit version in its folder — see the <a href="https://github.com/RehmozAyub/tools-for-everyone" style="color:var(--accent)">README</a> for setup.
+  </div>
+
+  <footer>
+    Made with ❤️ by <a href="https://github.com/RehmozAyub">RehmozAyub</a> ·
+    <a href="https://github.com/RehmozAyub/tools-for-everyone">Source on GitHub</a>
+  </footer>
+</div>
+</body>
+</html>
