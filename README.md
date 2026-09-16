@@ -1,14 +1,19 @@
 # tools-for-everyone
+
 Some tools I made to make life easier.
 
 All of these tools are completely free for you to use and run for your own benefit.
-I believe technology should be shared for good and productive purposes, so everyone can benefit!
+I believe technology should be shared for good and productive purposes, so everyone can benefit.
 
-Each tool comes in **two versions**:
-- **Streamlit (Python)** — Full-featured, requires Python + dependencies
-- **HTML (double-click)** — Standalone `.html` file that runs instantly in any browser, no setup needed
+**Live site, no install needed: [rehmozayub.github.io/tools-for-everyone](https://rehmozayub.github.io/tools-for-everyone/)**
 
-Some of the Streamlit tools require a .env file for configuration, which you can easily create yourself.
+![Tools for Everyone](assets/screenshots/landing-page.png)
+
+Every tool runs entirely in your browser. Nothing you open here is ever uploaded to a server, mine or anyone else's.
+
+Most tools come in **two versions**:
+- **HTML (browser)** - what the live site above runs. Also works completely offline: double-click the `.html` file in any tool folder and it runs instantly, no setup needed.
+- **Streamlit (Python)** - a fuller desktop app for the original six tools, for anyone who prefers a local Python environment. Some of these require a `.env` file for configuration, which you can create yourself from each tool's own README.
 
 If you have any questions, need help, or want to share your experience, feel free to reach out to me.
 Instagram: @rehmozdoesstuff
@@ -16,28 +21,48 @@ LinkedIn: https://www.linkedin.com/in/rehmozayub/
 
 ---
 
-## 🧰 Available Tools
+## Available Tools
 
-### 🎙️ Audio Transcriber
-Transcribe audio files using a Streamlit web interface.  
-→ See [`Audio Transcriber/`](Audio%20Transcriber/)
+### PDF Suite
+Merge, split, organize pages, compress, extract text, convert to and from images, rotate, watermark, add page numbers, edit metadata, password-protect, and unlock PDFs.
+[Open in browser](https://rehmozayub.github.io/tools-for-everyone/PDF%20Suite/pdf_suite.html) · [Streamlit version](PDF%20Suite/)
 
-### 📄 PDF Suite
-All-in-one PDF toolkit with **17 tools** — merge, split, organize pages, compress, extract text, convert to/from images, extract embedded images, rotate, crop, resize, watermark, sign, add page numbers, edit metadata, password-protect, and unlock PDFs. Clean Streamlit UI, everything runs locally.  
-→ See [`PDF Suite/`](PDF%20Suite/) for setup & usage instructions.
+![PDF Suite](assets/screenshots/pdf-suite.png)
 
-### 📁 Bulk File Renamer
-Rename multiple files at once with powerful rules — find & replace, regex patterns, prefix/suffix, sequential numbering, date stamps, case conversion, extension control, and trim/clean. Sidebar-driven UI with live preview, duplicate detection, and ZIP download.  
-→ See [`Bulk File Renamer/`](Bulk%20File%20Renamer/) for setup & usage instructions.
+### Image Compressor
+Compress and convert JPG, PNG, and WebP images, with resize controls and before/after file size comparison. Batch processing with a one-click ZIP download.
+[Open in browser](https://rehmozayub.github.io/tools-for-everyone/Image%20Compressor/image_compressor.html) · browser only, built with plain Canvas
 
-### 📱 QR Code Studio
-Generate & decode QR codes — text, URLs, WiFi networks, vCard contacts, emails, and batch mode. Customizable colors, error correction, and border. Export as PNG or SVG. Decode from uploaded images or camera with auto-parsing of WiFi/vCard/URL payloads.  
-→ See [`QR Code Studio/`](QR%20Code%20Studio/) for setup & usage instructions.
+### Video Converter
+Turn a video clip into a GIF, or compress a video down to a smaller MP4. Runs on a small WebAssembly build of ffmpeg that downloads once (about 9MB) and works fully offline after that.
+[Open in browser](https://rehmozayub.github.io/tools-for-everyone/Video%20Converter/video_converter.html) · browser only, built with [ffmpeg.wasm](https://github.com/ffmpegwasm/ffmpeg.wasm)
 
-### 🛡️ Metadata Scrubber
-Inspect & strip metadata from images (JPG, PNG, WebP, TIFF, BMP) and documents (DOCX, PDF, XLSX, PPTX). Unified single-page UI — upload multiple files, view per-file metadata in expanders with privacy risk alerts and GPS maps, strip individually or batch-download all cleaned files as ZIP.  
-→ See [`Metadata Scrubber/`](Metadata%20Scrubber/) for setup & usage instructions.
+### QR Code Studio
+Generate and decode QR codes: text, URLs, WiFi networks, vCard contacts, emails, and batch mode. Customizable colors, error correction, and border. Export as PNG or SVG. Decode from an uploaded image with auto-parsing of WiFi/vCard/URL payloads.
+[Open in browser](https://rehmozayub.github.io/tools-for-everyone/QR%20Code%20Studio/qr_code_studio.html) · [Streamlit version](QR%20Code%20Studio/)
 
-### 💳 Virtual Card Manager
-Generate Luhn-valid test card numbers with spending caps, expiry dates, and local-only tracking — so you never share real banking details with random apps. Visual card UI, freeze/unfreeze, spending progress bar, CSV export, and links to real virtual-card providers (Privacy.com, Revolut, Wise). Zero network calls, everything stays on your machine.  
-→ See [`Virtual Card Manager/`](Virtual%20Card%20Manager/) for setup & usage instructions.
+### Metadata Scrubber
+Inspect and strip metadata from images (JPG, PNG, WebP, TIFF, BMP) and documents (DOCX, PDF, XLSX, PPTX), including GPS location. Per-file privacy risk alerts, strip individually or batch-download all cleaned files as a ZIP.
+[Open in browser](https://rehmozayub.github.io/tools-for-everyone/Metadata%20Scrubber/metadata_scrubber.html) · [Streamlit version](Metadata%20Scrubber/)
+
+### Bulk File Renamer
+Rename many files at once with find and replace, regex patterns, prefix/suffix, sequential numbering, date stamps, case conversion, and extension control. Live preview with duplicate detection, download as a ZIP.
+[Open in browser](https://rehmozayub.github.io/tools-for-everyone/Bulk%20File%20Renamer/bulk_rename.html) · [Streamlit version](Bulk%20File%20Renamer/)
+
+### Audio Transcriber
+Transcribe audio files or live recordings two ways: with OpenAI's Whisper API using a key you provide, or fully offline with a small Whisper model that runs in your browser and needs no key at all.
+[Open in browser](https://rehmozayub.github.io/tools-for-everyone/Audio%20Transcriber/audio_transcriber.html) · [Streamlit version](Audio%20Transcriber/)
+
+### Virtual Card Manager
+Generate Luhn-valid test card numbers with spending caps and expiry dates, so you never hand real banking details to a site you don't trust yet. Freeze/unfreeze, spending progress bar, CSV export, and links to real virtual-card providers. Zero network calls, everything stays on your machine.
+[Open in browser](https://rehmozayub.github.io/tools-for-everyone/Virtual%20Card%20Manager/virtual_card_manager.html) · [Streamlit version](Virtual%20Card%20Manager/)
+
+---
+
+## Privacy
+
+Every tool above processes your files locally, in your own browser. The one exception is Audio Transcriber's OpenAI mode, which sends audio directly to OpenAI using an API key you supply; that mode is optional and the offline alternative stays fully local.
+
+## Contributing
+
+This repository is MIT-licensed. If you build a tool that fits the spirit of this project (useful, free, and does not phone your files home), a pull request is welcome.

@@ -1,7 +1,7 @@
 # 🛡️ Metadata Scrubber
 
 A privacy-focused metadata inspector and remover for **images and documents**.  
-Built with **Streamlit** — everything runs locally, no file uploads to external servers.
+Built with **Streamlit** - everything runs locally, no file uploads to external servers.
 
 ## Supported Formats
 
@@ -52,16 +52,16 @@ Then open `http://localhost:8501` in your browser.
 
 ## Dependencies
 
-- **Streamlit** — Web UI
-- **Pillow** — Image processing & EXIF reading
-- **piexif** — EXIF removal for JPEG/WebP
-- **python-docx** — Word document metadata
-- **openpyxl** — Excel spreadsheet metadata
-- **python-pptx** — PowerPoint metadata
-- **PyMuPDF** — PDF metadata & XMP removal
-- **pandas** — Table display
-- **lxml** — XML processing
+- **Streamlit** - Web UI
+- **Pillow** - Image processing & EXIF reading
+- **piexif** - EXIF removal for JPEG/WebP
+- **python-docx** - Word document metadata
+- **openpyxl** - Excel spreadsheet metadata
+- **python-pptx** - PowerPoint metadata
+- **PyMuPDF** - PDF metadata & XMP removal
+- **pandas** - Table display
+- **lxml** - XML processing
 
 ## License
 
-MIT — see [LICENSE](../LICENSE)
+MIT - see [LICENSE](../LICENSE)

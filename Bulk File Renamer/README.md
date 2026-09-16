@@ -33,11 +33,11 @@ The app will open in your browser at `http://localhost:8501`.
 
 ## How It Works
 
-1. **Upload** — Drag-and-drop or browse to select files.
-2. **Select Rule** — Pick a renaming rule from the sidebar.
-3. **Configure** — Set up rule parameters in the main panel.
-4. **Preview** — Instantly see how every filename will change.
-5. **Download** — Generate a ZIP with all files renamed.
+1. **Upload** - Drag-and-drop or browse to select files.
+2. **Select Rule** - Pick a renaming rule from the sidebar.
+3. **Configure** - Set up rule parameters in the main panel.
+4. **Preview** - Instantly see how every filename will change.
+5. **Download** - Generate a ZIP with all files renamed.
 
 ## Examples
 
@@ -49,7 +49,7 @@ The app will open in your browser at `http://localhost:8501`.
 - Rule: Sequential Numbering → Replace entire filename ✓, Start: 1, Pad: 3
 - `messy file.jpg` → `001.jpg`
 
-**Regex — reorder date in filename:**
+**Regex - reorder date in filename:**
 - Pattern: `^(\d{4})(\d{2})(\d{2})_(.+)`
 - Replace: `\4_\1-\2-\3`
 - `20250115_meeting.txt` → `meeting_2025-01-15.txt`
@@ -60,4 +60,4 @@ The app will open in your browser at `http://localhost:8501`.
 
 ## License
 
-MIT — see the root [LICENSE](../LICENSE) file.
+MIT - see the root [LICENSE](../LICENSE) file.

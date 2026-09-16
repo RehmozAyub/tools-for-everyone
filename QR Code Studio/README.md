@@ -1,7 +1,7 @@
 # 📱 QR Code Studio
 
 A full-featured QR code generator and decoder built with **Streamlit**, **qrcode**, and **OpenCV**.  
-Everything runs locally — no files are uploaded to external servers.
+Everything runs locally - no files are uploaded to external servers.
 
 ## Features
 
@@ -43,12 +43,12 @@ Then open `http://localhost:8501` in your browser.
 
 ## Dependencies
 
-- **Streamlit** — Web UI framework
-- **qrcode[pil]** — QR code generation with PIL support
-- **Pillow** — Image handling
-- **OpenCV (headless)** — QR code detection & decoding
-- **NumPy** — Image array processing
+- **Streamlit** - Web UI framework
+- **qrcode[pil]** - QR code generation with PIL support
+- **Pillow** - Image handling
+- **OpenCV (headless)** - QR code detection & decoding
+- **NumPy** - Image array processing
 
 ## License
 
-MIT — see [LICENSE](../LICENSE)
+MIT - see [LICENSE](../LICENSE)

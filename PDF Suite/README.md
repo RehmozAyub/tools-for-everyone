@@ -1,7 +1,7 @@
 # 📄 PDF Suite
 
 A comprehensive, all-in-one PDF toolkit built with **Streamlit** and **PyMuPDF**.  
-Everything runs locally — no files are uploaded to external servers.
+Everything runs locally - no files are uploaded to external servers.
 
 ## Features
 
@@ -17,7 +17,7 @@ Everything runs locally — no files are uploaded to external servers.
 | 🎨 Extract Images | Extract all embedded images from a PDF |
 | 🔄 Rotate Pages | Rotate all or specific pages |
 | ✂️ Crop Pages | Trim margins or auto-crop whitespace |
-| 📐 Resize Pages | Change page dimensions (A3–A5, Letter, Legal, custom) |
+| 📐 Resize Pages | Change page dimensions (A3-A5, Letter, Legal, custom) |
 | 💧 Watermark | Add text or image watermarks with opacity & positioning |
 | ✒️ Sign PDF | Place a signature image on any page |
 | 🔢 Page Numbers | Stamp page numbers in various formats & positions |
@@ -42,10 +42,10 @@ Then open `http://localhost:8501` in your browser.
 
 ## Dependencies
 
-- **Streamlit** — Web UI framework  
-- **PyMuPDF (fitz)** — Fast, full-featured PDF processing  
-- **Pillow** — Image handling for conversions & compression  
+- **Streamlit** - Web UI framework  
+- **PyMuPDF (fitz)** - Fast, full-featured PDF processing  
+- **Pillow** - Image handling for conversions & compression  
 
 ## License
 
-MIT — see [LICENSE](../LICENSE)
+MIT - see [LICENSE](../LICENSE)

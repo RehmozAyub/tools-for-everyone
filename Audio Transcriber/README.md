@@ -48,12 +48,12 @@ OPENAI_API_KEY=sk-your-key-here
 
 ## Dependencies
 
-- **Streamlit** — Web UI framework
-- **OpenAI** — Whisper API client
-- **pydub** — Audio file processing & chunking
-- **python-dotenv** — Environment variable management
-- **FFmpeg** — Audio codec support (system dependency)
+- **Streamlit** - Web UI framework
+- **OpenAI** - Whisper API client
+- **pydub** - Audio file processing & chunking
+- **python-dotenv** - Environment variable management
+- **FFmpeg** - Audio codec support (system dependency)
 
 ## License
 
-MIT — see [LICENSE](../LICENSE)
+MIT - see [LICENSE](../LICENSE)
