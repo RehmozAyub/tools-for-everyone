@@ -3,8 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tools for Everyone</title>
-<meta name="description" content="Free browser tools for everyday tasks. Nothing you upload here ever leaves your device.">
+<title>Tools for Everyone - Free Browser Tools, No Upload</title>
+<meta name="description" content="Eight free tools for PDFs, images, video, and files that run entirely in your browser. No uploads, no accounts, no installs.">
+<link rel="canonical" href="https://rehmozayub.github.io/tools-for-everyone/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Tools for Everyone - Free Browser Tools, No Upload">
+<meta property="og:description" content="Eight free tools for PDFs, images, video, and files that run entirely in your browser. No uploads, no accounts, no installs.">
+<meta property="og:url" content="https://rehmozayub.github.io/tools-for-everyone/">
+<meta property="og:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Tools for Everyone - Free Browser Tools, No Upload">
+<meta name="twitter:description" content="Eight free tools for PDFs, images, video, and files that run entirely in your browser. No uploads, no accounts, no installs.">
+<meta name="twitter:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b0d10">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -38,12 +51,12 @@
 
   .grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     grid-template-rows: repeat(3, minmax(150px, auto));
     grid-template-areas:
-      "pdf  pdf  qr"
-      "pdf  pdf  meta"
-      "rename audio card";
+      "pdf  pdf  qr    meta"
+      "pdf  pdf  rename audio"
+      "card image video video";
     gap: 14px;
   }
 
@@ -101,6 +114,21 @@
   .tile-rename { grid-area: rename; }
   .tile-audio { grid-area: audio; }
   .tile-card { grid-area: card; }
+  .tile-image { grid-area: image; }
+
+  .tile-video {
+    grid-area: video;
+    flex-direction: row;
+    align-items: center;
+    gap: 18px;
+  }
+  .tile-video .tile-icon { flex-shrink: 0; }
+  .tile-video h2 { flex-shrink: 0; }
+  .tile-video p { margin-bottom: 0; }
+  .tile-video .go { flex-shrink: 0; }
+  @media (max-width: 560px) {
+    .tile-video { flex-direction: column; align-items: flex-start; }
+  }
 
   .note {
     margin-top: 40px;
@@ -140,7 +168,7 @@
 
   <div class="hero">
     <h1>Free tools that stay on your device</h1>
-    <p>Six browser-based tools for PDFs, files, and privacy. No accounts, no installs, nothing uploaded anywhere.</p>
+    <p>Eight browser-based tools for PDFs, images, video, and privacy. No accounts, no installs, nothing uploaded anywhere.</p>
   </div>
 
   <div class="badge-row">
@@ -191,16 +219,46 @@
       <p>Create Luhn-valid test card numbers for signups you do not trust yet.</p>
       <span class="go">Open tool <i class="ph ph-arrow-right"></i></span>
     </a>
+
+    <a class="tile tile-image" href="Image%20Compressor/image_compressor.html">
+      <div class="tile-icon"><i class="ph ph-image"></i></div>
+      <h2>Image Compressor</h2>
+      <p>Compress and convert JPG, PNG, and WebP images without uploading them.</p>
+      <span class="go">Open tool <i class="ph ph-arrow-right"></i></span>
+    </a>
+
+    <a class="tile tile-video" href="Video%20Converter/video_converter.html">
+      <div class="tile-icon"><i class="ph ph-film-strip"></i></div>
+      <h2>Video Converter</h2>
+      <p>Turn video into a GIF, or compress it down. Runs on a small in-browser engine, no upload required.</p>
+      <span class="go">Open tool <i class="ph ph-arrow-right"></i></span>
+    </a>
   </div>
 
   <div class="note">
     <i class="ph ph-info"></i>
-    <span>Every tool above processes files locally, in your browser. The one exception is Audio Transcriber, which sends audio straight to OpenAI using an API key you provide, never to us. Prefer a desktop app instead? Each tool folder also has a Python version, documented in the <a href="https://github.com/RehmozAyub/tools-for-everyone">repository README</a>.</span>
+    <span>Every tool above processes files locally, in your browser. The only exception is Audio Transcriber's OpenAI mode, which sends audio straight to OpenAI using an API key you provide, never to us; its offline mode stays local too. Prefer a desktop app instead? Most tool folders also have a Python version, documented in the <a href="https://github.com/RehmozAyub/tools-for-everyone">repository README</a>.</span>
   </div>
 
   <footer>
-    Made by <a href="https://github.com/RehmozAyub">RehmozAyub</a> · <a href="https://github.com/RehmozAyub/tools-for-everyone">Source on GitHub</a>
+    Made by <a href="https://github.com/RehmozAyub">RehmozAyub</a> · <a href="https://github.com/RehmozAyub/tools-for-everyone">Source on GitHub</a> · <a href="#" onclick="shareThisPage();return false;">Share</a>
   </footer>
 </div>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+function shareThisPage() {
+  const data = { title: document.title, text: 'Free browser tools that never upload your files.', url: location.href };
+  if (navigator.share) { navigator.share(data).catch(() => {}); return; }
+  navigator.clipboard.writeText(location.href).then(() => {
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.innerHTML = '<i class="ph ph-check-circle"></i> Link copied to clipboard';
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2500);
+  });
+}
+</script>
 </body>
 </html>

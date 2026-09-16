@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Compressor - Compress JPG, PNG and WebP Free</title>
+<meta name="description" content="Compress and convert JPG, PNG, and WebP images for free. Resize and reduce file size entirely in your browser, no upload needed.">
+<link rel="canonical" href="https://rehmozayub.github.io/tools-for-everyone/Image%20Compressor/image_compressor.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Image Compressor - Compress JPG, PNG and WebP Free">
+<meta property="og:description" content="Compress and convert JPG, PNG, and WebP images for free. Resize and reduce file size entirely in your browser, no upload needed.">
+<meta property="og:url" content="https://rehmozayub.github.io/tools-for-everyone/Image%20Compressor/image_compressor.html">
+<meta property="og:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Image Compressor - Compress JPG, PNG and WebP Free">
+<meta name="twitter:description" content="Compress and convert JPG, PNG, and WebP images for free. Resize and reduce file size entirely in your browser, no upload needed.">
+<meta name="twitter:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#0b0d10">
+<link rel="apple-touch-icon" href="../assets/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="../assets/theme.css">
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<style>
+  .result-card { display: flex; align-items: center; gap: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 10px; }
+  .result-thumb { width: 56px; height: 56px; border-radius: var(--radius-sm); object-fit: cover; background: var(--surface-2); flex-shrink: 0; }
+  .result-info { flex: 1; min-width: 0; }
+  .result-name { font-size: 0.9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .result-sizes { font-size: 0.82rem; color: var(--text-muted); font-family: var(--font-mono); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .result-sizes .saved { color: var(--success); font-weight: 600; }
+  .result-sizes .grew { color: var(--warning); font-weight: 600; }
+  .result-actions { flex-shrink: 0; }
+  .settings-row { display: flex; gap: 10px; }
+  .settings-row .form-group { flex: 1; }
+  .totals-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <a class="hub-link" href="../index.html"><i class="ph ph-arrow-left"></i> All tools</a>
+    <h2><i class="ph ph-sliders-horizontal"></i> Settings</h2>
+
+    <div class="form-group">
+      <label>Output format</label>
+      <div class="radio-group">
+        <label><input type="radio" name="format" value="keep" checked><span>Keep original</span></label>
+        <label><input type="radio" name="format" value="jpeg"><span>JPEG</span></label>
+        <label><input type="radio" name="format" value="webp"><span>WebP</span></label>
+        <label><input type="radio" name="format" value="png"><span>PNG</span></label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Quality (JPEG / WebP only)</label>
+      <input type="range" id="quality" min="10" max="100" value="80">
+      <div class="slider-value" id="qualityLabel">80%</div>
+    </div>
+
+    <div class="form-group">
+      <label class="checkbox-label"><input type="checkbox" id="resizeEnable"><span>Resize</span></label>
+    </div>
+    <div class="settings-row" id="resizeFields" style="display:none;">
+      <div class="form-group"><label>Max width (px)</label><input type="number" id="maxWidth" value="1920" min="1"></div>
+      <div class="form-group"><label>Max height (px)</label><input type="number" id="maxHeight" value="1080" min="1"></div>
+    </div>
+    <p style="font-size:.78rem;color:var(--text-muted);margin-top:-4px;">Images only shrink to fit. Aspect ratio is always kept.</p>
+
+    <hr class="divider">
+    <h3>About</h3>
+    <p style="font-size:.85rem;color:var(--text-muted);">Free, open-source image compressor. No file uploads to any server. Everything runs locally in your browser.</p>
+    <hr class="divider">
+    <p style="font-size:.85rem;">Made by <a href="https://github.com/RehmozAyub" style="color:var(--accent);text-decoration:none;">RehmozAyub</a></p>
+  </div>
+
+  <div class="main">
+    <h1><i class="ph ph-image"></i> Image Compressor</h1>
+    <div class="sub-header">Compress and convert JPG, PNG, and WebP images. Nothing is uploaded.</div>
+
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <i class="ph ph-upload-simple"></i>
+      <p>Drag & drop images here, or click to browse</p>
+      <p style="font-size:.8rem;margin-top:8px;">JPG, PNG, WebP, GIF, BMP &middot; any number of files</p>
+      <input type="file" id="fileInput" accept="image/*" multiple>
+    </div>
+
+    <div id="fileCount"></div>
+
+    <div id="actionRow" style="display:none;">
+      <button class="btn btn-primary" onclick="compressAll()"><i class="ph ph-sliders-horizontal"></i> Compress & convert</button>
+    </div>
+
+    <div id="resultsSection" style="display:none;">
+      <hr class="divider">
+      <div class="totals-bar">
+        <h2 style="margin-bottom:0;"><i class="ph ph-check-circle"></i> Results</h2>
+        <button class="btn btn-sm btn-download" onclick="downloadAllZip()" id="zipBtn" style="display:none;"><i class="ph ph-package"></i> Download all (ZIP)</button>
+      </div>
+      <div id="totalsMsg"></div>
+      <div id="resultsList" style="margin-top:12px;"></div>
+    </div>
+
+    <div class="footer">
+      Image Compressor v1.0 · Built with HTML and JavaScript ·
+      <a href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a> · <a href="#" onclick="shareThisTool();return false;">Share</a>
+    </div>
+  </div>
+</div>
+
+<script>
+let uploadedFiles = [];
+let results = [];
+
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
+fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+function handleFiles(fileList) {
+  uploadedFiles = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+  if (!uploadedFiles.length) return;
+  document.getElementById('fileCount').innerHTML = `<div class="success-msg"><i class="ph ph-check-circle"></i> ${uploadedFiles.length} image(s) ready</div>`;
+  document.getElementById('actionRow').style.display = 'block';
+  document.getElementById('resultsSection').style.display = 'none';
+}
+
+document.getElementById('quality').addEventListener('input', function () {
+  document.getElementById('qualityLabel').textContent = this.value + '%';
+});
+document.getElementById('resizeEnable').addEventListener('change', function () {
+  document.getElementById('resizeFields').style.display = this.checked ? 'flex' : 'none';
+});
+
+function fmtSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
+function extFromMime(mime) {
+  return { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif', 'image/bmp': 'bmp' }[mime] || 'jpg';
+}
+
+async function loadBitmap(file) {
+  return await createImageBitmap(file);
+}
+
+async function processOne(file, opts) {
+  const bitmap = await loadBitmap(file);
+  let width = bitmap.width, height = bitmap.height;
+
+  if (opts.resize) {
+    const scale = Math.min(opts.maxWidth / width, opts.maxHeight / height, 1);
+    width = Math.max(1, Math.round(width * scale));
+    height = Math.max(1, Math.round(height * scale));
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+
+  let mime = opts.format === 'keep' ? (file.type || 'image/jpeg') : `image/${opts.format}`;
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(mime)) mime = 'image/jpeg';
+
+  if (mime === 'image/jpeg') {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+  }
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+
+  const quality = opts.quality / 100;
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, mime, quality));
+  return { blob, mime, ext: extFromMime(mime), width, height };
+}
+
+async function compressAll() {
+  if (!uploadedFiles.length) return;
+  const opts = {
+    format: document.querySelector('input[name="format"]:checked').value,
+    quality: parseInt(document.getElementById('quality').value) || 80,
+    resize: document.getElementById('resizeEnable').checked,
+    maxWidth: parseInt(document.getElementById('maxWidth').value) || 1920,
+    maxHeight: parseInt(document.getElementById('maxHeight').value) || 1080,
+  };
+
+  document.getElementById('resultsSection').style.display = 'block';
+  document.getElementById('totalsMsg').innerHTML = '<p><span class="spinner"></span> Processing...</p>';
+  document.getElementById('resultsList').innerHTML = '';
+
+  results = [];
+  for (const file of uploadedFiles) {
+    try {
+      const out = await processOne(file, opts);
+      results.push({ name: file.name, origSize: file.size, ...out });
+    } catch (e) {
+      results.push({ name: file.name, error: e.message });
+    }
+  }
+  renderResults();
+}
+
+function renderResults() {
+  const okResults = results.filter(r => !r.error);
+  const totalOrig = okResults.reduce((s, r) => s + r.origSize, 0);
+  const totalNew = okResults.reduce((s, r) => s + r.blob.size, 0);
+  const pct = totalOrig > 0 ? Math.round((1 - totalNew / totalOrig) * 100) : 0;
+
+  document.getElementById('totalsMsg').innerHTML = totalOrig > 0
+    ? `<p style="color:var(--text-muted);font-size:.9rem;">Total: ${fmtSize(totalOrig)} &rarr; ${fmtSize(totalNew)} <span class="${pct >= 0 ? 'saved' : 'grew'}" style="font-family:var(--font-mono);">(${pct >= 0 ? '-' : '+'}${Math.abs(pct)}%)</span></p>`
+    : '';
+
+  document.getElementById('zipBtn').style.display = okResults.length > 1 ? 'inline-flex' : 'none';
+
+  let html = '';
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i];
+    if (r.error) {
+      html += `<div class="result-card"><div class="result-info"><div class="result-name">${escapeHTML(r.name)}</div><div class="error-msg" style="margin:4px 0 0;"><i class="ph ph-x-circle"></i> ${escapeHTML(r.error)}</div></div></div>`;
+      continue;
+    }
+    const url = URL.createObjectURL(r.blob);
+    const delta = Math.round((1 - r.blob.size / r.origSize) * 100);
+    const outName = r.name.replace(/\.[^.]+$/, '') + '.' + r.ext;
+    html += `<div class="result-card">
+      <img class="result-thumb" src="${url}" alt="">
+      <div class="result-info">
+        <div class="result-name">${escapeHTML(outName)}</div>
+        <div class="result-sizes">${fmtSize(r.origSize)} <i class="ph ph-arrow-right"></i> ${fmtSize(r.blob.size)}
+          <span class="${delta >= 0 ? 'saved' : 'grew'}">${delta >= 0 ? '-' : '+'}${Math.abs(delta)}%</span>
+          <span>&middot; ${r.width}&times;${r.height}</span>
+        </div>
+      </div>
+      <div class="result-actions">
+        <button class="btn btn-sm btn-download" onclick="downloadOne(${i})"><i class="ph ph-download-simple"></i></button>
+      </div>
+    </div>`;
+  }
+  document.getElementById('resultsList').innerHTML = html;
+}
+
+function downloadOne(idx) {
+  const r = results[idx];
+  if (!r || r.error) return;
+  const outName = r.name.replace(/\.[^.]+$/, '') + '.' + r.ext;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(r.blob);
+  a.download = outName;
+  a.click();
+}
+
+async function downloadAllZip() {
+  const zip = new JSZip();
+  const usedNames = new Set();
+  for (const r of results) {
+    if (r.error) continue;
+    let outName = r.name.replace(/\.[^.]+$/, '') + '.' + r.ext;
+    while (usedNames.has(outName)) outName = outName.replace(/(\.[^.]+)$/, '_2$1');
+    usedNames.add(outName);
+    zip.file(outName, r.blob);
+  }
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `compressed_images_${new Date().toISOString().slice(0, 10)}.zip`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function escapeHTML(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+</script>
+<script>
+function shareThisTool() {
+  const data = { title: document.title, text: 'A free browser tool that never uploads your files.', url: location.href };
+  if (navigator.share) { navigator.share(data).catch(() => {}); return; }
+  navigator.clipboard.writeText(location.href).then(() => showToast('Link copied to clipboard'));
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.innerHTML = '<i class="ph ph-check-circle"></i> ' + msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
