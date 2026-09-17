@@ -16,88 +16,120 @@
 <meta name="twitter:description" content="See and strip hidden metadata, including GPS location, from images and documents before you share them. Runs entirely in your browser.">
 <meta name="twitter:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
 <link rel="manifest" href="../manifest.json">
-<meta name="theme-color" content="#0b0d10">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f3f5">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1114">
+<link rel="icon" href="../assets/favicon.svg">
 <link rel="apple-touch-icon" href="../assets/icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script>
+  try {
+    var t = localStorage.getItem('theme');
+    if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+</script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <link rel="stylesheet" href="../assets/theme.css">
 <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <style>
-  .file-card { background: var(--surface); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px; border: 1px solid var(--border); }
-  .file-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; cursor: pointer; }
-  .file-header h3 { margin-bottom: 0; color: var(--text); font-size: 1rem; text-transform: none; letter-spacing: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .file-body { display: none; }
+  .file-header {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 12px; width: 100%; padding: 0; margin: 0;
+    background: none; border: none; color: var(--text);
+    font: inherit; text-align: left; cursor: pointer;
+  }
+  .file-title {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    font-size: 0.9375rem; font-weight: 600; min-width: 0;
+  }
+  .file-title .name {
+    font-family: var(--font-mono); font-weight: 400; font-size: 0.875rem;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 34ch;
+  }
+  .file-count {
+    color: var(--text-muted); font-size: 0.8125rem;
+    display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+  }
+  .file-body { display: none; padding-top: 12px; }
   .file-body.open { display: block; }
-  .meta-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 8px 0; }
-  .meta-table th { text-align: left; padding: 6px 10px; border-bottom: 2px solid var(--border-strong); color: var(--text-muted); font-weight: 600; }
-  .meta-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); word-break: break-all; }
-  .meta-table td:first-child { color: var(--accent); white-space: nowrap; }
-  .privacy-warn { padding: 10px 14px; border-radius: var(--radius-sm); background: var(--danger-tint); border-left: 3px solid var(--danger); margin: 8px 0; color: var(--danger); font-size: 0.85rem; }
-  .privacy-ok { padding: 10px 14px; border-radius: var(--radius-sm); background: var(--success-tint); border-left: 3px solid var(--success); margin: 8px 0; color: var(--success); font-size: 0.85rem; display: flex; align-items: center; gap: 8px; }
-  .section-header { font-size: 0.85rem; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin: 12px 0 6px; padding-bottom: 4px; border-bottom: 1px solid var(--border-strong); }
-  .tag-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: var(--radius-pill); font-size: 0.72rem; font-weight: 600; }
+  .meta-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; margin: 12px 0; }
+  .meta-table th {
+    text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border-strong);
+    color: var(--text-muted); font-weight: 500; font-size: 0.75rem;
+  }
+  .meta-table td {
+    padding: 6px 10px; border-bottom: 1px solid var(--border);
+    word-break: break-all; font-family: var(--font-mono);
+  }
+  .meta-table td:first-child { color: var(--text-muted); white-space: nowrap; font-family: var(--font-sans); }
+  .meta-table td.sensitive { color: var(--danger); }
+  .risk-list { margin: 6px 0 0; padding-left: 18px; }
+  .risk-list li { margin-bottom: 2px; font-size: 0.8125rem; }
+  .tag-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: var(--radius);
+    font-size: 0.75rem; font-weight: 500;
+  }
   .tag-badge.warn { background: var(--danger-tint); color: var(--danger); }
   .tag-badge.ok { background: var(--success-tint); color: var(--success); }
-  .tag-badge.info { background: var(--accent-tint); color: var(--accent); }
-  .gps-link { color: var(--accent); text-decoration: none; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px; }
-  .gps-link:hover { text-decoration: underline; }
-  .actions-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .tag-badge.info { background: var(--surface-2); color: var(--text-muted); }
+  .gps-link {
+    font-size: 0.8125rem; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .actions-row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
 </style>
 </head>
-<body>
-<div class="app">
-  <div class="sidebar">
-    <a class="hub-link" href="../index.html"><i class="ph ph-arrow-left"></i> All tools</a>
-    <h2><i class="ph ph-shield-check"></i> Options</h2>
-    <label class="checkbox-label"><input type="checkbox" id="preserveOrientation" checked><span>Preserve image orientation</span></label>
-    <hr class="divider">
-    <h2><i class="ph ph-stack"></i> Batch Actions</h2>
-    <button class="btn btn-export" onclick="stripAll()"><i class="ph ph-broom"></i> Strip all metadata</button>
-    <button class="btn btn-export" onclick="downloadAllZip()" style="margin-top:8px;"><i class="ph ph-download-simple"></i> Download all cleaned (ZIP)</button>
-    <hr class="divider">
-    <h3><i class="ph ph-list-bullets"></i> Supported Formats</h3>
-    <p style="font-size:0.85rem; color:var(--text-muted);">
-      <b>Images:</b> JPG, PNG, WebP, TIFF, BMP<br>
-      <b>Documents:</b> DOCX, PDF, XLSX, PPTX
-    </p>
-    <hr class="divider">
-    <h3>About</h3>
-    <p style="font-size:0.85rem; color:var(--text-muted);">Free, open-source metadata scrubber. No file uploads to any server. Everything runs locally in your browser.</p>
-    <hr class="divider">
-    <p style="font-size:0.85rem;">Made by <a href="https://github.com/RehmozAyub" style="color:var(--accent); text-decoration:none;">RehmozAyub</a></p>
+<body data-sw-path="../sw.js">
+
+<header class="tool-header">
+  <a class="back" href="../index.html"><i class="ph ph-arrow-left" aria-hidden="true"></i> <span>All tools</span></a>
+  <h1><i class="ph ph-shield-check" aria-hidden="true"></i> Metadata Scrubber</h1>
+  <div class="header-actions">
+    <button class="icon-btn" type="button" id="themeToggle" aria-label="Toggle theme"></button>
+    <a class="icon-btn" href="https://github.com/RehmozAyub/tools-for-everyone" aria-label="Source on GitHub"><i class="ph ph-github-logo" aria-hidden="true"></i></a>
   </div>
+</header>
 
-  <div class="main">
-    <h1><i class="ph ph-shield-check"></i> Metadata Scrubber</h1>
-    <div class="sub-header">Inspect and strip metadata from images and documents to protect your privacy.</div>
+<div class="tool-layout">
+  <aside class="tool-controls">
+    <details class="panel" open data-mobile-collapsed>
+      <summary><span>Options</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
 
-    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-      <i class="ph ph-upload-simple"></i>
-      <p>Drag & drop files here, or click to browse</p>
-      <p style="font-size:0.8rem; margin-top:8px;">Images (JPG, PNG, WebP) and documents (DOCX, PDF, XLSX, PPTX)</p>
+      <label class="checkbox-label"><input type="checkbox" id="preserveOrientation" checked><span>Preserve image orientation</span></label>
+
+      <h3 class="mt-4">Everything at once</h3>
+      <button class="btn btn-export" type="button" onclick="stripAll(this)"><i class="ph ph-broom" aria-hidden="true"></i> Strip all metadata</button>
+      <button class="btn btn-export mt-2" type="button" onclick="downloadAllZip(this)"><i class="ph ph-download-simple" aria-hidden="true"></i> Download all cleaned as ZIP</button>
+    </details>
+  </aside>
+
+  <main class="tool-main">
+    <p class="tool-intro">Inspect and strip metadata from images and documents before you share them.</p>
+
+    <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="Choose files to inspect" onclick="document.getElementById('fileInput').click()">
+      <i class="ph ph-upload-simple" aria-hidden="true"></i>
+      <p class="dz-title">Drop files here or browse</p>
+      <p class="dz-hint">JPG PNG WebP TIFF BMP, and PDF DOCX XLSX PPTX</p>
       <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.webp,.tiff,.bmp,.docx,.pdf,.xlsx,.pptx">
     </div>
 
     <div id="statsRow" style="display:none;">
       <div class="stats">
         <div class="stat-card"><div class="stat-label">Files</div><div class="stat-value" id="statFiles">0</div></div>
-        <div class="stat-card"><div class="stat-label">With Risks</div><div class="stat-value" id="statRisks" style="color:var(--danger);">0</div></div>
-        <div class="stat-card"><div class="stat-label">Clean</div><div class="stat-value" id="statClean" style="color:var(--success);">0</div></div>
+        <div class="stat-card"><div class="stat-label">With risks</div><div class="stat-value" id="statRisks">0</div></div>
+        <div class="stat-card"><div class="stat-label">Cleaned</div><div class="stat-value" id="statClean">0</div></div>
       </div>
     </div>
 
     <div id="fileList"></div>
-
-    <div class="footer">
-      Metadata Scrubber v1.0 · Built with HTML and JavaScript ·
-      <a href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a> · <a href="#" onclick="shareThisTool();return false;">Share</a>
-    </div>
-  </div>
+  </main>
 </div>
+
+<footer class="tool-footer">
+  <span>Made by <a href="https://github.com/RehmozAyub">RehmozAyub</a></span>
+  <a href="https://github.com/RehmozAyub/tools-for-everyone">Source on GitHub</a>
+  <button class="link-btn" type="button" onclick="sharePage()">Share</button>
+</footer>
 
 <script>
 const SENSITIVE_IMAGE_TAGS = new Set([
@@ -132,7 +164,10 @@ async function handleFiles(files) {
     const bytes = await file.arrayBuffer();
     fileEntries.push({ name: file.name, ext, bytes: new Uint8Array(bytes), type: file.type, metadata: null, risks: [], stripped: null });
   }
-  if (!fileEntries.length) return;
+  if (!fileEntries.length) {
+    showToast('None of those files are a supported type', 'error');
+    return;
+  }
 
   for (let i = 0; i < fileEntries.length; i++) {
     await inspectFile(fileEntries[i]);
@@ -209,9 +244,10 @@ async function inspectFile(entry) {
   }
 }
 
-async function stripFileMetadata(idx) {
+async function stripFileMetadata(idx, btn) {
   const entry = fileEntries[idx];
   const ext = entry.ext;
+  setBusy(btn, true, 'Stripping...');
 
   if (IMAGE_EXTS.has(ext)) {
     const blob = new Blob([entry.bytes], { type: entry.type });
@@ -273,15 +309,22 @@ async function stripFileMetadata(idx) {
     } catch { entry.stripped = null; }
   }
 
-  showToast(`Metadata stripped from ${entry.name}`);
+  setBusy(btn, false);
+  showToast(`Metadata stripped from ${entry.name}`, 'success');
   render();
 }
 
-async function stripAll() {
+async function stripAll(btn) {
+  if (!fileEntries.length) {
+    showInlineError(btn, 'Choose some files first.');
+    return;
+  }
+  setBusy(btn, true, 'Stripping...');
   for (let i = 0; i < fileEntries.length; i++) {
     if (!fileEntries[i].stripped) await stripFileMetadata(i);
   }
-  showToast('All files stripped');
+  setBusy(btn, false);
+  showToast('All files stripped', 'success');
   render();
 }
 
@@ -300,7 +343,12 @@ function downloadFile(idx) {
   URL.revokeObjectURL(a.href);
 }
 
-async function downloadAllZip() {
+async function downloadAllZip(btn) {
+  if (!fileEntries.length) {
+    showInlineError(btn, 'Choose some files first.');
+    return;
+  }
+  setBusy(btn, true, 'Packing...');
   const zip = new JSZip();
   for (const entry of fileEntries) {
     if (!entry.stripped) await stripFileMetadata(fileEntries.indexOf(entry));
@@ -309,6 +357,7 @@ async function downloadAllZip() {
     zip.file(`${baseName}_clean.${ext}`, entry.stripped || entry.bytes);
   }
   const blob = await zip.generateAsync({ type: 'blob' });
+  setBusy(btn, false);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `cleaned_files_${new Date().toISOString().slice(0, 10)}.zip`;
@@ -330,31 +379,30 @@ function render() {
     const icon = FORMAT_ICONS[entry.ext] || 'file';
     const tagCount = Object.keys(entry.metadata).length;
     const riskBadge = entry.risks.length > 0
-      ? `<span class="tag-badge warn"><i class="ph ph-warning"></i> ${entry.risks.length} risk(s)</span>`
-      : `<span class="tag-badge ok"><i class="ph ph-check"></i> Clean</span>`;
-    const strippedBadge = entry.stripped ? '<span class="tag-badge info"><i class="ph ph-broom"></i> Stripped</span>' : '';
+      ? `<span class="tag-badge warn"><i class="ph ph-warning" aria-hidden="true"></i> ${entry.risks.length} to review</span>`
+      : `<span class="tag-badge ok"><i class="ph ph-check" aria-hidden="true"></i> Clean</span>`;
+    const strippedBadge = entry.stripped ? '<span class="tag-badge info"><i class="ph ph-broom" aria-hidden="true"></i> Stripped</span>' : '';
 
-    html += `<div class="file-card">
-      <div class="file-header" onclick="toggleFile(${i})">
-        <h3><i class="ph ph-${icon}"></i> ${escapeHTML(entry.name)} ${riskBadge} ${strippedBadge}</h3>
-        <span style="color:var(--text-muted); font-size:0.85rem; display:flex; align-items:center; gap:4px;">${tagCount} properties <i class="ph ph-caret-down"></i></span>
-      </div>
+    html += `<div class="result">
+      <button class="file-header" type="button" onclick="toggleFile(${i})" aria-expanded="false" aria-controls="file-body-${i}">
+        <span class="file-title"><i class="ph ph-${icon}" aria-hidden="true"></i> <span class="name">${escapeHTML(entry.name)}</span> ${riskBadge} ${strippedBadge}</span>
+        <span class="file-count">${tagCount} properties <i class="ph ph-caret-down" aria-hidden="true"></i></span>
+      </button>
       <div class="file-body" id="file-body-${i}">`;
 
     if (entry.risks.length > 0) {
-      html += '<div class="privacy-warn"><b><i class="ph ph-warning"></i> Privacy risks found</b><br>';
-      for (const [k, v] of entry.risks) html += `&bull; <b>${escapeHTML(k)}:</b> ${escapeHTML(v)}<br>`;
-      html += '</div>';
+      html += '<div class="warning-msg"><i class="ph ph-warning" aria-hidden="true"></i><div><b>Worth checking before you share</b><ul class="risk-list">';
+      for (const [k, v] of entry.risks) html += `<li><b>${escapeHTML(k)}:</b> ${escapeHTML(v)}</li>`;
+      html += '</ul></div></div>';
     } else {
-      html += '<div class="privacy-ok"><i class="ph ph-check-circle"></i> No obvious privacy risks detected.</div>';
+      html += '<div class="success-msg"><i class="ph ph-check-circle" aria-hidden="true"></i> <span>No obvious privacy risks found.</span></div>';
     }
 
     if (Object.keys(entry.metadata).length) {
       html += '<table class="meta-table"><tr><th>Property</th><th>Value</th></tr>';
       for (const [k, v] of Object.entries(entry.metadata)) {
         const isSensitive = SENSITIVE_IMAGE_TAGS.has(k) || SENSITIVE_DOC_PROPS.has(k) || ['Company', 'Manager', 'Author', 'Creator', 'Producer'].includes(k);
-        const style = isSensitive ? ' style="color:var(--danger);"' : '';
-        html += `<tr><td${style}>${escapeHTML(k)}</td><td>${escapeHTML(String(v).slice(0, 200))}</td></tr>`;
+        html += `<tr><td>${escapeHTML(k)}</td><td class="${isSensitive ? 'sensitive' : ''}">${escapeHTML(String(v).slice(0, 200))}</td></tr>`;
       }
       html += '</table>';
     }
@@ -363,15 +411,15 @@ function render() {
       const lat = parseFloat(entry.metadata.latitude);
       const lon = parseFloat(entry.metadata.longitude);
       if (!isNaN(lat) && !isNaN(lon)) {
-        html += `<p style="margin:8px 0;"><a class="gps-link" href="https://www.google.com/maps?q=${lat},${lon}" target="_blank"><i class="ph ph-map-pin"></i> View on Google Maps (${lat.toFixed(4)}, ${lon.toFixed(4)})</a></p>`;
+        html += `<p class="mt-2"><a class="gps-link" href="https://www.google.com/maps?q=${lat},${lon}" target="_blank" rel="noopener"><i class="ph ph-map-pin" aria-hidden="true"></i> View this location on Google Maps (${lat.toFixed(4)}, ${lon.toFixed(4)})</a></p>`;
       }
     }
 
     html += `<div class="actions-row">`;
     if (!entry.stripped) {
-      html += `<button class="btn btn-sm btn-strip" onclick="stripFileMetadata(${i})"><i class="ph ph-broom"></i> Strip metadata</button>`;
+      html += `<button class="btn btn-sm btn-strip" type="button" onclick="stripFileMetadata(${i}, this)"><i class="ph ph-broom" aria-hidden="true"></i> Strip metadata</button>`;
     }
-    html += `<button class="btn btn-sm btn-download" onclick="downloadFile(${i})"><i class="ph ph-download-simple"></i> ${entry.stripped ? 'Download clean' : 'Download original'}</button>`;
+    html += `<button class="btn btn-sm btn-download" type="button" onclick="downloadFile(${i})"><i class="ph ph-download-simple" aria-hidden="true"></i> ${entry.stripped ? 'Download clean copy' : 'Download original'}</button>`;
     html += `</div></div></div>`;
   }
   document.getElementById('fileList').innerHTML = html;
@@ -379,15 +427,9 @@ function render() {
 
 function toggleFile(idx) {
   const body = document.getElementById('file-body-' + idx);
-  body.classList.toggle('open');
-}
-
-function showToast(msg) {
-  const t = document.createElement('div');
-  t.className = 'toast';
-  t.innerHTML = `<i class="ph ph-check-circle"></i> ${msg}`;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2500);
+  const open = body.classList.toggle('open');
+  const header = body.previousElementSibling;
+  if (header) header.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
 
 function escapeHTML(str) {
@@ -396,16 +438,6 @@ function escapeHTML(str) {
   return div.innerHTML;
 }
 </script>
-<script>
-function shareThisTool() {
-  const data = { title: document.title, text: 'A free browser tool that never uploads your files.', url: location.href };
-  if (navigator.share) { navigator.share(data).catch(() => {}); return; }
-  navigator.clipboard.writeText(location.href).then(() => showToast('Link copied to clipboard'));
-}
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
-}
-</script>
+<script src="../assets/app.js" defer></script>
 </body>
 </html>
