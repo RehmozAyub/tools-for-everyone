@@ -11,6 +11,8 @@ I believe technology should be shared for good and productive purposes, so every
 
 Every tool runs entirely in your browser. Nothing you open here is ever uploaded to a server, mine or anyone else's.
 
+You can also install the site as an app. Open the live site and use the **Install app** button in the header (Chrome, Edge, and Android). On iPhone, use Share then **Add to Home Screen**. It then opens in its own window and keeps working offline.
+
 Most tools come in **two versions**:
 - **HTML (browser)** - what the live site above runs. Also works completely offline: double-click the `.html` file in any tool folder and it runs instantly, no setup needed.
 - **Streamlit (Python)** - a fuller desktop app for the original six tools, for anyone who prefers a local Python environment. Some of these require a `.env` file for configuration, which you can create yourself from each tool's own README.
@@ -50,7 +52,7 @@ Rename many files at once with find and replace, regex patterns, prefix/suffix, 
 [Open in browser](https://rehmozayub.github.io/tools-for-everyone/Bulk%20File%20Renamer/bulk_rename.html) · [Streamlit version](Bulk%20File%20Renamer/)
 
 ### Audio Transcriber
-Transcribe audio files or live recordings two ways: with OpenAI's Whisper API using a key you provide, or fully offline with a small Whisper model that runs in your browser and needs no key at all.
+Transcribe audio files or live recordings two ways: fully offline with a small Whisper model that runs in your browser and needs no key at all (the default), or with OpenAI's Whisper API using a key you provide. There is no file size or length limit either way: long recordings are decoded once and transcribed in parts, with the transcript building up as it goes.
 [Open in browser](https://rehmozayub.github.io/tools-for-everyone/Audio%20Transcriber/audio_transcriber.html) · [Streamlit version](Audio%20Transcriber/)
 
 ### Virtual Card Manager

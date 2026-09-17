@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tools-for-everyone-v3';
+const CACHE_NAME = 'tools-for-everyone-v4';
 const APP_SHELL = [
   './',
   './index.html',
@@ -36,11 +36,24 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Page navigations: always try the network first so edits are never masked by a stale
-// cache; fall back to the cached shell only when the network is genuinely unavailable.
-// Sub-resources (CSS, etc.) from this origin: cache first, since they're versioned by
-// the page's own cache-busting if it ever needs it. Cross-origin CDN requests pass
-// through untouched, letting the browser's own HTTP cache handle those.
+// Everything from this origin is network first, and the cache is refreshed on every
+// success. The cache is read only when the network is genuinely unavailable, which is
+// what keeps the tools working offline.
+//
+// Sub-resources used to be cache first. That meant a returning visitor kept the
+// stylesheet from their previous visit until the service worker version changed and
+// the page was loaded twice, so a redesign showed up as new markup wearing the old
+// theme. Freshness matters more here than the few milliseconds cache first saved.
+//
+// Cross-origin CDN requests pass through untouched, letting the browser's own HTTP
+// cache handle those.
+function cacheFirstUpdate(req, res) {
+  if (!res || !res.ok) return res;
+  const copy = res.clone();
+  caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
+  return res;
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
@@ -50,12 +63,16 @@ self.addEventListener('fetch', (event) => {
 
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req).catch(() => caches.match(req).then((cached) => cached || caches.match('./index.html')))
+      fetch(req)
+        .then((res) => cacheFirstUpdate(req, res))
+        .catch(() => caches.match(req).then((cached) => cached || caches.match('./index.html')))
     );
     return;
   }
 
   event.respondWith(
-    caches.match(req).then((cached) => cached || fetch(req))
+    fetch(req)
+      .then((res) => cacheFirstUpdate(req, res))
+      .catch(() => caches.match(req))
   );
 });

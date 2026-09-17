@@ -208,6 +208,38 @@
     else if (mq.addListener) mq.addListener(handler);
   }
 
+  /* ---------- Install as an app ---------- */
+
+  /* Browsers keep the install option buried in a menu, so the button below only
+     appears once the browser has told us the site actually qualifies. Safari fires
+     nothing and installs through its own share sheet, so the button stays hidden
+     there rather than promising something that will not happen. */
+  function initInstall() {
+    var btn = document.getElementById('installApp');
+    if (!btn) return;
+    var deferredPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      deferredPrompt = e;
+      btn.classList.remove('hidden');
+    });
+
+    btn.addEventListener('click', function () {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function () {
+        deferredPrompt = null;
+        btn.classList.add('hidden');
+      }).catch(function () {});
+    });
+
+    window.addEventListener('appinstalled', function () {
+      deferredPrompt = null;
+      btn.classList.add('hidden');
+    });
+  }
+
   /* ---------- Service worker ---------- */
 
   function initServiceWorker() {
@@ -239,5 +271,6 @@
   initTheme();
   initDropZoneKeys();
   initPanels();
+  initInstall();
   initServiceWorker();
 })();
