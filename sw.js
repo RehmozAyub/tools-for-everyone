@@ -1,10 +1,11 @@
-const CACHE_NAME = 'tools-for-everyone-v4';
+const CACHE_NAME = 'tools-for-everyone-v5';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
   './assets/theme.css',
   './assets/app.js',
+  './assets/transcriber-worker.js',
   './assets/favicon.svg',
   './assets/fonts/geist-latin-wght-normal.woff2',
   './assets/fonts/geist-mono-latin-wght-normal.woff2',
@@ -54,6 +55,20 @@ function cacheFirstUpdate(req, res) {
   return res;
 }
 
+// GitHub Pages serves this site with Cache-Control: max-age=600, so for ten minutes
+// after a deploy the browser will happily reuse the previous copy of a page without
+// asking the server. Going to the network is not enough on its own, because "the
+// network" can still mean the browser's own HTTP cache. These force a real trip:
+// pages are fetched outright, everything else revalidates and takes a cheap 304 when
+// nothing has changed.
+function networkRequest(req, mode) {
+  try {
+    return new Request(req.url, { cache: mode, credentials: 'same-origin' });
+  } catch (e) {
+    return req;
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
@@ -63,7 +78,7 @@ self.addEventListener('fetch', (event) => {
 
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req)
+      fetch(networkRequest(req, 'reload'))
         .then((res) => cacheFirstUpdate(req, res))
         .catch(() => caches.match(req).then((cached) => cached || caches.match('./index.html')))
     );
@@ -71,7 +86,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    fetch(req)
+    fetch(networkRequest(req, 'no-cache'))
       .then((res) => cacheFirstUpdate(req, res))
       .catch(() => caches.match(req))
   );

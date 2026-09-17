@@ -241,6 +241,13 @@ function handleFile(file) {
     const meta = document.getElementById('fileMeta');
     const length = fmtDuration(player.duration);
     if (meta && length) meta.textContent = `${length}, ${fmtSize(file.size)}`;
+    // Measured at roughly an eighth of the recording's length on a laptop. A phone is
+    // several times slower again, so it is worth saying so before someone starts a
+    // two hour file and wonders whether it has hung.
+    if (player.duration > 600) {
+      document.getElementById('fileInfo').insertAdjacentHTML('beforeend',
+        '<div class="info-msg"><i class="ph ph-clock" aria-hidden="true"></i> <span>That is a long recording. Offline transcription takes roughly an eighth of its length on a laptop, and several times that on a phone. It runs in the background, so the page stays usable and the transcript appears part by part.</span></div>');
+    }
   }, { once: true });
 }
 
@@ -492,14 +499,79 @@ function describeFailure(e) {
   return message;
 }
 
+// The model runs in a worker so the page keeps drawing while it works. Opening a
+// module worker fails on a couple of routes, notably a page opened straight off the
+// disk with file://, so the old in-page path is kept as a fallback.
+function startOfflineWorker(onDownload) {
+  return new Promise((resolve, reject) => {
+    let worker;
+    try {
+      worker = new Worker('../assets/transcriber-worker.js', { type: 'module' });
+    } catch (e) {
+      reject(e);
+      return;
+    }
+    const fail = (err) => {
+      try { worker.terminate(); } catch (_) {}
+      reject(err instanceof Error ? err : new Error('The offline engine could not start.'));
+    };
+    const onMessage = (ev) => {
+      const m = ev.data || {};
+      if (m.type === 'download') { onDownload(m.progress); return; }
+      if (m.type === 'ready') {
+        worker.removeEventListener('message', onMessage);
+        worker.removeEventListener('error', fail);
+        resolve(worker);
+        return;
+      }
+      if (m.type === 'error') fail(new Error(m.message));
+    };
+    worker.addEventListener('message', onMessage);
+    worker.addEventListener('error', fail);
+    worker.postMessage({ type: 'load' });
+  });
+}
+
+function workerTranscribe(worker, samples) {
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      worker.removeEventListener('message', onMessage);
+      worker.removeEventListener('error', onError);
+    };
+    const onMessage = (ev) => {
+      const m = ev.data || {};
+      if (m.type === 'result') { cleanup(); resolve(m.text); }
+      else if (m.type === 'error') { cleanup(); reject(new Error(m.message)); }
+    };
+    const onError = () => {
+      cleanup();
+      reject(new Error('The offline engine stopped part way through.'));
+    };
+    worker.addEventListener('message', onMessage);
+    worker.addEventListener('error', onError);
+    // Handing the buffer over rather than copying it keeps one copy of the audio in
+    // play instead of two.
+    worker.postMessage({ type: 'transcribe', buffer: samples.buffer }, [samples.buffer]);
+  });
+}
+
 async function transcribeOffline(file, btn) {
   setBusy(btn, true, 'Transcribing...');
+  let worker = null;
   try {
     reportProgress(0, 1, 'Reading the audio');
     const pcm = await decodeAudioTo16kMono(file);
 
     reportProgress(0, 1, 'Loading the offline model');
-    const transcriber = await getOfflineTranscriber();
+    let inPageTranscriber = null;
+    try {
+      worker = await startOfflineWorker((p) => {
+        setProgress(document.getElementById('statusArea'), p, 'Downloading the offline model');
+      });
+    } catch (e) {
+      worker = null;
+      inPageTranscriber = await getOfflineTranscriber();
+    }
 
     const parts = partCount(pcm.length, OFFLINE_PART_SECONDS);
     let transcript = '';
@@ -507,13 +579,11 @@ async function transcribeOffline(file, btn) {
     for (let i = 0; i < parts; i++) {
       reportProgress(i, parts, `Transcribing part ${i + 1} of ${parts}`);
       const [from, to] = partRange(i, OFFLINE_PART_SECONDS, pcm.length);
-      // A copy, not a view: the model may hand the buffer to a worker, and a view
-      // would take the whole recording along with it.
       const slice = pcm.slice(from, to);
-      // Whisper only ever sees 30 seconds at a time. Without chunk_length_s the
-      // library silently keeps the first 30 seconds and throws the rest away.
-      const result = await transcriber(slice, { chunk_length_s: 30, stride_length_s: 5 });
-      transcript = joinParts(transcript, result.text);
+      const text = worker
+        ? await workerTranscribe(worker, slice)
+        : (await inPageTranscriber(slice, { chunk_length_s: 30, stride_length_s: 5 })).text;
+      transcript = joinParts(transcript, text);
       showPartial(transcript);
     }
 
@@ -521,6 +591,9 @@ async function transcribeOffline(file, btn) {
   } catch (e) {
     document.getElementById('statusArea').innerHTML = `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>${escapeHTML(describeFailure(e))}</span></div>`;
   } finally {
+    // Giving the model and its WebAssembly heap back is what keeps a long recording
+    // from being killed on a phone.
+    if (worker) { try { worker.terminate(); } catch (_) {} }
     setBusy(btn, false);
   }
 }
