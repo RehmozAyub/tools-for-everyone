@@ -1,9 +1,13 @@
-const CACHE_NAME = 'tools-for-everyone-v2';
+const CACHE_NAME = 'tools-for-everyone-v3';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
   './assets/theme.css',
+  './assets/app.js',
+  './assets/favicon.svg',
+  './assets/fonts/geist-latin-wght-normal.woff2',
+  './assets/fonts/geist-mono-latin-wght-normal.woff2',
   './PDF%20Suite/pdf_suite.html',
   './QR%20Code%20Studio/qr_code_studio.html',
   './Metadata%20Scrubber/metadata_scrubber.html',

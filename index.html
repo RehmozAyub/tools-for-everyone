@@ -16,249 +16,250 @@
 <meta name="twitter:description" content="Eight free tools for PDFs, images, video, and files that run entirely in your browser. No uploads, no accounts, no installs.">
 <meta name="twitter:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0b0d10">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f3f5">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1114">
+<link rel="icon" href="assets/favicon.svg">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script>
+  try {
+    var t = localStorage.getItem('theme');
+    if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+</script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <link rel="stylesheet" href="assets/theme.css">
 <style>
-  body { background: radial-gradient(ellipse 900px 500px at 15% -10%, rgba(227,165,58,0.07), transparent), var(--bg); }
-  .wrap { max-width: 1080px; margin: 0 auto; padding: 72px 24px 56px; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 24px; }
 
-  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 40px; }
-  .brand .ph { font-size: 1.3rem; color: var(--accent); }
-  .brand span { font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; }
-
-  .hero { max-width: 640px; margin-bottom: 20px; }
-  .hero h1 {
-    font-family: var(--font-display);
-    font-size: clamp(2rem, 4vw, 2.7rem);
-    line-height: 1.15;
-    margin-bottom: 16px;
-  }
-  .hero p { color: var(--text-muted); font-size: 1.05rem; line-height: 1.6; max-width: 52ch; }
-
-  .badge-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 24px 0 48px; }
-  .badge {
-    display: inline-flex; align-items: center; gap: 7px;
-    background: var(--surface); border: 1px solid var(--border);
-    padding: 7px 14px; border-radius: var(--radius-pill);
-    font-size: 0.82rem; color: var(--text-muted);
-  }
-  .badge .ph { color: var(--success); font-size: 0.95rem; }
-
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    grid-template-rows: repeat(3, minmax(150px, auto));
-    grid-template-areas:
-      "pdf  pdf  qr    meta"
-      "pdf  pdf  rename audio"
-      "card image video video";
-    gap: 14px;
-  }
-
-  .tile {
-    position: relative;
-    overflow: hidden;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    padding: 22px;
-    text-decoration: none;
-    color: var(--text);
+  .site-header {
+    height: 64px;
     display: flex;
-    flex-direction: column;
-    gap: 10px;
-    transition: border-color 0.15s, background 0.15s;
-  }
-  .tile:hover { border-color: var(--border-strong); background: var(--surface-2); }
-
-  .tile-icon {
-    width: 38px; height: 38px;
-    border-radius: var(--radius-sm);
-    background: var(--accent-tint);
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-  }
-  .tile-icon .ph { font-size: 1.15rem; color: var(--accent); }
-
-  .tile h2 { font-size: 1.05rem; margin-bottom: 0; gap: 0; }
-  .tile p { color: var(--text-muted); font-size: 0.88rem; line-height: 1.5; flex: 1; }
-  .tile .go { font-size: 0.8rem; color: var(--accent); font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
-
-  .tile-pdf {
-    grid-area: pdf;
-    padding: 32px;
-    justify-content: flex-end;
-  }
-  .tile-pdf::before {
-    content: "\e33a";
-    font-family: "Phosphor";
-    position: absolute;
-    top: -30px; right: -24px;
-    font-size: 11rem;
-    color: var(--accent);
-    opacity: 0.06;
-    line-height: 1;
-  }
-  .tile-pdf .tile-icon { width: 46px; height: 46px; margin-bottom: 4px; }
-  .tile-pdf .tile-icon .ph { font-size: 1.4rem; }
-  .tile-pdf h2 { font-size: 1.4rem; }
-  .tile-pdf p { font-size: 0.95rem; max-width: 40ch; }
-
-  .tile-qr { grid-area: qr; }
-  .tile-meta { grid-area: meta; }
-  .tile-rename { grid-area: rename; }
-  .tile-audio { grid-area: audio; }
-  .tile-card { grid-area: card; }
-  .tile-image { grid-area: image; }
-
-  .tile-video {
-    grid-area: video;
-    flex-direction: row;
     align-items: center;
-    gap: 18px;
+    gap: 16px;
   }
-  .tile-video .tile-icon { flex-shrink: 0; }
-  .tile-video h2 { flex-shrink: 0; }
-  .tile-video p { margin-bottom: 0; }
-  .tile-video .go { flex-shrink: 0; }
-  @media (max-width: 560px) {
-    .tile-video { flex-direction: column; align-items: flex-start; }
-  }
-
-  .note {
-    margin-top: 40px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    padding: 18px 20px;
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    line-height: 1.6;
+  .wordmark {
     display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .wordmark .ph { font-size: 1.25rem; color: var(--text-muted); }
+  .site-header .actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
     gap: 12px;
   }
-  .note .ph { color: var(--accent); font-size: 1.1rem; flex-shrink: 0; margin-top: 2px; }
-  .note a { color: var(--text); }
-
-  footer {
-    text-align: center; color: var(--text-faint); font-size: 0.85rem;
-    margin-top: 48px;
+  .site-header .actions a.text-link {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-decoration: none;
   }
-  footer a { color: var(--text-muted); text-decoration: none; }
-  footer a:hover { color: var(--accent); }
+  .site-header .actions a.text-link:hover { color: var(--text); }
 
-  @media (max-width: 760px) {
-    .grid { grid-template-columns: 1fr; grid-template-areas: none; }
-    .tile { grid-area: auto !important; }
-    .tile-pdf::before { display: none; }
+  .hero { max-width: 640px; padding-top: 64px; }
+  .hero h1 {
+    font-size: clamp(2.25rem, 4.5vw, 3.25rem);
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin-bottom: 16px;
+  }
+  .hero p { color: var(--text-muted); font-size: 1.0625rem; }
+
+  .directory {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    margin-top: 80px;
+  }
+  .cell {
+    position: relative;
+    background: var(--surface);
+    padding: 28px;
+    text-decoration: none;
+    color: var(--text);
+    display: block;
+  }
+  .cell:hover { background: var(--surface-2); }
+  .cell .tool-icon { font-size: 1.5rem; color: var(--text); display: block; }
+  .cell h2 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 14px 0 6px;
+    padding-right: 24px;
+  }
+  .cell .desc { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 10px; }
+  .cell .accepts {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-faint);
+  }
+  .cell .go {
+    position: absolute;
+    top: 28px;
+    right: 28px;
+    font-size: 1rem;
+    color: var(--text-faint);
+  }
+  .cell:hover .go { color: var(--text-muted); }
+
+  .privacy { margin-top: 80px; }
+  .privacy h2 { font-size: 1.375rem; letter-spacing: -0.01em; margin-bottom: 20px; }
+  .privacy ul { list-style: none; max-width: 65ch; }
+  .privacy li {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    font-size: 0.9375rem;
+  }
+  .privacy li .ph { font-size: 1.25rem; color: var(--text-muted); flex-shrink: 0; margin-top: 0.1em; }
+  .privacy .aside { color: var(--text-muted); font-size: 0.875rem; margin-top: 24px; }
+
+  .site-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    align-items: center;
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+    margin-top: 80px;
+    padding: 24px 0 40px;
+    border-top: 1px solid var(--border);
+  }
+  .site-footer a { color: var(--text-muted); text-decoration: none; }
+  .site-footer a:hover { color: var(--accent); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .cell, .cell .go { transition: color 160ms var(--ease), background-color 160ms var(--ease), transform 160ms var(--ease); }
+    .cell:hover .go { transform: translateX(2px); }
+  }
+
+  @media (max-width: 720px) {
+    .directory { grid-template-columns: 1fr; margin-top: 48px; }
+    .privacy, .site-footer { margin-top: 48px; }
+    .hero { padding-top: 40px; }
+  }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 0 16px; }
+    .cell { padding: 24px; }
+    .cell .go { top: 24px; right: 24px; }
   }
 </style>
 </head>
-<body>
+<body data-sw-path="sw.js">
 <div class="wrap">
-  <div class="brand">
-    <i class="ph ph-toolbox"></i>
-    <span>Tools for Everyone</span>
-  </div>
+  <header class="site-header">
+    <a class="wordmark" href="index.html">
+      <i class="ph ph-toolbox" aria-hidden="true"></i>
+      <span>Tools for Everyone</span>
+    </a>
+    <div class="actions">
+      <a class="text-link" href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a>
+      <button class="icon-btn" type="button" id="themeToggle" aria-label="Toggle theme"></button>
+    </div>
+  </header>
 
   <div class="hero">
-    <h1>Free tools that stay on your device</h1>
-    <p>Eight browser-based tools for PDFs, images, video, and privacy. No accounts, no installs, nothing uploaded anywhere.</p>
+    <h1>Free tools that stay on your device.</h1>
+    <p>Eight browser tools for PDFs, images, video, and privacy. Nothing you open here is uploaded anywhere.</p>
   </div>
 
-  <div class="badge-row">
-    <span class="badge"><i class="ph ph-shield-check"></i> Runs entirely in your browser</span>
-    <span class="badge"><i class="ph ph-wifi-slash"></i> Works offline once loaded</span>
-    <span class="badge"><i class="ph ph-lock-key"></i> Your files never touch a server</span>
-  </div>
-
-  <div class="grid">
-    <a class="tile tile-pdf" href="PDF%20Suite/pdf_suite.html">
-      <div class="tile-icon"><i class="ph ph-file-pdf"></i></div>
+  <section class="directory" aria-label="Tools">
+    <a class="cell" href="PDF%20Suite/pdf_suite.html">
+      <i class="ph ph-file-pdf tool-icon" aria-hidden="true"></i>
       <h2>PDF Suite</h2>
-      <p>Merge, split, compress, watermark, and a dozen more PDF tools in one page.</p>
-      <span class="go">Open tool <i class="ph ph-arrow-right"></i></span>
+      <p class="desc">Merge, split, compress, watermark, and a dozen more PDF jobs in one page.</p>
+      <p class="accepts">PDF</p>
+      <i class="ph ph-arrow-right go" aria-hidden="true"></i>
     </a>
 
-    <a class="tile tile-qr" href="QR%20Code%20Studio/qr_code_studio.html">
-      <div class="tile-icon"><i class="ph ph-qr-code"></i></div>
-      <h2>QR Code Studio</h2>
-      <p>Generate and scan QR codes for links, WiFi, and contact cards.</p>
-      <span class="go">Open tool <i class="ph ph-arrow-right"></i></span>
-    </a>
-
-    <a class="tile tile-meta" href="Metadata%20Scrubber/metadata_scrubber.html">
-      <div class="tile-icon"><i class="ph ph-shield-check"></i></div>
-      <h2>Metadata Scrubber</h2>
-      <p>See and remove hidden metadata, including GPS location, from your files.</p>
-      <span class="go">Open tool <i class="ph ph-arrow-right"></i></span>
-    </a>
-
-    <a class="tile tile-rename" href="Bulk%20File%20Renamer/bulk_rename.html">
-      <div class="tile-icon"><i class="ph ph-folders"></i></div>
-      <h2>Bulk File Renamer</h2>
-      <p>Rename hundreds of files at once with patterns, numbering, and regex.</p>
-      <span class="go">Open tool <i class="ph ph-arrow-right"></i></span>
-    </a>
-
-    <a class="tile tile-audio" href="Audio%20Transcriber/audio_transcriber.html">
-      <div class="tile-icon"><i class="ph ph-microphone"></i></div>
-      <h2>Audio Transcriber</h2>
-      <p>Turn recordings into text using your own OpenAI Whisper key.</p>
-      <span class="go">Open tool <i class="ph ph-arrow-right"></i></span>
-    </a>
-
-    <a class="tile tile-card" href="Virtual%20Card%20Manager/virtual_card_manager.html">
-      <div class="tile-icon"><i class="ph ph-credit-card"></i></div>
-      <h2>Virtual Card Manager</h2>
-      <p>Create Luhn-valid test card numbers for signups you do not trust yet.</p>
-      <span class="go">Open tool <i class="ph ph-arrow-right"></i></span>
-    </a>
-
-    <a class="tile tile-image" href="Image%20Compressor/image_compressor.html">
-      <div class="tile-icon"><i class="ph ph-image"></i></div>
+    <a class="cell" href="Image%20Compressor/image_compressor.html">
+      <i class="ph ph-image tool-icon" aria-hidden="true"></i>
       <h2>Image Compressor</h2>
-      <p>Compress and convert JPG, PNG, and WebP images without uploading them.</p>
-      <span class="go">Open tool <i class="ph ph-arrow-right"></i></span>
+      <p class="desc">Shrink, resize, and convert photos without uploading a single file.</p>
+      <p class="accepts">JPG PNG WebP GIF</p>
+      <i class="ph ph-arrow-right go" aria-hidden="true"></i>
     </a>
 
-    <a class="tile tile-video" href="Video%20Converter/video_converter.html">
-      <div class="tile-icon"><i class="ph ph-film-strip"></i></div>
+    <a class="cell" href="Video%20Converter/video_converter.html">
+      <i class="ph ph-film-strip tool-icon" aria-hidden="true"></i>
       <h2>Video Converter</h2>
-      <p>Turn video into a GIF, or compress it down. Runs on a small in-browser engine, no upload required.</p>
-      <span class="go">Open tool <i class="ph ph-arrow-right"></i></span>
+      <p class="desc">Turn a clip into a GIF, or compress it down, on a small in-browser engine.</p>
+      <p class="accepts">MP4 MOV WebM</p>
+      <i class="ph ph-arrow-right go" aria-hidden="true"></i>
     </a>
-  </div>
 
-  <div class="note">
-    <i class="ph ph-info"></i>
-    <span>Every tool above processes files locally, in your browser. The only exception is Audio Transcriber's OpenAI mode, which sends audio straight to OpenAI using an API key you provide, never to us; its offline mode stays local too. Prefer a desktop app instead? Most tool folders also have a Python version, documented in the <a href="https://github.com/RehmozAyub/tools-for-everyone">repository README</a>.</span>
-  </div>
+    <a class="cell" href="QR%20Code%20Studio/qr_code_studio.html">
+      <i class="ph ph-qr-code tool-icon" aria-hidden="true"></i>
+      <h2>QR Code Studio</h2>
+      <p class="desc">Make QR codes for links, WiFi, and contacts, or read one from an image.</p>
+      <p class="accepts">Text, WiFi, vCard, email</p>
+      <i class="ph ph-arrow-right go" aria-hidden="true"></i>
+    </a>
 
-  <footer>
-    Made by <a href="https://github.com/RehmozAyub">RehmozAyub</a> · <a href="https://github.com/RehmozAyub/tools-for-everyone">Source on GitHub</a> · <a href="#" onclick="shareThisPage();return false;">Share</a>
+    <a class="cell" href="Metadata%20Scrubber/metadata_scrubber.html">
+      <i class="ph ph-shield-check tool-icon" aria-hidden="true"></i>
+      <h2>Metadata Scrubber</h2>
+      <p class="desc">See and remove hidden metadata, including GPS location, before you share.</p>
+      <p class="accepts">JPG PNG WebP PDF DOCX XLSX PPTX</p>
+      <i class="ph ph-arrow-right go" aria-hidden="true"></i>
+    </a>
+
+    <a class="cell" href="Bulk%20File%20Renamer/bulk_rename.html">
+      <i class="ph ph-folders tool-icon" aria-hidden="true"></i>
+      <h2>Bulk File Renamer</h2>
+      <p class="desc">Rename hundreds of files at once with patterns, numbering, and regex.</p>
+      <p class="accepts">Any file type</p>
+      <i class="ph ph-arrow-right go" aria-hidden="true"></i>
+    </a>
+
+    <a class="cell" href="Audio%20Transcriber/audio_transcriber.html">
+      <i class="ph ph-microphone tool-icon" aria-hidden="true"></i>
+      <h2>Audio Transcriber</h2>
+      <p class="desc">Transcribe recordings with your own OpenAI key, or fully offline in the browser.</p>
+      <p class="accepts">MP3 WAV M4A and more</p>
+      <i class="ph ph-arrow-right go" aria-hidden="true"></i>
+    </a>
+
+    <a class="cell" href="Virtual%20Card%20Manager/virtual_card_manager.html">
+      <i class="ph ph-credit-card tool-icon" aria-hidden="true"></i>
+      <h2>Virtual Card Manager</h2>
+      <p class="desc">Create Luhn-valid test card numbers for signups you do not trust yet.</p>
+      <p class="accepts">Test numbers only</p>
+      <i class="ph ph-arrow-right go" aria-hidden="true"></i>
+    </a>
+  </section>
+
+  <section class="privacy">
+    <h2>Nothing leaves your device.</h2>
+    <ul>
+      <li><i class="ph ph-shield-check" aria-hidden="true"></i><span>Your files are processed by your own browser, not by a server.</span></li>
+      <li><i class="ph ph-wifi-slash" aria-hidden="true"></i><span>Once a tool has loaded, it keeps working with the internet switched off.</span></li>
+      <li><i class="ph ph-code" aria-hidden="true"></i><span>The source code is public on GitHub, so you can check any of this yourself.</span></li>
+    </ul>
+    <p class="aside">One honest exception: Audio Transcriber's OpenAI mode sends your audio straight from your browser to OpenAI with a key you provide, never to us. Its offline mode stays on your device like everything else. If you would rather use a desktop app, most tool folders also ship a Python version, documented in the <a href="https://github.com/RehmozAyub/tools-for-everyone">repository README</a>.</p>
+  </section>
+
+  <footer class="site-footer">
+    <span>Made by <a href="https://github.com/RehmozAyub">RehmozAyub</a></span>
+    <a href="https://github.com/RehmozAyub/tools-for-everyone">Source on GitHub</a>
+    <button class="link-btn" type="button" onclick="sharePage()">Share</button>
+    <span>MIT licence</span>
   </footer>
 </div>
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
-}
-function shareThisPage() {
-  const data = { title: document.title, text: 'Free browser tools that never upload your files.', url: location.href };
-  if (navigator.share) { navigator.share(data).catch(() => {}); return; }
-  navigator.clipboard.writeText(location.href).then(() => {
-    const t = document.createElement('div');
-    t.className = 'toast';
-    t.innerHTML = '<i class="ph ph-check-circle"></i> Link copied to clipboard';
-    document.body.appendChild(t);
-    setTimeout(() => t.remove(), 2500);
-  });
-}
-</script>
+<script src="assets/app.js" defer></script>
 </body>
 </html>
