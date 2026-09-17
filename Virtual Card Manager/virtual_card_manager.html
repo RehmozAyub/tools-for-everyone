@@ -483,7 +483,7 @@ function render() {
           <span>Spent <span class="value">${money(spent)}</span></span>
           <span>Left <span class="value">${money(remaining)}</span></span>
         </div>
-        <div class="cap-bar"><div class="cap-fill ${fillClass}" style="width:${Math.min(pct, 100).toFixed(1)}%"></div></div>
+        <div class="cap-bar"><div class="cap-fill ${fillClass}" data-pct="${Math.min(pct, 100).toFixed(1)}"></div></div>
         <div class="card-actions">
           <input type="number" class="charge-input" id="charge-${idx}" min="0" max="${remaining > 0 ? remaining : 0.01}" step="1" value="0" aria-label="Amount to log against ${escapeHTML(card.nickname)}">
           <button class="btn btn-sm btn-charge" type="button" onclick="logCharge(${idx}, this)" ${isFrozen ? 'disabled' : ''}><i class="ph ph-coin" aria-hidden="true"></i> Log charge</button>
@@ -499,6 +499,8 @@ function render() {
     `;
   }
   cardList.innerHTML = html;
+  // The bar width is a computed number, so it is set here rather than inline in the markup.
+  cardList.querySelectorAll('.cap-fill').forEach(el => { el.style.width = el.dataset.pct + '%'; });
 }
 
 function escapeHTML(str) {

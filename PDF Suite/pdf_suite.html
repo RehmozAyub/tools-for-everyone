@@ -155,7 +155,7 @@ function renderTool() {
       <div class="form-group"><label for="wmSize">Font size</label><input type="number" id="wmSize" value="60" min="10" max="200"></div></div>
       <div class="form-row"><div class="form-group"><label for="wmOpacity">Opacity</label><input type="range" id="wmOpacity" min="0.05" max="1" value="0.15" step="0.05">
       <div class="slider-value" id="wmOpVal">0.15</div></div>
-      <div class="form-group"><label for="wmColor">Colour</label><input type="color" id="wmColor" value="#888888"></div></div>
+      <div class="form-group"><label for="wmColor">Color</label><input type="color" id="wmColor" value="#888888"></div></div>
       <button class="btn btn-primary" type="button" onclick="doWatermark(this)"><i class="ph ph-drop" aria-hidden="true"></i> Add watermark</button><div id="wmResult"></div>`; break;
     case 'page_numbers': c.innerHTML = `<h2>Page numbers</h2><p class="tool-info"><i class="ph ph-info" aria-hidden="true"></i> <span>Number every page in the position and style you pick.</span></p>
       ${dropZoneHTML('pn','.pdf',false,'Choose a PDF to number','PDF, one file')}<div class="form-row">

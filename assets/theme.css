@@ -391,7 +391,6 @@ textarea {
   font-family: inherit;
   font-size: 0.9375rem;
   line-height: 1.4;
-  outline: none;
   resize: vertical;
 }
 input:focus, select:focus, textarea:focus { border-color: var(--accent); }
