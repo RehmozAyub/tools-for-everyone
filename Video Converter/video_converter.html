@@ -16,57 +16,81 @@
 <meta name="twitter:description" content="Convert video to GIF or compress video for free, right in your browser. No upload, no watermark, no signup.">
 <meta name="twitter:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
 <link rel="manifest" href="../manifest.json">
-<meta name="theme-color" content="#0b0d10">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f3f5">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1114">
+<link rel="icon" href="../assets/favicon.svg">
 <link rel="apple-touch-icon" href="../assets/icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script>
+  try {
+    var t = localStorage.getItem('theme');
+    if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+</script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <link rel="stylesheet" href="../assets/theme.css">
 <style>
-  .result-preview { max-width: 100%; border-radius: var(--radius-md); margin: 12px 0; display: block; background: var(--surface-2); }
-  .progress-track { background: var(--surface-2); border-radius: var(--radius-pill); height: 8px; overflow: hidden; margin: 8px 0; }
-  .progress-fill { background: var(--accent); height: 100%; border-radius: var(--radius-pill); transition: width 0.2s; }
-  .size-compare { font-family: var(--font-mono); font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
-  .size-compare .saved { color: var(--success); font-weight: 600; }
-  .size-compare .grew { color: var(--warning); font-weight: 600; }
+  .result-preview {
+    max-width: 100%;
+    border-radius: var(--radius);
+    margin: 12px 0;
+    display: block;
+    background: var(--surface-2);
+  }
+  .size-compare {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin: 8px 0;
+  }
+  .size-compare .saved { color: var(--success); }
+  .size-compare .grew { color: var(--warning); }
 </style>
 </head>
-<body>
-<div class="app">
-  <div class="sidebar">
-    <a class="hub-link" href="../index.html"><i class="ph ph-arrow-left"></i> All tools</a>
-    <h2><i class="ph ph-film-strip"></i> Select tool</h2>
-    <div id="toolList"></div>
+<body data-sw-path="../sw.js">
 
-    <hr class="divider">
-    <div class="info-msg"><i class="ph ph-info"></i> Uses a small video engine that downloads once (about 9MB) and runs fully in your browser after that. Best for short clips.</div>
-
-    <hr class="divider">
-    <h3>About</h3>
-    <p style="font-size:.85rem;color:var(--text-muted);">Free, open-source video converter. No file uploads to any server. Everything runs locally in your browser.</p>
-    <hr class="divider">
-    <p style="font-size:.85rem;">Made by <a href="https://github.com/RehmozAyub" style="color:var(--accent);text-decoration:none;">RehmozAyub</a></p>
+<header class="tool-header">
+  <a class="back" href="../index.html"><i class="ph ph-arrow-left" aria-hidden="true"></i> <span>All tools</span></a>
+  <h1><i class="ph ph-film-strip" aria-hidden="true"></i> Video Converter</h1>
+  <div class="header-actions">
+    <button class="icon-btn" type="button" id="themeToggle" aria-label="Toggle theme"></button>
+    <a class="icon-btn" href="https://github.com/RehmozAyub/tools-for-everyone" aria-label="Source on GitHub"><i class="ph ph-github-logo" aria-hidden="true"></i></a>
   </div>
+</header>
 
-  <div class="main">
-    <h1><i class="ph ph-film-strip"></i> Video Converter</h1>
-    <div class="sub-header">Turn video into a GIF, or compress it down. Nothing is uploaded.</div>
+<div class="tool-layout has-subtool-nav">
+  <nav class="subtool-nav" id="toolList" aria-label="Video tools"></nav>
+
+  <aside class="tool-controls">
+    <details class="panel" open data-mobile-collapsed>
+      <summary><span>About the engine</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
+      <div class="info-msg"><i class="ph ph-info" aria-hidden="true"></i> <span>This page uses a small video engine that downloads once, about 9MB, and then runs entirely in your browser. Short clips work best.</span></div>
+    </details>
+  </aside>
+
+  <main class="tool-main">
+    <p class="tool-intro">Turn video into a GIF, or compress it down. Nothing is uploaded.</p>
     <div id="toolContent"></div>
-    <div class="footer">Video Converter v1.0 · Built with HTML, JavaScript, and ffmpeg.wasm · <a href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a> · <a href="#" onclick="shareThisTool();return false;">Share</a></div>
-  </div>
+  </main>
 </div>
+
+<footer class="tool-footer">
+  <span>Made by <a href="https://github.com/RehmozAyub">RehmozAyub</a></span>
+  <a href="https://github.com/RehmozAyub/tools-for-everyone">Source on GitHub</a>
+  <button class="link-btn" type="button" onclick="sharePage()">Share</button>
+</footer>
 
 <script>
 const TOOLS = [
   { id: 'to_gif', icon: 'film-strip', name: 'Video to GIF' },
-  { id: 'compress', icon: 'gauge', name: 'Compress Video' },
+  { id: 'compress', icon: 'gauge', name: 'Compress video' },
 ];
 let currentTool = 'to_gif';
 
 function initToolList() {
   document.getElementById('toolList').innerHTML = TOOLS.map(t =>
-    `<div class="tool-item${t.id === currentTool ? ' active' : ''}" onclick="selectTool('${t.id}',this)"><i class="ph ph-${t.icon}"></i> ${t.name}</div>`
+    `<button class="tool-item${t.id === currentTool ? ' active' : ''}" type="button" onclick="selectTool('${t.id}',this)"><i class="ph ph-${t.icon}" aria-hidden="true"></i> ${t.name}</button>`
   ).join('');
 }
 function selectTool(id, el) {
@@ -76,9 +100,11 @@ function selectTool(id, el) {
   renderTool();
 }
 
-function dropZoneHTML(id, label) {
-  return `<div class="drop-zone" id="dz-${id}" onclick="document.getElementById('fi-${id}').click()">
-    <i class="ph ph-upload-simple"></i><p>${label}</p>
+function dropZoneHTML(id, label, hint) {
+  return `<div class="drop-zone" id="dz-${id}" role="button" tabindex="0" aria-label="${label}" onclick="document.getElementById('fi-${id}').click()">
+    <i class="ph ph-upload-simple" aria-hidden="true"></i>
+    <p class="dz-title">Drop a video here or browse</p>
+    <p class="dz-hint">${hint}</p>
     <input type="file" id="fi-${id}" accept="video/*">
   </div><div id="info-${id}"></div>`;
 }
@@ -86,22 +112,22 @@ function dropZoneHTML(id, label) {
 function renderTool() {
   const c = document.getElementById('toolContent');
   if (currentTool === 'to_gif') {
-    c.innerHTML = `<h2><i class="ph ph-film-strip"></i> Video to GIF</h2>
-      <p class="tool-info">Convert a video clip into an animated GIF.</p>
-      ${dropZoneHTML('gif', 'Upload a video, or click to browse')}
+    c.innerHTML = `<h2>Video to GIF</h2>
+      <p class="tool-info"><i class="ph ph-info" aria-hidden="true"></i> <span>Convert a video clip into an animated GIF.</span></p>
+      ${dropZoneHTML('gif', 'Choose a video to convert', 'MP4 MOV WebM AVI MKV, one file')}
       <div class="form-row">
-        <div class="form-group"><label>Frame rate (fps)</label><input type="range" id="gifFps" min="5" max="15" value="10"><div class="slider-value" id="gifFpsVal">10 fps</div></div>
-        <div class="form-group"><label>Max width (px)</label><input type="number" id="gifWidth" value="480" min="64" max="1280"></div>
+        <div class="form-group"><label for="gifFps">Frame rate (fps)</label><input type="range" id="gifFps" min="5" max="15" value="10"><div class="slider-value" id="gifFpsVal">10 fps</div></div>
+        <div class="form-group"><label for="gifWidth">Max width (px)</label><input type="number" id="gifWidth" value="480" min="64" max="1280"></div>
       </div>
-      <div class="form-group"><label>Duration to convert (seconds, from the start)</label><input type="number" id="gifDuration" value="5" min="1" max="60"></div>
-      <p style="font-size:.78rem;color:var(--text-muted);margin-top:-6px;">GIFs get large fast. Shorter, smaller clips work best.</p>
-      <button class="btn btn-primary" onclick="doVideoToGif()"><i class="ph ph-film-strip"></i> Convert to GIF</button>
+      <div class="form-group"><label for="gifDuration">Seconds to convert, counted from the start</label><input type="number" id="gifDuration" value="5" min="1" max="60"></div>
+      <p class="muted xsmall">GIFs get large fast. Shorter, smaller clips work best.</p>
+      <button class="btn btn-primary" type="button" onclick="doVideoToGif(this)"><i class="ph ph-film-strip" aria-hidden="true"></i> Convert to GIF</button>
       <div id="gifProgress"></div>
       <div id="gifResult"></div>`;
   } else {
-    c.innerHTML = `<h2><i class="ph ph-gauge"></i> Compress Video</h2>
-      <p class="tool-info">Shrink a video's file size. Output is always MP4.</p>
-      ${dropZoneHTML('cmp', 'Upload a video, or click to browse')}
+    c.innerHTML = `<h2>Compress video</h2>
+      <p class="tool-info"><i class="ph ph-info" aria-hidden="true"></i> <span>Shrink a video's file size. The output is always MP4.</span></p>
+      ${dropZoneHTML('cmp', 'Choose a video to compress', 'MP4 MOV WebM AVI MKV, one file')}
       <div class="form-group"><label>Compression</label>
         <div class="radio-group">
           <label><input type="radio" name="cmpLevel" value="23"><span>Light</span></label>
@@ -109,7 +135,7 @@ function renderTool() {
           <label><input type="radio" name="cmpLevel" value="35"><span>Strong</span></label>
         </div>
       </div>
-      <div class="form-group"><label>Max resolution</label>
+      <div class="form-group"><label for="cmpRes">Max resolution</label>
         <select id="cmpRes">
           <option value="0">Original</option>
           <option value="1080">1080p</option>
@@ -117,7 +143,7 @@ function renderTool() {
           <option value="480">480p</option>
         </select>
       </div>
-      <button class="btn btn-primary" onclick="doCompressVideo()"><i class="ph ph-gauge"></i> Compress video</button>
+      <button class="btn btn-primary" type="button" onclick="doCompressVideo(this)"><i class="ph ph-gauge" aria-hidden="true"></i> Compress video</button>
       <div id="cmpProgress"></div>
       <div id="cmpResult"></div>`;
   }
@@ -136,7 +162,8 @@ function setupDropZones() {
       const file = fi.files[0];
       if (!file) return;
       storedFiles[id] = file;
-      document.getElementById('info-' + id).innerHTML = `<div class="success-msg"><i class="ph ph-check-circle"></i> ${escapeHTML(file.name)} (${fmtSize(file.size)})</div>`;
+      document.getElementById('info-' + id).innerHTML =
+        `<div class="file-list"><div class="file-row"><span class="file-name">${escapeHTML(file.name)}</span><span class="file-size">${fmtSize(file.size)}</span></div></div>`;
     });
   });
   const fps = document.getElementById('gifFps');
@@ -179,7 +206,7 @@ function getFFmpeg(onStatus) {
       const coreBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm';
       const ffBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/esm';
 
-      onStatus && onStatus('Downloading video engine', 0);
+      onStatus && onStatus('Downloading the video engine', 0);
       const [coreURL, constSrc, errorsSrc, workerSrc] = await Promise.all([
         toBlobURL(`${coreBase}/ffmpeg-core.js`, 'text/javascript'),
         fetch(`${ffBase}/const.js`).then(r => r.text()),
@@ -187,7 +214,7 @@ function getFFmpeg(onStatus) {
         fetch(`${ffBase}/worker.js`).then(r => r.text()),
       ]);
       const wasmURL = await fetchWithProgress(`${coreBase}/ffmpeg-core.wasm`, 'application/wasm', (f) => {
-        onStatus && onStatus('Downloading video engine', Math.round(f * 90));
+        onStatus && onStatus('Downloading the video engine', Math.round(f * 90));
       });
 
       // worker.js statically imports ./const.js and ./errors.js by relative path, which
@@ -197,7 +224,7 @@ function getFFmpeg(onStatus) {
       const merged = strip(constSrc) + '\n' + strip(errorsSrc) + '\n' + strip(workerSrc);
       const classWorkerURL = URL.createObjectURL(new Blob([merged], { type: 'text/javascript' }));
 
-      onStatus && onStatus('Starting video engine', 95);
+      onStatus && onStatus('Starting the video engine', 95);
       const ffmpeg = new FFmpeg();
       ffmpeg.on('progress', (data) => { if (currentProgressHandler) currentProgressHandler(data); });
       await ffmpeg.load({ coreURL, wasmURL, classWorkerURL });
@@ -209,21 +236,19 @@ function getFFmpeg(onStatus) {
 }
 
 function showProgress(elId, label, pct) {
-  document.getElementById(elId).innerHTML = `
-    <div class="status-bar"><span class="spinner"></span> ${escapeHTML(label)}${pct != null ? ' (' + pct + '%)' : ''}</div>
-    ${pct != null ? `<div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>` : ''}
-  `;
+  setProgress(document.getElementById(elId), pct == null ? 0 : pct, label);
 }
 
-async function doVideoToGif() {
+async function doVideoToGif(btn) {
   const file = storedFiles['gif'];
-  if (!file) { alert('Upload a video first.'); return; }
+  if (!file) { showInlineError(btn, 'Choose a video first.'); return; }
   const fps = document.getElementById('gifFps').value;
   const width = parseInt(document.getElementById('gifWidth').value) || 480;
   const duration = Math.min(parseInt(document.getElementById('gifDuration').value) || 5, 60);
 
   document.getElementById('gifResult').innerHTML = '';
-  showProgress('gifProgress', 'Loading video engine', 0);
+  setBusy(btn, true, 'Converting...');
+  showProgress('gifProgress', 'Loading the video engine', 0);
 
   try {
     const ffmpeg = await getFFmpeg((label, pct) => setSafe('gifProgress', () => showProgress('gifProgress', label, pct)));
@@ -238,18 +263,24 @@ async function doVideoToGif() {
 
     const blob = new Blob([data.buffer], { type: 'image/gif' });
     const url = URL.createObjectURL(blob);
-    setSafe('gifProgress', () => { document.getElementById('gifProgress').innerHTML = ''; });
+    setSafe('gifProgress', () => clearProgress(document.getElementById('gifProgress')));
     setSafe('gifResult', () => { document.getElementById('gifResult').innerHTML = `
-      <div class="success-msg"><i class="ph ph-check-circle"></i> GIF created</div>
-      <div class="size-compare">${fmtSize(file.size)} <i class="ph ph-arrow-right"></i> ${fmtSize(blob.size)}</div>
-      <img class="result-preview" src="${url}" alt="Converted GIF preview">
-      <button class="btn btn-download" onclick="downloadBlobUrl('${url}','${file.name.replace(/\.[^.]+$/, '')}.gif')"><i class="ph ph-download-simple"></i> Download GIF</button>
-    `; });
+      <div class="result">
+        <div class="result-head">
+          <h2>Your GIF</h2>
+          <button class="btn btn-sm btn-download" type="button" onclick="downloadBlobUrl('${url}','${file.name.replace(/\.[^.]+$/, '')}.gif')"><i class="ph ph-download-simple" aria-hidden="true"></i> Download GIF</button>
+        </div>
+        <div class="result-body">
+          <div class="size-compare">${fmtSize(file.size)} <i class="ph ph-arrow-right" aria-hidden="true"></i> ${fmtSize(blob.size)}</div>
+          <img class="result-preview" src="${url}" alt="Preview of the converted GIF">
+        </div>
+      </div>`; });
   } catch (e) {
-    setSafe('gifProgress', () => { document.getElementById('gifProgress').innerHTML = ''; });
-    setSafe('gifResult', () => { document.getElementById('gifResult').innerHTML = `<div class="error-msg"><i class="ph ph-x-circle"></i> Error: ${escapeHTML(e.message)}</div>`; });
+    setSafe('gifProgress', () => clearProgress(document.getElementById('gifProgress')));
+    setSafe('gifResult', () => { document.getElementById('gifResult').innerHTML = `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>${escapeHTML(e.message)}</span></div>`; });
   } finally {
     currentProgressHandler = null;
+    setBusy(btn, false);
   }
 }
 
@@ -257,14 +288,15 @@ function setSafe(elId, fn) {
   if (document.getElementById(elId)) fn();
 }
 
-async function doCompressVideo() {
+async function doCompressVideo(btn) {
   const file = storedFiles['cmp'];
-  if (!file) { alert('Upload a video first.'); return; }
+  if (!file) { showInlineError(btn, 'Choose a video first.'); return; }
   const crf = document.querySelector('input[name="cmpLevel"]:checked').value;
   const maxRes = parseInt(document.getElementById('cmpRes').value) || 0;
 
   document.getElementById('cmpResult').innerHTML = '';
-  showProgress('cmpProgress', 'Loading video engine', 0);
+  setBusy(btn, true, 'Compressing...');
+  showProgress('cmpProgress', 'Loading the video engine', 0);
 
   try {
     const ffmpeg = await getFFmpeg((label, pct) => setSafe('cmpProgress', () => showProgress('cmpProgress', label, pct)));
@@ -285,18 +317,24 @@ async function doCompressVideo() {
     const blob = new Blob([data.buffer], { type: 'video/mp4' });
     const url = URL.createObjectURL(blob);
     const delta = Math.round((1 - blob.size / file.size) * 100);
-    setSafe('cmpProgress', () => { document.getElementById('cmpProgress').innerHTML = ''; });
+    setSafe('cmpProgress', () => clearProgress(document.getElementById('cmpProgress')));
     setSafe('cmpResult', () => { document.getElementById('cmpResult').innerHTML = `
-      <div class="success-msg"><i class="ph ph-check-circle"></i> Video compressed</div>
-      <div class="size-compare">${fmtSize(file.size)} <i class="ph ph-arrow-right"></i> ${fmtSize(blob.size)} <span class="${delta >= 0 ? 'saved' : 'grew'}">${delta >= 0 ? '-' : '+'}${Math.abs(delta)}%</span></div>
-      <video class="result-preview" src="${url}" controls></video>
-      <button class="btn btn-download" onclick="downloadBlobUrl('${url}','${file.name.replace(/\.[^.]+$/, '')}_compressed.mp4')"><i class="ph ph-download-simple"></i> Download MP4</button>
-    `; });
+      <div class="result">
+        <div class="result-head">
+          <h2>Your compressed video</h2>
+          <button class="btn btn-sm btn-download" type="button" onclick="downloadBlobUrl('${url}','${file.name.replace(/\.[^.]+$/, '')}_compressed.mp4')"><i class="ph ph-download-simple" aria-hidden="true"></i> Download MP4</button>
+        </div>
+        <div class="result-body">
+          <div class="size-compare">${fmtSize(file.size)} <i class="ph ph-arrow-right" aria-hidden="true"></i> ${fmtSize(blob.size)} <span class="${delta >= 0 ? 'saved' : 'grew'}">${delta >= 0 ? '-' : '+'}${Math.abs(delta)}%</span></div>
+          <video class="result-preview" src="${url}" controls></video>
+        </div>
+      </div>`; });
   } catch (e) {
-    setSafe('cmpProgress', () => { document.getElementById('cmpProgress').innerHTML = ''; });
-    setSafe('cmpResult', () => { document.getElementById('cmpResult').innerHTML = `<div class="error-msg"><i class="ph ph-x-circle"></i> Error: ${escapeHTML(e.message)}</div>`; });
+    setSafe('cmpProgress', () => clearProgress(document.getElementById('cmpProgress')));
+    setSafe('cmpResult', () => { document.getElementById('cmpResult').innerHTML = `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>${escapeHTML(e.message)}</span></div>`; });
   } finally {
     currentProgressHandler = null;
+    setBusy(btn, false);
   }
 }
 
@@ -310,24 +348,6 @@ function downloadBlobUrl(url, name) {
 initToolList();
 renderTool();
 </script>
-<script>
-function shareThisTool() {
-  const data = { title: document.title, text: 'A free browser tool that never uploads your files.', url: location.href };
-  if (navigator.share) { navigator.share(data).catch(() => {}); return; }
-  navigator.clipboard.writeText(location.href).then(() => showToast('Link copied to clipboard'));
-}
-
-function showToast(msg) {
-  const t = document.createElement('div');
-  t.className = 'toast';
-  t.innerHTML = '<i class="ph ph-check-circle"></i> ' + msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2500);
-}
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
-}
-</script>
+<script src="../assets/app.js" defer></script>
 </body>
 </html>
