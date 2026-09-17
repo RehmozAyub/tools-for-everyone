@@ -110,8 +110,16 @@
       </div>
 
       <div id="offlineConfig" class="mt-4">
-        <div class="info-msg"><i class="ph ph-info" aria-hidden="true"></i> <span>Runs a small Whisper model inside your browser. No key, no upload, no file size limit. The first run downloads about 40MB once, then it works offline. English only.</span></div>
-        <p class="muted xsmall mt-2">Offline transcripts are rougher than the API ones. For a quick clean-up, paste the result into another tool for a spelling pass, or use your editor's find and replace for repeated fixes.</p>
+        <div class="form-group">
+          <label>Quality</label>
+          <div class="radio-group">
+            <label><input type="radio" name="offlineModel" value="Xenova/whisper-tiny.en"><span>Fast, 38MB</span></label>
+            <label><input type="radio" name="offlineModel" value="Xenova/whisper-base.en" checked><span>More accurate, 73MB</span></label>
+          </div>
+          <p class="muted xsmall mt-2" id="modelNote"></p>
+        </div>
+        <div class="info-msg"><i class="ph ph-info" aria-hidden="true"></i> <span>Runs a Whisper model inside your browser. No key, no upload, no file size limit. The model downloads once, then it works offline. English only.</span></div>
+        <p class="muted xsmall mt-2">Both models are far smaller than the one behind the OpenAI option, so expect rougher text and the odd repeated phrase. For a long or important recording the API gives noticeably better results.</p>
       </div>
     </details>
   </aside>
@@ -186,6 +194,7 @@ let recordedChunks = [];
 let recordedBlob = null;
 let currentEngine = 'offline';
 let offlineTranscriberPromise = null;
+let offlineTranscriberModel = null;
 
 // Whisper works on 16 kHz mono audio, so everything is decoded to that once and then
 // cut into parts. This is what removes the file size limit: the page never hands a
@@ -222,6 +231,29 @@ function fmtSize(bytes) {
   return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
 }
 
+// A phone is several times slower again, so the estimate is deliberately the
+// optimistic end and says so.
+function showLongFileNote() {
+  const existing = document.getElementById('longFileNote');
+  if (existing) existing.remove();
+  const seconds = window._audioSeconds;
+  if (!seconds || seconds <= 600 || currentEngine !== 'offline') return;
+  const estimate = seconds * (MODEL_SPEED[selectedModel()] || 0.46);
+  document.getElementById('fileInfo').insertAdjacentHTML('beforeend',
+    '<div class="info-msg" id="longFileNote"><i class="ph ph-clock" aria-hidden="true"></i> <span>That is a long recording. On a laptop this setting takes around ' +
+    fmtDuration(estimate) + ', and a phone is several times slower. It runs in the background, so the page stays usable and the transcript fills in part by part.</span></div>');
+}
+
+function updateModelNote() {
+  const note = document.getElementById('modelNote');
+  if (!note) return;
+  const fast = selectedModel().indexOf('tiny') !== -1;
+  note.textContent = fast
+    ? 'The smallest Whisper model. Quickest by a long way, but it garbles more words and sometimes repeats a phrase.'
+    : 'Twice the download and approximately four times slower than Fast, for noticeably better text. Downloaded once, then kept.';
+  showLongFileNote();
+}
+
 function fmtDuration(seconds) {
   if (!isFinite(seconds)) return '';
   const s = Math.round(seconds);
@@ -241,13 +273,8 @@ function handleFile(file) {
     const meta = document.getElementById('fileMeta');
     const length = fmtDuration(player.duration);
     if (meta && length) meta.textContent = `${length}, ${fmtSize(file.size)}`;
-    // Measured at roughly an eighth of the recording's length on a laptop. A phone is
-    // several times slower again, so it is worth saying so before someone starts a
-    // two hour file and wonders whether it has hung.
-    if (player.duration > 600) {
-      document.getElementById('fileInfo').insertAdjacentHTML('beforeend',
-        '<div class="info-msg"><i class="ph ph-clock" aria-hidden="true"></i> <span>That is a long recording. Offline transcription takes roughly an eighth of its length on a laptop, and several times that on a phone. It runs in the background, so the page stays usable and the transcript appears part by part.</span></div>');
-    }
+    window._audioSeconds = player.duration;
+    showLongFileNote();
   }, { once: true });
 }
 
@@ -306,6 +333,60 @@ async function transcribeRecording(btn) {
 async function doTranscribe(file, btn) {
   if (currentEngine === 'offline') await transcribeOffline(file, btn);
   else await transcribeOnline(file, btn);
+}
+
+// Measured on a laptop, as a fraction of the recording's own length. A phone is
+// several times slower again.
+const MODEL_SPEED = { 'Xenova/whisper-base.en': 0.46, 'Xenova/whisper-tiny.en': 0.12 };
+
+function selectedModel() {
+  const picked = document.querySelector('input[name="offlineModel"]:checked');
+  return picked ? picked.value : 'Xenova/whisper-base.en';
+}
+
+// A small Whisper model can fall into a decoding loop and emit the same phrase over
+// and over until it runs out of room, which buries the real transcript. Genuine
+// repetition in speech is nearly always one or two in a row, so anything past that is
+// trimmed rather than the whole run being thrown away.
+function collapseRunawayRepeats(text) {
+  if (!text) return text;
+  const parts = text.match(/[^,.!?]+[,.!?]*\s*/g) || [text];
+  const out = [];
+  let runKey = null, runCount = 0;
+  for (const part of parts) {
+    const key = part.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+    if (key && key === runKey) {
+      runCount++;
+      if (runCount > 2) continue;
+    } else {
+      runKey = key;
+      runCount = 1;
+    }
+    out.push(part);
+  }
+  return collapseRepeatedWords(out.join('').replace(/\s+/g, ' ').trim());
+}
+
+// The same loop can also come out as a single word over and over, which has no
+// punctuation for the pass above to split on. Two in a row is ordinary speech, more
+// than that is the model stuck.
+function collapseRepeatedWords(text) {
+  if (!text) return text;
+  const words = text.split(' ');
+  const out = [];
+  let runKey = null, runCount = 0;
+  for (const word of words) {
+    const key = word.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (key && key === runKey) {
+      runCount++;
+      if (runCount > 2) continue;
+    } else {
+      runKey = key;
+      runCount = 1;
+    }
+    out.push(word);
+  }
+  return out.join(' ');
 }
 
 // Splitting helpers, shared by both engines
@@ -426,11 +507,13 @@ async function transcribeOnline(file, btn) {
 }
 
 // Engine: offline, in-browser (Transformers.js + quantized Whisper)
-function getOfflineTranscriber() {
-  if (!offlineTranscriberPromise) {
+function getOfflineTranscriber(model) {
+  const wanted = model || selectedModel();
+  if (!offlineTranscriberPromise || offlineTranscriberModel !== wanted) {
+    offlineTranscriberModel = wanted;
     offlineTranscriberPromise = (async () => {
       const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.0/dist/transformers.min.js');
-      return pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en', {
+      return pipeline('automatic-speech-recognition', wanted, {
         progress_callback: (p) => {
           if (p.status === 'progress' && p.file) {
             const pct = Math.round(p.progress || 0);
@@ -502,7 +585,7 @@ function describeFailure(e) {
 // The model runs in a worker so the page keeps drawing while it works. Opening a
 // module worker fails on a couple of routes, notably a page opened straight off the
 // disk with file://, so the old in-page path is kept as a fallback.
-function startOfflineWorker(onDownload) {
+function startOfflineWorker(model, onDownload) {
   return new Promise((resolve, reject) => {
     let worker;
     try {
@@ -528,7 +611,7 @@ function startOfflineWorker(onDownload) {
     };
     worker.addEventListener('message', onMessage);
     worker.addEventListener('error', fail);
-    worker.postMessage({ type: 'load' });
+    worker.postMessage({ type: 'load', model: model });
   });
 }
 
@@ -563,14 +646,15 @@ async function transcribeOffline(file, btn) {
     const pcm = await decodeAudioTo16kMono(file);
 
     reportProgress(0, 1, 'Loading the offline model');
+    const model = selectedModel();
     let inPageTranscriber = null;
     try {
-      worker = await startOfflineWorker((p) => {
+      worker = await startOfflineWorker(model, (p) => {
         setProgress(document.getElementById('statusArea'), p, 'Downloading the offline model');
       });
     } catch (e) {
       worker = null;
-      inPageTranscriber = await getOfflineTranscriber();
+      inPageTranscriber = await getOfflineTranscriber(model);
     }
 
     const parts = partCount(pcm.length, OFFLINE_PART_SECONDS);
@@ -598,7 +682,8 @@ async function transcribeOffline(file, btn) {
   }
 }
 
-function finishTranscript(transcript, fileName) {
+function finishTranscript(rawTranscript, fileName) {
+  const transcript = collapseRunawayRepeats(rawTranscript);
   document.getElementById('statusArea').innerHTML = '';
   document.getElementById('transcriptBox').textContent = transcript;
   document.getElementById('transcriptSection').style.display = 'block';
@@ -629,6 +714,11 @@ function escapeHTML(str) {
   div.textContent = str;
   return div.innerHTML;
 }
+
+document.querySelectorAll('input[name="offlineModel"]').forEach((radio) => {
+  radio.addEventListener('change', updateModelNote);
+});
+updateModelNote();
 </script>
 <script src="../assets/app.js" defer></script>
 </body>

@@ -19,7 +19,8 @@ self.addEventListener('message', async (event) => {
 
   if (message.type === 'load') {
     try {
-      transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en', {
+      const model = message.model || 'Xenova/whisper-base.en';
+      transcriber = await pipeline('automatic-speech-recognition', model, {
         progress_callback: (p) => {
           if (p.status === 'progress' && p.file) {
             self.postMessage({ type: 'download', progress: Math.round(p.progress || 0) });
