@@ -16,45 +16,102 @@
 <meta name="twitter:description" content="Generate QR codes for links, WiFi, and contacts, or scan one from an image. Free, no signup, nothing leaves your browser.">
 <meta name="twitter:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
 <link rel="manifest" href="../manifest.json">
-<meta name="theme-color" content="#0b0d10">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f3f5">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1114">
+<link rel="icon" href="../assets/favicon.svg">
 <link rel="apple-touch-icon" href="../assets/icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script>
+  try {
+    var t = localStorage.getItem('theme');
+    if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+</script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <link rel="stylesheet" href="../assets/theme.css">
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
-  .preview-area { display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; margin-top: 20px; }
-  .qr-preview { background: #fff; padding: 16px; border-radius: var(--radius-md); display: inline-block; }
+  .preview-area { display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; }
+  .qr-preview {
+    background: #fff;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    display: inline-block;
+  }
   .qr-preview canvas, .qr-preview img, .qr-preview svg { display: block; }
   .download-area { flex: 1; min-width: 200px; }
-  .decoded-box { padding: 1rem; border-radius: var(--radius-sm); background: var(--success-tint); border: 1px solid var(--success); color: var(--success); font-family: var(--font-mono); word-break: break-all; margin: 8px 0; }
-  .payload-preview { background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 12px; font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted); white-space: pre-wrap; word-break: break-all; margin: 8px 0; }
+  .download-area .btn { margin-right: 8px; margin-bottom: 8px; }
+  .payload-preview {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin: 8px 0 0;
+    max-width: none;
+  }
+  .decoded-box {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    word-break: break-all;
+    margin: 12px 0;
+  }
+  .decoded-facts { list-style: none; font-size: 0.875rem; }
+  .decoded-facts li { margin-bottom: 4px; }
+  .decoded-facts .key { color: var(--text-muted); }
   .batch-preview { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin: 16px 0; }
   .batch-preview .qr-preview { padding: 8px; text-align: center; }
   .batch-preview .qr-preview canvas { margin: 0 auto; }
-  .batch-caption { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
-  @media (max-width: 900px) { .preview-area { flex-direction: column; } }
+  .batch-caption {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 150px;
+  }
+  .decode-img { max-width: 360px; border: 1px solid var(--border); border-radius: var(--radius); }
+  @media (max-width: 900px) { .preview-area { flex-direction: column; gap: 20px; } }
 </style>
 </head>
-<body>
-<div class="app">
-  <div class="sidebar">
-    <a class="hub-link" href="../index.html"><i class="ph ph-arrow-left"></i> All tools</a>
-    <h2><i class="ph ph-arrows-left-right"></i> Mode</h2>
-    <div class="radio-group">
-      <label><input type="radio" name="mode" value="generate" checked onchange="switchMode('generate')"><span><i class="ph ph-sparkle"></i> Generate</span></label>
-      <label><input type="radio" name="mode" value="decode" onchange="switchMode('decode')"><span><i class="ph ph-magnifying-glass"></i> Decode</span></label>
-    </div>
-    <hr class="divider">
+<body data-sw-path="../sw.js">
 
-    <div id="generateSettings">
-      <h2><i class="ph ph-faders"></i> Settings</h2>
+<header class="tool-header">
+  <a class="back" href="../index.html"><i class="ph ph-arrow-left" aria-hidden="true"></i> <span>All tools</span></a>
+  <h1><i class="ph ph-qr-code" aria-hidden="true"></i> QR Code Studio</h1>
+  <div class="header-actions">
+    <button class="icon-btn" type="button" id="themeToggle" aria-label="Toggle theme"></button>
+    <a class="icon-btn" href="https://github.com/RehmozAyub/tools-for-everyone" aria-label="Source on GitHub"><i class="ph ph-github-logo" aria-hidden="true"></i></a>
+  </div>
+</header>
+
+<div class="tool-layout">
+  <aside class="tool-controls">
+    <details class="panel" open data-mobile-collapsed>
+      <summary><span>Mode</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
+      <div class="radio-group">
+        <label><input type="radio" name="mode" value="generate" checked onchange="switchMode('generate')"><span><i class="ph ph-sparkle" aria-hidden="true"></i> Generate</span></label>
+        <label><input type="radio" name="mode" value="decode" onchange="switchMode('decode')"><span><i class="ph ph-magnifying-glass" aria-hidden="true"></i> Read</span></label>
+      </div>
+    </details>
+
+    <details class="panel" open data-mobile-collapsed id="generateSettings">
+      <summary><span>Appearance</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
+
       <div class="form-group">
-        <label>Error correction</label>
+        <label for="ecc">Error correction</label>
         <select id="ecc">
           <option value="L">Low (7%)</option>
           <option value="M" selected>Medium (15%)</option>
@@ -63,20 +120,19 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Module size (px)</label>
+        <label for="boxSize">Module size (px)</label>
         <input type="range" id="boxSize" min="4" max="20" value="10">
         <div class="slider-value" id="boxSizeLabel">10</div>
       </div>
       <div class="form-group">
-        <label>Border (modules)</label>
+        <label for="border">Border (modules)</label>
         <input type="range" id="border" min="1" max="8" value="4">
         <div class="slider-value" id="borderLabel">4</div>
       </div>
       <div class="form-group">
-        <label><b>Colors</b></label>
-        <div class="form-row" style="align-items: center;">
-          <div><label>Foreground</label><input type="color" id="fillColor" value="#000000"></div>
-          <div><label>Background</label><input type="color" id="backColor" value="#ffffff"></div>
+        <div class="form-row">
+          <div><label for="fillColor">Foreground</label><input type="color" id="fillColor" value="#000000"></div>
+          <div><label for="backColor">Background</label><input type="color" id="backColor" value="#ffffff"></div>
         </div>
       </div>
       <div class="form-group">
@@ -87,136 +143,128 @@
           <label><input type="radio" name="exportFmt" value="Both"><span>Both</span></label>
         </div>
       </div>
-    </div>
+    </details>
+  </aside>
 
-    <hr class="divider">
-    <h3>About</h3>
-    <p style="font-size:0.85rem; color:var(--text-muted);">Free, open-source QR code tool. No file uploads to any server. Everything runs locally in your browser.</p>
-    <hr class="divider">
-    <p style="font-size:0.85rem;">Made by <a href="https://github.com/RehmozAyub" style="color:var(--accent); text-decoration:none;">RehmozAyub</a></p>
-  </div>
+  <main class="tool-main">
+    <p class="tool-intro">Make QR codes for text, links, WiFi, and contacts, or read one from an image.</p>
 
-  <div class="main">
-    <h1><i class="ph ph-qr-code"></i> QR Code Studio</h1>
-    <div class="sub-header">Generate and scan QR codes for text, URLs, WiFi, and contacts.</div>
-
-    <!-- GENERATE MODE -->
     <div id="generateMode">
       <div class="tabs" id="payloadTabs">
-        <div class="tab active" onclick="switchPayload('text')"><i class="ph ph-text-aa"></i> Text / URL</div>
-        <div class="tab" onclick="switchPayload('wifi')"><i class="ph ph-wifi-high"></i> WiFi</div>
-        <div class="tab" onclick="switchPayload('vcard')"><i class="ph ph-user"></i> vCard</div>
-        <div class="tab" onclick="switchPayload('email')"><i class="ph ph-envelope-simple"></i> Email</div>
-        <div class="tab" onclick="switchPayload('batch')"><i class="ph ph-package"></i> Batch</div>
+        <button class="tab active" type="button" onclick="switchPayload('text')"><i class="ph ph-text-aa" aria-hidden="true"></i> Text or link</button>
+        <button class="tab" type="button" onclick="switchPayload('wifi')"><i class="ph ph-wifi-high" aria-hidden="true"></i> WiFi</button>
+        <button class="tab" type="button" onclick="switchPayload('vcard')"><i class="ph ph-user" aria-hidden="true"></i> Contact</button>
+        <button class="tab" type="button" onclick="switchPayload('email')"><i class="ph ph-envelope-simple" aria-hidden="true"></i> Email</button>
+        <button class="tab" type="button" onclick="switchPayload('batch')"><i class="ph ph-package" aria-hidden="true"></i> Batch</button>
       </div>
 
-      <!-- Text / URL -->
       <div id="payload-text" class="payload-section">
-        <h2><i class="ph ph-text-aa"></i> Text / URL</h2>
-        <textarea id="textInput" rows="4" placeholder="https://example.com or any text"></textarea>
+        <h2>Text or link</h2>
+        <div class="form-group">
+          <label for="textInput">Anything you want the code to carry</label>
+          <textarea id="textInput" rows="4" placeholder="https://example.com or any text"></textarea>
+        </div>
       </div>
 
-      <!-- WiFi -->
       <div id="payload-wifi" class="payload-section" style="display:none;">
-        <h2><i class="ph ph-wifi-high"></i> WiFi Network</h2>
-        <p style="color:var(--text-muted); margin-bottom:12px;">Generate a QR code that lets people join your WiFi instantly.</p>
+        <h2>WiFi network</h2>
+        <p class="muted small mb-3">Make a code that lets people join your network without typing the password.</p>
         <div class="form-row">
-          <div class="form-group"><label>Network name (SSID)</label><input type="text" id="wifiSSID" placeholder="MyWiFi"></div>
-          <div class="form-group"><label>Security</label><select id="wifiSecurity"><option>WPA</option><option>WEP</option><option>None</option></select></div>
+          <div class="form-group"><label for="wifiSSID">Network name (SSID)</label><input type="text" id="wifiSSID" placeholder="Home-5G"></div>
+          <div class="form-group"><label for="wifiSecurity">Security</label><select id="wifiSecurity"><option>WPA</option><option>WEP</option><option>None</option></select></div>
         </div>
-        <div class="form-group" id="wifiPwGroup"><label>Password</label><input type="password" id="wifiPassword"></div>
+        <div class="form-group" id="wifiPwGroup"><label for="wifiPassword">Password</label><input type="password" id="wifiPassword"></div>
         <label class="checkbox-label"><input type="checkbox" id="wifiHidden"><span>Hidden network</span></label>
       </div>
 
-      <!-- vCard -->
       <div id="payload-vcard" class="payload-section" style="display:none;">
-        <h2><i class="ph ph-user"></i> vCard Contact</h2>
-        <p style="color:var(--text-muted); margin-bottom:12px;">Generate a QR code that adds a contact when scanned.</p>
+        <h2>Contact card</h2>
+        <p class="muted small mb-3">Make a code that adds a contact when it is scanned.</p>
         <div class="form-row">
-          <div class="form-group"><label>First name</label><input type="text" id="vcardFirst" placeholder="John"></div>
-          <div class="form-group"><label>Last name</label><input type="text" id="vcardLast" placeholder="Doe"></div>
+          <div class="form-group"><label for="vcardFirst">First name</label><input type="text" id="vcardFirst" placeholder="Amara"></div>
+          <div class="form-group"><label for="vcardLast">Last name</label><input type="text" id="vcardLast" placeholder="Okafor"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Phone</label><input type="text" id="vcardPhone" placeholder="+49 123 456 7890"></div>
-          <div class="form-group"><label>Email</label><input type="email" id="vcardEmail" placeholder="john@example.com"></div>
+          <div class="form-group"><label for="vcardPhone">Phone</label><input type="text" id="vcardPhone" placeholder="+49 123 456 7890"></div>
+          <div class="form-group"><label for="vcardEmail">Email</label><input type="email" id="vcardEmail" placeholder="amara@example.org"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Organization</label><input type="text" id="vcardOrg" placeholder="Acme Inc."></div>
-          <div class="form-group"><label>Job title</label><input type="text" id="vcardTitle" placeholder="Engineer"></div>
+          <div class="form-group"><label for="vcardOrg">Organization</label><input type="text" id="vcardOrg" placeholder="Studio Halbmond"></div>
+          <div class="form-group"><label for="vcardTitle">Job title</label><input type="text" id="vcardTitle" placeholder="Engineer"></div>
         </div>
-        <div class="form-group"><label>Website</label><input type="text" id="vcardURL" placeholder="https://example.com"></div>
-        <div class="form-group"><label>Note</label><input type="text" id="vcardNote" placeholder="Met at conference 2026"></div>
+        <div class="form-group"><label for="vcardURL">Website</label><input type="text" id="vcardURL" placeholder="https://example.com"></div>
+        <div class="form-group"><label for="vcardNote">Note</label><input type="text" id="vcardNote" placeholder="Met at the print fair"></div>
       </div>
 
-      <!-- Email -->
       <div id="payload-email" class="payload-section" style="display:none;">
-        <h2><i class="ph ph-envelope-simple"></i> Email</h2>
-        <p style="color:var(--text-muted); margin-bottom:12px;">Generate a QR code that opens a pre-filled email.</p>
-        <div class="form-group"><label>To address</label><input type="email" id="emailTo" placeholder="hello@example.com"></div>
-        <div class="form-group"><label>Subject</label><input type="text" id="emailSubject" placeholder="Meeting follow-up"></div>
-        <div class="form-group"><label>Body</label><textarea id="emailBody" rows="3" placeholder="Hi there,"></textarea></div>
+        <h2>Email</h2>
+        <p class="muted small mb-3">Make a code that opens a message with the fields already filled in.</p>
+        <div class="form-group"><label for="emailTo">To address</label><input type="email" id="emailTo" placeholder="hello@example.com"></div>
+        <div class="form-group"><label for="emailSubject">Subject</label><input type="text" id="emailSubject" placeholder="Meeting follow-up"></div>
+        <div class="form-group"><label for="emailBody">Message</label><textarea id="emailBody" rows="3" placeholder="Hello,"></textarea></div>
       </div>
 
-      <!-- Batch -->
       <div id="payload-batch" class="payload-section" style="display:none;">
-        <h2><i class="ph ph-package"></i> Batch Generate</h2>
-        <p style="color:var(--text-muted); margin-bottom:12px;">One QR code per line. Download all as a ZIP.</p>
-        <textarea id="batchInput" rows="8" placeholder="https://example.com&#10;https://github.com&#10;Hello World"></textarea>
+        <h2>Batch</h2>
+        <p class="muted small mb-3">One QR code per line, downloaded together as a ZIP.</p>
+        <div class="form-group">
+          <label for="batchInput">One item per line</label>
+          <textarea id="batchInput" rows="8" placeholder="https://example.com&#10;https://github.com&#10;Any plain text"></textarea>
+        </div>
         <div id="batchInfo" class="info-msg" style="display:none;"></div>
-        <button class="btn btn-primary" onclick="generateBatch()" style="margin-top:12px;"><i class="ph ph-package"></i> Generate batch</button>
+        <button class="btn btn-primary" type="button" onclick="generateBatch(this)"><i class="ph ph-package" aria-hidden="true"></i> Generate batch</button>
         <div id="batchPreview" class="batch-preview"></div>
         <div id="batchDownload"></div>
       </div>
 
-      <!-- Single Generate Button -->
-      <div id="singleGenerate" style="margin-top:16px;">
-        <button class="btn btn-primary" onclick="generateQR()"><i class="ph ph-sparkle"></i> Generate QR code</button>
+      <div id="singleGenerate">
+        <button class="btn btn-primary" type="button" onclick="generateQR(this)"><i class="ph ph-sparkle" aria-hidden="true"></i> Generate QR code</button>
       </div>
 
-      <!-- QR Preview -->
-      <div id="qrResult" style="display:none;">
-        <hr class="divider">
-        <div class="preview-area">
-          <div>
+      <div id="qrResult" class="result" style="display:none;">
+        <div class="result-head">
+          <h2>Your QR code</h2>
+          <div id="downloadButtons"></div>
+        </div>
+        <div class="result-body">
+          <div class="preview-area">
             <div class="qr-preview" id="qrPreview"></div>
-          </div>
-          <div class="download-area">
-            <h2><i class="ph ph-download-simple"></i> Download</h2>
-            <div id="downloadButtons"></div>
-            <h3 style="margin-top:16px;">Payload</h3>
-            <div class="payload-preview" id="payloadInfo"></div>
+            <div class="download-area">
+              <h3>What the code carries</h3>
+              <div class="payload-preview" id="payloadInfo"></div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- DECODE MODE -->
     <div id="decodeMode" style="display:none;">
-      <h2><i class="ph ph-magnifying-glass"></i> Decode QR Code</h2>
-      <p style="color:var(--text-muted); margin-bottom:16px;">Upload an image containing one or more QR codes.</p>
+      <h2>Read a QR code</h2>
+      <p class="muted small mb-3">Upload a picture that contains a QR code.</p>
 
-      <div class="drop-zone" id="dropZone" onclick="document.getElementById('decodeFileInput').click()">
-        <i class="ph ph-upload-simple"></i>
-        <p>Click to upload, or drag and drop an image</p>
-        <p style="font-size:0.8rem; margin-top:8px;">Supports PNG, JPG, WebP, BMP</p>
+      <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="Choose an image containing a QR code" onclick="document.getElementById('decodeFileInput').click()">
+        <i class="ph ph-upload-simple" aria-hidden="true"></i>
+        <p class="dz-title">Drop an image here or browse</p>
+        <p class="dz-hint">PNG JPG WebP BMP, one file</p>
         <input type="file" id="decodeFileInput" accept="image/*">
       </div>
 
-      <div id="decodePreview" style="display:none; margin:16px 0;">
-        <img id="decodeImg" style="max-width:400px; border-radius:var(--radius-sm);">
+      <div id="decodePreview" style="display:none;" class="mt-4">
+        <img id="decodeImg" class="decode-img" alt="The image you chose">
       </div>
 
-      <button class="btn btn-primary" onclick="decodeQR()" id="decodeBtn" style="display:none;"><i class="ph ph-magnifying-glass"></i> Decode now</button>
+      <button class="btn btn-primary" type="button" onclick="decodeQR(this)" id="decodeBtn"><i class="ph ph-magnifying-glass" aria-hidden="true"></i> Read the code</button>
 
       <div id="decodeResults"></div>
     </div>
-
-    <div class="footer">
-      QR Code Studio v1.0 · Built with HTML and JavaScript ·
-      <a href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a> · <a href="#" onclick="shareThisTool();return false;">Share</a>
-    </div>
-  </div>
+  </main>
 </div>
+
+<footer class="tool-footer">
+  <span>Made by <a href="https://github.com/RehmozAyub">RehmozAyub</a></span>
+  <a href="https://github.com/RehmozAyub/tools-for-everyone">Source on GitHub</a>
+  <button class="link-btn" type="button" onclick="sharePage()">Share</button>
+</footer>
 
 <script>
 let currentPayload = 'text';
@@ -309,6 +357,15 @@ function getPayload() {
   }
 }
 
+function missingFieldMessage() {
+  switch (currentPayload) {
+    case 'wifi': return 'Enter a network name first.';
+    case 'vcard': return 'Enter at least a first or last name.';
+    case 'email': return 'Enter a to address first.';
+    default: return 'Enter some text or a link first.';
+  }
+}
+
 // QR generation
 function getECCLevel() {
   const val = document.getElementById('ecc').value;
@@ -371,9 +428,9 @@ function makeQRSVG(data) {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}"><rect width="${size}" height="${size}" fill="white"/><path d="${paths}" fill="black"/></svg>`;
 }
 
-function generateQR() {
+function generateQR(btn) {
   const payload = getPayload();
-  if (!payload) { alert('Please enter some content first.'); return; }
+  if (!payload) { showInlineError(btn, missingFieldMessage()); return; }
 
   const canvas = makeQRCanvas(payload);
   const preview = document.getElementById('qrPreview');
@@ -382,14 +439,13 @@ function generateQR() {
 
   const exportFmt = document.querySelector('input[name="exportFmt"]:checked').value;
   const downloadDiv = document.getElementById('downloadButtons');
-  const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15);
   let btns = '';
 
   if (exportFmt === 'PNG' || exportFmt === 'Both') {
-    btns += `<button class="btn btn-download" onclick="downloadPNG()"><i class="ph ph-download-simple"></i> Download PNG</button>`;
+    btns += `<button class="btn btn-sm btn-download" type="button" onclick="downloadPNG()"><i class="ph ph-download-simple" aria-hidden="true"></i> Download PNG</button>`;
   }
   if (exportFmt === 'SVG' || exportFmt === 'Both') {
-    btns += `<button class="btn btn-download" onclick="downloadSVG()"><i class="ph ph-download-simple"></i> Download SVG</button>`;
+    btns += `<button class="btn btn-sm btn-download" type="button" onclick="downloadSVG()"><i class="ph ph-download-simple" aria-hidden="true"></i> Download SVG</button>`;
   }
   downloadDiv.innerHTML = btns;
   document.getElementById('payloadInfo').textContent = payload;
@@ -421,10 +477,10 @@ function downloadSVG() {
 }
 
 // Batch
-function generateBatch() {
+function generateBatch(btn) {
   const input = document.getElementById('batchInput').value;
   const items = input.split('\n').map(s => s.trim()).filter(Boolean);
-  if (!items.length) { alert('Enter at least one item.'); return; }
+  if (!items.length) { showInlineError(btn, 'Enter at least one line first.'); return; }
 
   const previewDiv = document.getElementById('batchPreview');
   previewDiv.innerHTML = '';
@@ -453,19 +509,20 @@ function generateBatch() {
 
   const dlDiv = document.getElementById('batchDownload');
   const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15);
-  dlDiv.innerHTML = `<div class="success-msg"><i class="ph ph-check-circle"></i> Generated ${items.length} QR codes</div>`;
+  dlDiv.innerHTML = `<p class="muted small">${items.length} codes ready.</p>`;
 
   zip.generateAsync({ type: 'blob' }).then(blob => {
-    const btn = document.createElement('button');
-    btn.className = 'btn btn-download';
-    btn.innerHTML = '<i class="ph ph-download-simple"></i> Download all (ZIP)';
-    btn.onclick = () => {
+    const b = document.createElement('button');
+    b.className = 'btn btn-download';
+    b.type = 'button';
+    b.innerHTML = '<i class="ph ph-download-simple" aria-hidden="true"></i> Download all as ZIP';
+    b.onclick = () => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = `qr_batch_${ts}.zip`;
       a.click();
     };
-    dlDiv.appendChild(btn);
+    dlDiv.appendChild(b);
   });
 }
 
@@ -483,14 +540,13 @@ function handleDecodeFile(file) {
   reader.onload = e => {
     document.getElementById('decodeImg').src = e.target.result;
     document.getElementById('decodePreview').style.display = 'block';
-    document.getElementById('decodeBtn').style.display = 'block';
     decodeImageData = e.target.result;
   };
   reader.readAsDataURL(file);
 }
 
-function decodeQR() {
-  if (!decodeImageData) return;
+function decodeQR(btn) {
+  if (!decodeImageData) { showInlineError(btn, 'Choose an image first.'); return; }
   const img = new Image();
   img.onload = () => {
     const canvas = document.createElement('canvas');
@@ -507,27 +563,31 @@ function decodeQR() {
       const data = code.data;
 
       if (data.toUpperCase().startsWith('WIFI:')) {
-        extra = '<p><i class="ph ph-wifi-high"></i> <b>Detected: WiFi network</b></p>';
+        extra = '<h3 class="mt-3">This is a WiFi network</h3><ul class="decoded-facts">';
         const info = parseWifi(data);
-        for (const [k, v] of Object.entries(info)) extra += `<p style="margin-left:16px;">&bull; <b>${k}:</b> ${escapeHTML(v)}</p>`;
+        for (const [k, v] of Object.entries(info)) extra += `<li><span class="key">${k}:</span> ${escapeHTML(v)}</li>`;
+        extra += '</ul>';
       } else if (data.includes('BEGIN:VCARD')) {
-        extra = '<p><i class="ph ph-user"></i> <b>Detected: Contact card</b></p>';
+        extra = '<h3 class="mt-3">This is a contact card</h3><ul class="decoded-facts">';
         const info = parseVCard(data);
-        for (const [k, v] of Object.entries(info)) extra += `<p style="margin-left:16px;">&bull; <b>${k}:</b> ${escapeHTML(v)}</p>`;
+        for (const [k, v] of Object.entries(info)) extra += `<li><span class="key">${k}:</span> ${escapeHTML(v)}</li>`;
+        extra += '</ul>';
       } else if (data.startsWith('http://') || data.startsWith('https://')) {
-        extra = `<p><i class="ph ph-globe"></i> <b>Detected: URL</b></p><p><a href="${escapeHTML(data)}" target="_blank" style="color:var(--accent);">${escapeHTML(data)}</a></p>`;
+        extra = `<h3 class="mt-3">This is a web address</h3><p><a href="${escapeHTML(data)}" target="_blank" rel="noopener">${escapeHTML(data)}</a></p>`;
       } else if (data.startsWith('mailto:')) {
-        extra = `<p><i class="ph ph-envelope-simple"></i> <b>Detected: Email</b></p><p><a href="${escapeHTML(data)}" style="color:var(--accent);">${escapeHTML(data)}</a></p>`;
+        extra = `<h3 class="mt-3">This is an email address</h3><p><a href="${escapeHTML(data)}">${escapeHTML(data)}</a></p>`;
       }
 
       resultsDiv.innerHTML = `
-        <div class="success-msg"><i class="ph ph-check-circle"></i> Found 1 QR code</div>
-        <div class="decoded-box">${escapeHTML(data)}</div>
-        ${extra}
-        <textarea style="width:100%; margin-top:8px;" rows="3" readonly>${data}</textarea>
-      `;
+        <div class="result">
+          <div class="result-head"><h2>What the code says</h2></div>
+          <div class="result-body">
+            <div class="decoded-box">${escapeHTML(data)}</div>
+            ${extra}
+          </div>
+        </div>`;
     } else {
-      resultsDiv.innerHTML = `<div class="error-msg"><i class="ph ph-x-circle"></i> No QR code detected. Tips:<br>&bull; Make sure the QR code is clearly visible<br>&bull; Try a higher resolution image<br>&bull; Ensure good contrast</div>`;
+      resultsDiv.innerHTML = `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i><div>No QR code was found in that image. A sharper picture, a closer crop, or stronger contrast usually helps.</div></div>`;
     }
   };
   img.src = decodeImageData;
@@ -540,7 +600,7 @@ function parseWifi(data) {
     if (!part.includes(':')) continue;
     const [key, ...rest] = part.split(':');
     const val = rest.join(':');
-    if (key === 'S') info['SSID'] = val;
+    if (key === 'S') info['Network name'] = val;
     else if (key === 'P') info['Password'] = val;
     else if (key === 'T') info['Security'] = val;
     else if (key === 'H') info['Hidden'] = val;
@@ -556,8 +616,8 @@ function parseVCard(data) {
     else if (l.toUpperCase().startsWith('TEL')) info['Phone'] = l.split(':').pop();
     else if (l.toUpperCase().startsWith('EMAIL')) info['Email'] = l.split(':').pop();
     else if (l.toUpperCase().startsWith('ORG:')) info['Organization'] = l.slice(4);
-    else if (l.toUpperCase().startsWith('TITLE:')) info['Title'] = l.slice(6);
-    else if (l.toUpperCase().startsWith('URL:')) info['URL'] = l.slice(4);
+    else if (l.toUpperCase().startsWith('TITLE:')) info['Job title'] = l.slice(6);
+    else if (l.toUpperCase().startsWith('URL:')) info['Website'] = l.slice(4);
   }
   return info;
 }
@@ -568,24 +628,6 @@ function escapeHTML(str) {
   return div.innerHTML;
 }
 </script>
-<script>
-function shareThisTool() {
-  const data = { title: document.title, text: 'A free browser tool that never uploads your files.', url: location.href };
-  if (navigator.share) { navigator.share(data).catch(() => {}); return; }
-  navigator.clipboard.writeText(location.href).then(() => showToast('Link copied to clipboard'));
-}
-
-function showToast(msg) {
-  const t = document.createElement('div');
-  t.className = 'toast';
-  t.innerHTML = '<i class="ph ph-check-circle"></i> ' + msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2500);
-}
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
-}
-</script>
+<script src="../assets/app.js" defer></script>
 </body>
 </html>
