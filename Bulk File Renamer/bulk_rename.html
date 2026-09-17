@@ -16,119 +16,130 @@
 <meta name="twitter:description" content="Rename hundreds of files at once with find and replace, regex, numbering, and date stamps. Free, no upload, no install.">
 <meta name="twitter:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
 <link rel="manifest" href="../manifest.json">
-<meta name="theme-color" content="#0b0d10">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f3f5">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1114">
+<link rel="icon" href="../assets/favicon.svg">
 <link rel="apple-touch-icon" href="../assets/icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script>
+  try {
+    var t = localStorage.getItem('theme');
+    if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+</script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <link rel="stylesheet" href="../assets/theme.css">
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
-  .preview-table { width: 100%; border-collapse: collapse; margin: 12px 0; }
-  .preview-table th { text-align: left; padding: 8px 12px; border-bottom: 2px solid var(--border-strong); font-size: 0.85rem; color: var(--text-muted); }
-  .preview-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); font-family: var(--font-mono); font-size: 0.88rem; }
-  .changed { color: var(--accent); }
+  .preview-wrap { overflow-x: auto; }
+  .preview-table { width: 100%; border-collapse: collapse; }
+  .preview-table th {
+    text-align: left; padding: 8px 10px;
+    border-bottom: 1px solid var(--border-strong);
+    font-size: 0.75rem; font-weight: 500; color: var(--text-muted);
+  }
+  .preview-table td {
+    padding: 8px 10px; border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono); font-size: 0.8125rem;
+    white-space: nowrap;
+  }
+  .preview-table tr:last-child td { border-bottom: none; }
+  .preview-table .icon-cell { width: 1.5rem; color: var(--text-faint); }
+  .changed { color: var(--text); }
   .unchanged { color: var(--text-muted); }
-  .dup-warn { color: var(--danger); font-weight: 600; font-size: 0.8rem; }
+  .dup-warn { color: var(--danger); font-size: 0.75rem; }
+  .regex-input { font-family: var(--font-mono); }
 </style>
 </head>
-<body>
-<div class="app">
-  <div class="sidebar">
-    <a class="hub-link" href="../index.html"><i class="ph ph-arrow-left"></i> All tools</a>
-    <h2><i class="ph ph-folders"></i> Renaming rule</h2>
-    <div id="toolList">
-      <div class="tool-item active" onclick="selectTool('find_replace')"><i class="ph ph-magnifying-glass"></i> Find & Replace</div>
-      <div class="tool-item" onclick="selectTool('regex')"><i class="ph ph-brackets-curly"></i> Regex Pattern</div>
-      <div class="tool-item" onclick="selectTool('prefix_suffix')"><i class="ph ph-text-indent"></i> Prefix / Suffix</div>
-      <div class="tool-item" onclick="selectTool('numbering')"><i class="ph ph-list-numbers"></i> Sequential Numbering</div>
-      <div class="tool-item" onclick="selectTool('date_stamp')"><i class="ph ph-calendar-blank"></i> Date Stamp</div>
-      <div class="tool-item" onclick="selectTool('case')"><i class="ph ph-text-aa"></i> Case Conversion</div>
-      <div class="tool-item" onclick="selectTool('extension')"><i class="ph ph-wrench"></i> Extension</div>
-      <div class="tool-item" onclick="selectTool('trim')"><i class="ph ph-scissors"></i> Trim / Clean</div>
-    </div>
-    <hr class="divider">
-    <h3>About</h3>
-    <p style="font-size:0.85rem; color:var(--text-muted);">Free, open-source bulk file renamer. No file uploads to any server. Everything runs locally in your browser.</p>
-    <hr class="divider">
-    <p style="font-size:0.85rem;">Made by <a href="https://github.com/RehmozAyub" style="color:var(--accent); text-decoration:none;">RehmozAyub</a></p>
+<body data-sw-path="../sw.js">
+
+<header class="tool-header">
+  <a class="back" href="../index.html"><i class="ph ph-arrow-left" aria-hidden="true"></i> <span>All tools</span></a>
+  <h1><i class="ph ph-folders" aria-hidden="true"></i> Bulk File Renamer</h1>
+  <div class="header-actions">
+    <button class="icon-btn" type="button" id="themeToggle" aria-label="Toggle theme"></button>
+    <a class="icon-btn" href="https://github.com/RehmozAyub/tools-for-everyone" aria-label="Source on GitHub"><i class="ph ph-github-logo" aria-hidden="true"></i></a>
   </div>
+</header>
 
-  <div class="main">
-    <h1><i class="ph ph-folders"></i> Bulk File Renamer</h1>
-    <div class="sub-header">Rename multiple files at once. Regex, numbering, dates, and more.</div>
+<div class="tool-layout has-subtool-nav">
+  <nav class="subtool-nav" id="toolList" aria-label="Renaming rules">
+    <button class="tool-item active" type="button" onclick="selectTool('find_replace')"><i class="ph ph-magnifying-glass" aria-hidden="true"></i> Find and replace</button>
+    <button class="tool-item" type="button" onclick="selectTool('regex')"><i class="ph ph-brackets-curly" aria-hidden="true"></i> Regex pattern</button>
+    <button class="tool-item" type="button" onclick="selectTool('prefix_suffix')"><i class="ph ph-text-indent" aria-hidden="true"></i> Prefix or suffix</button>
+    <button class="tool-item" type="button" onclick="selectTool('numbering')"><i class="ph ph-list-numbers" aria-hidden="true"></i> Numbering</button>
+    <button class="tool-item" type="button" onclick="selectTool('date_stamp')"><i class="ph ph-calendar-blank" aria-hidden="true"></i> Date stamp</button>
+    <button class="tool-item" type="button" onclick="selectTool('case')"><i class="ph ph-text-aa" aria-hidden="true"></i> Letter case</button>
+    <button class="tool-item" type="button" onclick="selectTool('extension')"><i class="ph ph-wrench" aria-hidden="true"></i> Extension</button>
+    <button class="tool-item" type="button" onclick="selectTool('trim')"><i class="ph ph-scissors" aria-hidden="true"></i> Trim and clean</button>
+  </nav>
 
-    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-      <i class="ph ph-upload-simple"></i>
-      <p>Drag & drop files here, or click to browse</p>
-      <p style="font-size:0.8rem; margin-top:8px;">Upload all the files you want to rename</p>
+  <main class="tool-main">
+    <p class="tool-intro">Rename many files at once with patterns, numbering, dates, and regex. Nothing is uploaded.</p>
+
+    <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="Choose files to rename" onclick="document.getElementById('fileInput').click()">
+      <i class="ph ph-upload-simple" aria-hidden="true"></i>
+      <p class="dz-title">Drop files here or browse</p>
+      <p class="dz-hint">Any file type, any number of files</p>
       <input type="file" id="fileInput" multiple>
     </div>
 
     <div id="fileCount"></div>
 
-    <!-- Rule panels -->
     <div id="rulePanel">
-      <!-- Find & Replace -->
       <div class="rule-section" id="rule-find_replace">
-        <h2><i class="ph ph-magnifying-glass"></i> Find & Replace</h2>
-        <p style="color:var(--text-muted); margin-bottom:12px;">Simple text substitution in filenames.</p>
+        <h2>Find and replace</h2>
+        <p class="muted small mb-3">Swap one piece of text for another in every filename.</p>
         <div class="form-row">
-          <div class="form-group"><label>Find</label><input type="text" id="findText" oninput="updatePreview()"></div>
-          <div class="form-group"><label>Replace with</label><input type="text" id="replaceText" oninput="updatePreview()"></div>
+          <div class="form-group"><label for="findText">Find</label><input type="text" id="findText" oninput="updatePreview()"></div>
+          <div class="form-group"><label for="replaceText">Replace with</label><input type="text" id="replaceText" oninput="updatePreview()"></div>
         </div>
-        <label class="checkbox-label"><input type="checkbox" id="findCase" checked onchange="updatePreview()"><span>Case-sensitive</span></label>
+        <label class="checkbox-label"><input type="checkbox" id="findCase" checked onchange="updatePreview()"><span>Match upper and lower case exactly</span></label>
       </div>
 
-      <!-- Regex -->
       <div class="rule-section" id="rule-regex" style="display:none;">
-        <h2><i class="ph ph-brackets-curly"></i> Regex Pattern</h2>
-        <p style="color:var(--text-muted); margin-bottom:12px;">Apply a regex pattern to the filename stem.</p>
+        <h2>Regex pattern</h2>
+        <p class="muted small mb-3">Apply a regular expression to the part of the name before the extension.</p>
         <div class="form-row">
-          <div class="form-group"><label>Regex pattern</label><input type="text" id="regexPattern" placeholder="(\d+)" oninput="updatePreview()"></div>
-          <div class="form-group"><label>Replacement</label><input type="text" id="regexReplace" placeholder="NUM_$1" oninput="updatePreview()"></div>
+          <div class="form-group"><label for="regexPattern">Pattern</label><input type="text" class="regex-input" id="regexPattern" placeholder="(\d+)" oninput="updatePreview()"></div>
+          <div class="form-group"><label for="regexReplace">Replacement</label><input type="text" class="regex-input" id="regexReplace" placeholder="NUM_$1" oninput="updatePreview()"></div>
         </div>
         <label class="checkbox-label"><input type="checkbox" id="regexIgnoreCase" onchange="updatePreview()"><span>Ignore case</span></label>
       </div>
 
-      <!-- Prefix / Suffix -->
       <div class="rule-section" id="rule-prefix_suffix" style="display:none;">
-        <h2><i class="ph ph-text-indent"></i> Prefix / Suffix</h2>
-        <p style="color:var(--text-muted); margin-bottom:12px;">Add text before or after the filename stem.</p>
+        <h2>Prefix or suffix</h2>
+        <p class="muted small mb-3">Add text before or after the name, leaving the extension alone.</p>
         <div class="form-row">
-          <div class="form-group"><label>Prefix</label><input type="text" id="prefixText" oninput="updatePreview()"></div>
-          <div class="form-group"><label>Suffix (before extension)</label><input type="text" id="suffixText" oninput="updatePreview()"></div>
+          <div class="form-group"><label for="prefixText">Prefix</label><input type="text" id="prefixText" oninput="updatePreview()"></div>
+          <div class="form-group"><label for="suffixText">Suffix, before the extension</label><input type="text" id="suffixText" oninput="updatePreview()"></div>
         </div>
       </div>
 
-      <!-- Sequential Numbering -->
       <div class="rule-section" id="rule-numbering" style="display:none;">
-        <h2><i class="ph ph-list-numbers"></i> Sequential Numbering</h2>
-        <p style="color:var(--text-muted); margin-bottom:12px;">Automatically number files with a configurable format.</p>
+        <h2>Numbering</h2>
+        <p class="muted small mb-3">Number the files in the order you chose them.</p>
         <div class="form-row">
-          <div class="form-group"><label>Start at</label><input type="number" id="seqStart" value="1" oninput="updatePreview()"></div>
-          <div class="form-group"><label>Step</label><input type="number" id="seqStep" value="1" min="1" oninput="updatePreview()"></div>
-          <div class="form-group"><label>Zero-pad width</label><input type="number" id="seqPad" value="3" min="1" max="10" oninput="updatePreview()"></div>
+          <div class="form-group"><label for="seqStart">Start at</label><input type="number" id="seqStart" value="1" oninput="updatePreview()"></div>
+          <div class="form-group"><label for="seqStep">Step</label><input type="number" id="seqStep" value="1" min="1" oninput="updatePreview()"></div>
+          <div class="form-group"><label for="seqPad">Zero-pad width</label><input type="number" id="seqPad" value="3" min="1" max="10" oninput="updatePreview()"></div>
         </div>
         <div class="form-group">
           <label>Position</label>
           <div class="radio-group">
-            <label><input type="radio" name="seqPos" value="Prefix" checked onchange="updatePreview()"><span>Prefix</span></label>
-            <label><input type="radio" name="seqPos" value="Suffix" onchange="updatePreview()"><span>Suffix</span></label>
+            <label><input type="radio" name="seqPos" value="Prefix" checked onchange="updatePreview()"><span>Before the name</span></label>
+            <label><input type="radio" name="seqPos" value="Suffix" onchange="updatePreview()"><span>After the name</span></label>
           </div>
         </div>
-        <div class="form-group"><label>Separator</label><input type="text" id="seqSep" value="_" oninput="updatePreview()"></div>
-        <label class="checkbox-label"><input type="checkbox" id="seqReplace" onchange="updatePreview()"><span>Replace entire filename with number only</span></label>
+        <div class="form-group"><label for="seqSep">Separator</label><input type="text" id="seqSep" value="_" oninput="updatePreview()"></div>
+        <label class="checkbox-label"><input type="checkbox" id="seqReplace" onchange="updatePreview()"><span>Replace the whole name with the number</span></label>
       </div>
 
-      <!-- Date Stamp -->
       <div class="rule-section" id="rule-date_stamp" style="display:none;">
-        <h2><i class="ph ph-calendar-blank"></i> Date Stamp</h2>
-        <p style="color:var(--text-muted); margin-bottom:12px;">Add a date or timestamp to filenames.</p>
+        <h2>Date stamp</h2>
+        <p class="muted small mb-3">Add a date or a timestamp to every filename.</p>
         <div class="form-row">
           <div class="form-group">
-            <label>Date format</label>
+            <label for="dateFormat">Date format</label>
             <select id="dateFormat" onchange="updatePreview()">
               <option value="YYYY-MM-DD">YYYY-MM-DD</option>
               <option value="YYYYMMDD">YYYYMMDD</option>
@@ -140,23 +151,22 @@
           <div class="form-group">
             <label>Position</label>
             <div class="radio-group">
-              <label><input type="radio" name="datePos" value="Prefix" checked onchange="updatePreview()"><span>Prefix</span></label>
-              <label><input type="radio" name="datePos" value="Suffix" onchange="updatePreview()"><span>Suffix</span></label>
+              <label><input type="radio" name="datePos" value="Prefix" checked onchange="updatePreview()"><span>Before the name</span></label>
+              <label><input type="radio" name="datePos" value="Suffix" onchange="updatePreview()"><span>After the name</span></label>
             </div>
           </div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Separator</label><input type="text" id="dateSep" value="_" oninput="updatePreview()"></div>
-          <div class="form-group"><label>Date</label><input type="date" id="dateValue" oninput="updatePreview()"></div>
+          <div class="form-group"><label for="dateSep">Separator</label><input type="text" id="dateSep" value="_" oninput="updatePreview()"></div>
+          <div class="form-group"><label for="dateValue">Date</label><input type="date" id="dateValue" oninput="updatePreview()"></div>
         </div>
       </div>
 
-      <!-- Case Conversion -->
       <div class="rule-section" id="rule-case" style="display:none;">
-        <h2><i class="ph ph-text-aa"></i> Case Conversion</h2>
-        <p style="color:var(--text-muted); margin-bottom:12px;">Change the letter casing of filenames.</p>
+        <h2>Letter case</h2>
+        <p class="muted small mb-3">Change how the letters in each filename are capitalised.</p>
         <div class="form-group">
-          <label>Convert to</label>
+          <label for="caseMode">Convert to</label>
           <select id="caseMode" onchange="updatePreview()">
             <option value="lowercase">lowercase</option>
             <option value="UPPERCASE">UPPERCASE</option>
@@ -168,61 +178,63 @@
         </div>
       </div>
 
-      <!-- Extension -->
       <div class="rule-section" id="rule-extension" style="display:none;">
-        <h2><i class="ph ph-wrench"></i> Extension</h2>
-        <p style="color:var(--text-muted); margin-bottom:12px;">Change, remove, or add file extensions.</p>
+        <h2>Extension</h2>
+        <p class="muted small mb-3">Change, remove, or add a file extension.</p>
         <div class="form-group">
           <label>Action</label>
           <div class="radio-group">
             <label><input type="radio" name="extMode" value="change" checked onchange="updatePreview()"><span>Change</span></label>
             <label><input type="radio" name="extMode" value="remove" onchange="updatePreview()"><span>Remove</span></label>
-            <label><input type="radio" name="extMode" value="add" onchange="updatePreview()"><span>Add extra</span></label>
+            <label><input type="radio" name="extMode" value="add" onchange="updatePreview()"><span>Add another</span></label>
           </div>
         </div>
-        <div class="form-group"><label>New / extra extension</label><input type="text" id="newExt" placeholder=".txt, .bak" oninput="updatePreview()"></div>
+        <div class="form-group"><label for="newExt">New or extra extension</label><input type="text" id="newExt" placeholder=".txt" oninput="updatePreview()"></div>
       </div>
 
-      <!-- Trim / Clean -->
       <div class="rule-section" id="rule-trim" style="display:none;">
-        <h2><i class="ph ph-scissors"></i> Trim / Clean</h2>
-        <p style="color:var(--text-muted); margin-bottom:12px;">Remove characters, replace spaces, and clean up filenames.</p>
+        <h2>Trim and clean</h2>
+        <p class="muted small mb-3">Cut characters, replace spaces, and tidy up messy filenames.</p>
         <div class="form-row">
-          <div class="form-group"><label>Remove first N chars</label><input type="number" id="trimStart" value="0" min="0" oninput="updatePreview()"></div>
-          <div class="form-group"><label>Remove last N chars (stem)</label><input type="number" id="trimEnd" value="0" min="0" oninput="updatePreview()"></div>
+          <div class="form-group"><label for="trimStart">Remove first characters</label><input type="number" id="trimStart" value="0" min="0" oninput="updatePreview()"></div>
+          <div class="form-group"><label for="trimEnd">Remove last characters</label><input type="number" id="trimEnd" value="0" min="0" oninput="updatePreview()"></div>
         </div>
         <div class="form-group">
-          <label>Replace spaces with</label>
+          <label for="spaceReplace">Replace spaces with</label>
           <select id="spaceReplace" onchange="updatePreview()">
-            <option value="">(don't replace)</option>
-            <option value="_">_</option>
-            <option value="-">-</option>
-            <option value=".">.</option>
-            <option value="remove">(remove spaces)</option>
+            <option value="">Leave spaces alone</option>
+            <option value="_">Underscore</option>
+            <option value="-">Hyphen</option>
+            <option value=".">Full stop</option>
+            <option value="remove">Nothing, just remove them</option>
           </select>
         </div>
-        <label class="checkbox-label"><input type="checkbox" id="stripSpecial" onchange="updatePreview()"><span>Strip special characters (keep letters, numbers, _ , - , .)</span></label>
+        <label class="checkbox-label"><input type="checkbox" id="stripSpecial" onchange="updatePreview()"><span>Strip special characters, keeping letters, numbers, underscore, hyphen and full stop</span></label>
       </div>
     </div>
 
-    <!-- Preview -->
-    <div id="previewSection" style="display:none;">
-      <hr class="divider">
-      <h2><i class="ph ph-eye"></i> Preview</h2>
-      <div id="previewContent"></div>
-      <div id="previewStats"></div>
-
-      <hr class="divider">
-      <h2><i class="ph ph-download-simple"></i> Download</h2>
-      <button class="btn btn-primary" onclick="downloadZip()"><i class="ph ph-package"></i> Generate renamed ZIP</button>
+    <div id="downloadRow">
+      <button class="btn btn-primary" type="button" onclick="downloadZip(this)"><i class="ph ph-package" aria-hidden="true"></i> Download renamed files as ZIP</button>
     </div>
 
-    <div class="footer">
-      Bulk File Renamer v1.0 · Built with HTML and JavaScript ·
-      <a href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a> · <a href="#" onclick="shareThisTool();return false;">Share</a>
+    <div id="previewSection" class="result" style="display:none;">
+      <div class="result-head">
+        <h2>Preview</h2>
+        <span id="previewStats" class="muted small"></span>
+      </div>
+      <div class="result-body">
+        <div id="previewWarning"></div>
+        <div class="preview-wrap" id="previewContent"></div>
+      </div>
     </div>
-  </div>
+  </main>
 </div>
+
+<footer class="tool-footer">
+  <span>Made by <a href="https://github.com/RehmozAyub">RehmozAyub</a></span>
+  <a href="https://github.com/RehmozAyub/tools-for-everyone">Source on GitHub</a>
+  <button class="link-btn" type="button" onclick="sharePage()">Share</button>
+</footer>
 
 <script>
 let uploadedFiles = [];
@@ -237,9 +249,23 @@ dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover
 dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
 fileInput.addEventListener('change', e => handleFiles(e.target.files));
 
+function fmtSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
 function handleFiles(files) {
   uploadedFiles = Array.from(files);
-  document.getElementById('fileCount').innerHTML = `<div class="success-msg"><i class="ph ph-check-circle"></i> ${uploadedFiles.length} file(s) uploaded</div>`;
+  let html = '<div class="file-list">';
+  for (const f of uploadedFiles.slice(0, 8)) {
+    html += `<div class="file-row"><span class="file-name">${escapeHTML(f.name)}</span><span class="file-size">${fmtSize(f.size)}</span></div>`;
+  }
+  if (uploadedFiles.length > 8) {
+    html += `<p class="muted xsmall">and ${uploadedFiles.length - 8} more, all listed in the preview below.</p>`;
+  }
+  html += '</div>';
+  document.getElementById('fileCount').innerHTML = html;
   document.getElementById('previewSection').style.display = 'block';
   updatePreview();
 }
@@ -435,31 +461,35 @@ function updatePreview() {
   newNames.forEach(n => { dups[n] = (dups[n] || 0) + 1; });
   const dupSet = new Set(Object.keys(dups).filter(k => dups[k] > 1));
 
-  let html = '<table class="preview-table"><tr><th></th><th>Original</th><th></th><th>New Name</th></tr>';
+  let html = '<table class="preview-table"><tr><th></th><th>Now</th><th></th><th>After renaming</th></tr>';
   let changedCount = 0;
   for (let i = 0; i < names.length; i++) {
     const changed = names[i] !== newNames[i];
     if (changed) changedCount++;
-    const icon = changed ? '<i class="ph ph-pencil-simple" style="color:var(--accent);"></i>' : '<i class="ph ph-check" style="color:var(--success);"></i>';
+    const icon = changed ? 'pencil-simple' : 'minus';
     const cls = changed ? 'changed' : 'unchanged';
-    const dupTag = dupSet.has(newNames[i]) ? ' <span class="dup-warn"><i class="ph ph-warning"></i> DUPLICATE</span>' : '';
-    html += `<tr><td>${icon}</td><td class="unchanged">${escapeHTML(names[i])}</td><td><i class="ph ph-arrow-right"></i></td><td class="${cls}">${escapeHTML(newNames[i])}${dupTag}</td></tr>`;
+    const dupTag = dupSet.has(newNames[i]) ? ' <span class="dup-warn"><i class="ph ph-warning" aria-hidden="true"></i> same name twice</span>' : '';
+    html += `<tr><td class="icon-cell"><i class="ph ph-${icon}" aria-hidden="true"></i></td><td class="unchanged">${escapeHTML(names[i])}</td><td class="icon-cell"><i class="ph ph-arrow-right" aria-hidden="true"></i></td><td class="${cls}">${escapeHTML(newNames[i])}${dupTag}</td></tr>`;
   }
   html += '</table>';
 
   document.getElementById('previewContent').innerHTML = html;
-
-  let statsHtml = `<p style="color:var(--text-muted); font-size:0.85rem;">${changedCount}/${names.length} file(s) will be renamed.</p>`;
-  if (dupSet.size) statsHtml += `<div class="warning-msg"><i class="ph ph-warning"></i> Some renamed files have identical names. Adjust your rules to avoid overwrites.</div>`;
-  document.getElementById('previewStats').innerHTML = statsHtml;
+  document.getElementById('previewStats').textContent = `${changedCount} of ${names.length} files change`;
+  document.getElementById('previewWarning').innerHTML = dupSet.size
+    ? '<div class="warning-msg"><i class="ph ph-warning" aria-hidden="true"></i> <span>Some files would end up with the same name. Adjust the rule so nothing is overwritten.</span></div>'
+    : '';
 }
 
 // Download ZIP
-function downloadZip() {
-  if (!uploadedFiles.length) return;
+function downloadZip(btn) {
+  if (!uploadedFiles.length) {
+    showInlineError(btn, 'Choose some files first.');
+    return;
+  }
   const names = uploadedFiles.map(f => f.name);
   const newNames = applyRule(names);
 
+  setBusy(btn, true, 'Packing...');
   const zip = new JSZip();
   const promises = uploadedFiles.map((file, i) => {
     return new Promise(resolve => {
@@ -474,6 +504,7 @@ function downloadZip() {
 
   Promise.all(promises).then(() => {
     zip.generateAsync({ type: 'blob' }).then(blob => {
+      setBusy(btn, false);
       const a = document.createElement('a');
       const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15);
       a.href = URL.createObjectURL(blob);
@@ -490,24 +521,6 @@ function escapeHTML(str) {
   return div.innerHTML;
 }
 </script>
-<script>
-function shareThisTool() {
-  const data = { title: document.title, text: 'A free browser tool that never uploads your files.', url: location.href };
-  if (navigator.share) { navigator.share(data).catch(() => {}); return; }
-  navigator.clipboard.writeText(location.href).then(() => showToast('Link copied to clipboard'));
-}
-
-function showToast(msg) {
-  const t = document.createElement('div');
-  t.className = 'toast';
-  t.innerHTML = '<i class="ph ph-check-circle"></i> ' + msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2500);
-}
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
-}
-</script>
+<script src="../assets/app.js" defer></script>
 </body>
 </html>
