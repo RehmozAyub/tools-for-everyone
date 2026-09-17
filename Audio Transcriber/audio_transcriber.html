@@ -16,105 +16,119 @@
 <meta name="twitter:description" content="Transcribe audio to text with OpenAI Whisper, or fully offline in your browser with no API key. Free, no signup.">
 <meta name="twitter:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
 <link rel="manifest" href="../manifest.json">
-<meta name="theme-color" content="#0b0d10">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f3f5">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1114">
+<link rel="icon" href="../assets/favicon.svg">
 <link rel="apple-touch-icon" href="../assets/icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script>
+  try {
+    var t = localStorage.getItem('theme');
+    if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+</script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <link rel="stylesheet" href="../assets/theme.css">
 <style>
-  .mode-tabs { display: flex; gap: 0; margin-bottom: 16px; }
-  .mode-tab { padding: 10px 20px; background: var(--surface-2); border: 1px solid var(--border-strong); cursor: pointer; font-size: 0.9rem; color: var(--text-muted); transition: all 0.15s; display: inline-flex; align-items: center; gap: 7px; }
-  .mode-tab:first-child { border-radius: var(--radius-pill) 0 0 var(--radius-pill); }
-  .mode-tab:last-child { border-radius: 0 var(--radius-pill) var(--radius-pill) 0; border-left: none; }
-  .mode-tab.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
-  .btn-record { background: var(--danger-fill); color: #fff; }
-  .btn-stop { background: var(--surface-3); color: var(--text); }
-  .audio-player { width: 100%; margin: 12px 0; }
-  audio { width: 100%; border-radius: var(--radius-sm); }
-  .transcript-box { background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 16px; font-size: 0.95rem; min-height: 200px; max-height: 500px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; line-height: 1.6; margin: 12px 0; }
-  .actions-row { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
-  .status-bar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--surface-2); border-radius: var(--radius-sm); margin: 12px 0; font-size: 0.9rem; }
-  .pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); animation: pulse 1.5s infinite; }
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .audio-player { margin: 12px 0; }
+  audio { width: 100%; border-radius: var(--radius); }
+  .transcript-box {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    font-size: 0.9375rem;
+    min-height: 200px;
+    max-height: 500px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    line-height: 1.6;
+    margin: 0 0 12px;
+  }
+  .actions-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .status-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin: 12px 0;
+    font-size: 0.875rem;
+  }
+  .pulse { width: 9px; height: 9px; border-radius: 50%; background: var(--danger); flex-shrink: 0; }
+  @media (prefers-reduced-motion: no-preference) {
+    .pulse { animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  }
 </style>
 </head>
-<body>
-<div class="app">
-  <div class="sidebar">
-    <a class="hub-link" href="../index.html"><i class="ph ph-arrow-left"></i> All tools</a>
-    <h2><i class="ph ph-cpu"></i> Engine</h2>
-    <div class="radio-group">
-      <label><input type="radio" name="engine" value="openai" checked onchange="switchEngine('openai')"><span><i class="ph ph-cloud"></i> OpenAI API</span></label>
-      <label><input type="radio" name="engine" value="offline" onchange="switchEngine('offline')"><span><i class="ph ph-device-mobile"></i> Offline</span></label>
-    </div>
+<body data-sw-path="../sw.js">
 
-    <div id="openaiConfig">
-      <div class="form-group">
-        <label>OpenAI API key</label>
-        <input type="password" id="apiKey" placeholder="sk-...">
-        <p style="font-size:.8rem;color:var(--text-muted);margin-top:4px;">Required for transcription. Get yours at <a href="https://platform.openai.com/api-keys" target="_blank" style="color:var(--accent);">platform.openai.com</a></p>
-      </div>
-      <div class="form-group">
-        <label>Language (optional)</label>
-        <select id="language">
-          <option value="">Auto-detect</option>
-          <option value="en">English</option>
-          <option value="es">Spanish</option>
-          <option value="fr">French</option>
-          <option value="de">German</option>
-          <option value="it">Italian</option>
-          <option value="pt">Portuguese</option>
-          <option value="zh">Chinese</option>
-          <option value="ja">Japanese</option>
-          <option value="ko">Korean</option>
-          <option value="ar">Arabic</option>
-          <option value="hi">Hindi</option>
-          <option value="ru">Russian</option>
-        </select>
-      </div>
-    </div>
-
-    <div id="offlineConfig" style="display:none;">
-      <div class="info-msg"><i class="ph ph-info"></i> Runs a small Whisper model inside your browser. No key, no upload. First use downloads about 40MB once; after that it works offline. English only.</div>
-      <p style="font-size:.8rem;color:var(--text-muted);margin-top:8px;">Tip: offline transcripts are rougher than the API. For quick clean-up, paste the result into another AI for a spelling pass, or use your editor's Find & Replace (Ctrl+H) for repeated fixes.</p>
-    </div>
-    <hr class="divider">
-    <h3><i class="ph ph-list-bullets"></i> Supported Formats</h3>
-    <p style="font-size:.85rem;color:var(--text-muted);">MP3, WAV, FLAC, M4A, OGG, AAC, WMA, WebM</p>
-    <hr class="divider">
-    <h3><i class="ph ph-lightbulb"></i> Features</h3>
-    <ul style="font-size:.85rem;color:var(--text-muted);padding-left:16px;">
-      <li>Upload audio files for transcription</li>
-      <li>Live microphone recording</li>
-      <li>Handles files up to 25MB</li>
-      <li>Download transcript as TXT</li>
-      <li>Copy to clipboard</li>
-      <li>Offline engine needs no API key</li>
-    </ul>
-    <hr class="divider">
-    <h3>About</h3>
-    <p style="font-size:.85rem;color:var(--text-muted);">OpenAI mode: your key and audio go directly from your browser to OpenAI, this site never sees them. Offline mode: the model runs on your device and nothing is sent anywhere.</p>
-    <hr class="divider">
-    <p style="font-size:.85rem;">Made by <a href="https://github.com/RehmozAyub" style="color:var(--accent);text-decoration:none;">RehmozAyub</a></p>
+<header class="tool-header">
+  <a class="back" href="../index.html"><i class="ph ph-arrow-left" aria-hidden="true"></i> <span>All tools</span></a>
+  <h1><i class="ph ph-microphone" aria-hidden="true"></i> Audio Transcriber</h1>
+  <div class="header-actions">
+    <button class="icon-btn" type="button" id="themeToggle" aria-label="Toggle theme"></button>
+    <a class="icon-btn" href="https://github.com/RehmozAyub/tools-for-everyone" aria-label="Source on GitHub"><i class="ph ph-github-logo" aria-hidden="true"></i></a>
   </div>
+</header>
 
-  <div class="main">
-    <h1><i class="ph ph-microphone"></i> Audio Transcriber</h1>
-    <div class="sub-header">Transcribe audio files or live recordings, with OpenAI's API or fully offline in your browser.</div>
+<div class="tool-layout">
+  <aside class="tool-controls">
+    <details class="panel" open data-mobile-collapsed>
+      <summary><span>Engine</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
+
+      <div class="radio-group">
+        <label><input type="radio" name="engine" value="openai" checked onchange="switchEngine('openai')"><span><i class="ph ph-cloud" aria-hidden="true"></i> OpenAI API</span></label>
+        <label><input type="radio" name="engine" value="offline" onchange="switchEngine('offline')"><span><i class="ph ph-device-mobile" aria-hidden="true"></i> Offline</span></label>
+      </div>
+
+      <div id="openaiConfig" class="mt-4">
+        <div class="form-group">
+          <label for="apiKey">OpenAI API key</label>
+          <input type="password" id="apiKey" placeholder="sk-...">
+          <p class="muted xsmall mt-1">Needed for this engine. Get yours at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com</a>.</p>
+        </div>
+        <div class="form-group">
+          <label for="language">Language, optional</label>
+          <select id="language">
+            <option value="">Detect automatically</option>
+            <option value="en">English</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="it">Italian</option>
+            <option value="pt">Portuguese</option>
+            <option value="zh">Chinese</option>
+            <option value="ja">Japanese</option>
+            <option value="ko">Korean</option>
+            <option value="ar">Arabic</option>
+            <option value="hi">Hindi</option>
+            <option value="ru">Russian</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="offlineConfig" class="mt-4" style="display:none;">
+        <div class="info-msg"><i class="ph ph-info" aria-hidden="true"></i> <span>Runs a small Whisper model inside your browser. No key, no upload. The first run downloads about 40MB once, then it works offline. English only.</span></div>
+        <p class="muted xsmall mt-2">Offline transcripts are rougher than the API ones. For a quick clean-up, paste the result into another tool for a spelling pass, or use your editor's find and replace for repeated fixes.</p>
+      </div>
+    </details>
+  </aside>
+
+  <main class="tool-main">
+    <p class="tool-intro">Transcribe audio files or live recordings, with OpenAI's API or fully offline in your browser.</p>
 
     <div class="mode-tabs">
-      <div class="mode-tab active" onclick="switchMode('upload',this)"><i class="ph ph-upload-simple"></i> Upload File</div>
-      <div class="mode-tab" onclick="switchMode('record',this)"><i class="ph ph-microphone"></i> Record</div>
+      <button class="mode-tab active" type="button" onclick="switchMode('upload',this)"><i class="ph ph-upload-simple" aria-hidden="true"></i> Upload a file</button>
+      <button class="mode-tab" type="button" onclick="switchMode('record',this)"><i class="ph ph-microphone" aria-hidden="true"></i> Record</button>
     </div>
 
-    <!-- Upload Mode -->
     <div id="uploadMode">
-      <div class="drop-zone" id="dropZone" onclick="document.getElementById('audioInput').click()">
-        <i class="ph ph-upload-simple"></i>
-        <p>Drag & drop an audio file, or click to browse</p>
-        <p style="font-size:.8rem;margin-top:8px;">MP3, WAV, FLAC, M4A, OGG, AAC, WMA</p>
+      <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="Choose an audio file to transcribe" onclick="document.getElementById('audioInput').click()">
+        <i class="ph ph-upload-simple" aria-hidden="true"></i>
+        <p class="dz-title">Drop a file here or browse</p>
+        <p class="dz-hint">MP3 WAV FLAC M4A OGG AAC WMA WebM, up to 25MB</p>
         <input type="file" id="audioInput" accept="audio/*,.mp3,.wav,.flac,.m4a,.ogg,.aac,.wma">
       </div>
 
@@ -124,45 +138,46 @@
         <audio id="audioPlayer" controls></audio>
       </div>
 
-      <button class="btn btn-primary" onclick="transcribeFile()" id="transcribeBtn" disabled><i class="ph ph-waveform"></i> Start transcription</button>
+      <button class="btn btn-primary" type="button" onclick="transcribeFile(this)" id="transcribeBtn"><i class="ph ph-waveform" aria-hidden="true"></i> Start transcription</button>
     </div>
 
-    <!-- Record Mode -->
     <div id="recordMode" style="display:none;">
-      <div class="info-msg"><i class="ph ph-info"></i> Record audio directly from your microphone, then transcribe it with the engine selected above.</div>
+      <div class="info-msg"><i class="ph ph-info" aria-hidden="true"></i> <span>Record straight from your microphone, then transcribe it with the engine you picked.</span></div>
 
       <div class="actions-row">
-        <button class="btn btn-sm btn-record" id="recordBtn" onclick="startRecording()"><i class="ph ph-record"></i> Start recording</button>
-        <button class="btn btn-sm btn-stop" id="stopBtn" onclick="stopRecording()" disabled><i class="ph ph-stop"></i> Stop</button>
+        <button class="btn btn-sm btn-record" type="button" id="recordBtn" onclick="startRecording()"><i class="ph ph-record" aria-hidden="true"></i> Start recording</button>
+        <button class="btn btn-sm btn-stop" type="button" id="stopBtn" onclick="stopRecording()" disabled><i class="ph ph-stop" aria-hidden="true"></i> Stop</button>
       </div>
 
       <div id="recordingStatus"></div>
       <div id="recordedAudio" style="display:none;" class="audio-player">
         <audio id="recordedPlayer" controls></audio>
       </div>
-      <button class="btn btn-primary" onclick="transcribeRecording()" id="transcribeRecBtn" style="display:none;"><i class="ph ph-waveform"></i> Transcribe recording</button>
+      <button class="btn btn-primary" type="button" onclick="transcribeRecording(this)" id="transcribeRecBtn"><i class="ph ph-waveform" aria-hidden="true"></i> Transcribe the recording</button>
     </div>
 
-    <!-- Status -->
     <div id="statusArea"></div>
 
-    <!-- Transcript -->
-    <div id="transcriptSection" style="display:none;">
-      <hr class="divider">
-      <h2>Transcript</h2>
-      <div class="transcript-box" id="transcriptBox"></div>
-      <div class="actions-row">
-        <button class="btn btn-sm btn-export" onclick="copyTranscript()"><i class="ph ph-copy"></i> Copy to clipboard</button>
-        <button class="btn btn-sm btn-download" onclick="downloadTranscript()"><i class="ph ph-download-simple"></i> Download TXT</button>
+    <div id="transcriptSection" class="result" style="display:none;">
+      <div class="result-head">
+        <h2>Transcript</h2>
+        <div class="actions-row">
+          <button class="btn btn-sm" type="button" onclick="copyTranscript()"><i class="ph ph-copy" aria-hidden="true"></i> Copy</button>
+          <button class="btn btn-sm btn-download" type="button" onclick="downloadTranscript()"><i class="ph ph-download-simple" aria-hidden="true"></i> Download TXT</button>
+        </div>
+      </div>
+      <div class="result-body">
+        <div class="transcript-box" id="transcriptBox"></div>
       </div>
     </div>
-
-    <div class="footer">
-      Audio Transcriber v1.1 · OpenAI Whisper or offline in-browser ·
-      <a href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a> · <a href="#" onclick="shareThisTool();return false;">Share</a>
-    </div>
-  </div>
+  </main>
 </div>
+
+<footer class="tool-footer">
+  <span>Made by <a href="https://github.com/RehmozAyub">RehmozAyub</a></span>
+  <a href="https://github.com/RehmozAyub/tools-for-everyone">Source on GitHub</a>
+  <button class="link-btn" type="button" onclick="sharePage()">Share</button>
+</footer>
 
 <script>
 let uploadedFile = null;
@@ -187,17 +202,21 @@ dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover
 dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
 audioInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
 
+function fmtSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
 function handleFile(file) {
   uploadedFile = file;
-  const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
   document.getElementById('fileInfo').innerHTML = `
-    <div class="success-msg"><i class="ph ph-check-circle"></i> ${file.name} (${sizeMB} MB)</div>
-    ${file.size > 25 * 1024 * 1024 ? '<div class="warning-msg"><i class="ph ph-warning"></i> File is larger than 25MB. The Whisper API has a 25MB limit per request. Consider splitting the file.</div>' : ''}
+    <div class="file-list"><div class="file-row"><span class="file-name">${escapeHTML(file.name)}</span><span class="file-size">${fmtSize(file.size)}</span></div></div>
+    ${file.size > 25 * 1024 * 1024 ? '<div class="warning-msg"><i class="ph ph-warning" aria-hidden="true"></i> <span>This file is larger than 25MB, which is the limit for one Whisper API request. Split it into shorter parts first.</span></div>' : ''}
   `;
   const player = document.getElementById('audioPlayer');
   player.src = URL.createObjectURL(file);
   document.getElementById('audioPreview').style.display = 'block';
-  document.getElementById('transcribeBtn').disabled = false;
 }
 
 // Mode switching
@@ -220,16 +239,15 @@ async function startRecording() {
       const player = document.getElementById('recordedPlayer');
       player.src = URL.createObjectURL(recordedBlob);
       document.getElementById('recordedAudio').style.display = 'block';
-      document.getElementById('transcribeRecBtn').style.display = 'block';
-      document.getElementById('recordingStatus').innerHTML = '<div class="success-msg"><i class="ph ph-check-circle"></i> Recording saved. Click transcribe to process.</div>';
+      document.getElementById('recordingStatus').innerHTML = '<div class="status-bar"><i class="ph ph-check-circle" aria-hidden="true"></i> Recording saved. Transcribe it when you are ready.</div>';
       stream.getTracks().forEach(t => t.stop());
     };
     mediaRecorder.start(1000);
     document.getElementById('recordBtn').disabled = true;
     document.getElementById('stopBtn').disabled = false;
-    document.getElementById('recordingStatus').innerHTML = '<div class="status-bar"><div class="pulse"></div> Recording...</div>';
+    document.getElementById('recordingStatus').innerHTML = '<div class="status-bar"><span class="pulse"></span> Recording</div>';
   } catch (e) {
-    document.getElementById('recordingStatus').innerHTML = `<div class="error-msg"><i class="ph ph-x-circle"></i> Microphone access denied: ${e.message}</div>`;
+    document.getElementById('recordingStatus').innerHTML = `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>Microphone access was denied: ${escapeHTML(e.message)}</span></div>`;
   }
 }
 
@@ -241,32 +259,33 @@ function stopRecording() {
   }
 }
 
-// Transcription via OpenAI API
-async function transcribeFile() {
-  if (!uploadedFile) { alert('Upload an audio file first.'); return; }
-  await doTranscribe(uploadedFile);
+// Transcription
+async function transcribeFile(btn) {
+  if (!uploadedFile) { showInlineError(btn, 'Choose an audio file first.'); return; }
+  await doTranscribe(uploadedFile, btn);
 }
 
-async function transcribeRecording() {
-  if (!recordedBlob) { alert('Record audio first.'); return; }
+async function transcribeRecording(btn) {
+  if (!recordedBlob) { showInlineError(btn, 'Record something first.'); return; }
   const file = new File([recordedBlob], 'recording.webm', { type: 'audio/webm' });
-  await doTranscribe(file);
+  await doTranscribe(file, btn);
 }
 
-async function doTranscribe(file) {
-  if (currentEngine === 'offline') await transcribeOffline(file);
-  else await transcribeOnline(file);
+async function doTranscribe(file, btn) {
+  if (currentEngine === 'offline') await transcribeOffline(file, btn);
+  else await transcribeOnline(file, btn);
 }
 
 // Engine: OpenAI API
-async function transcribeOnline(file) {
+async function transcribeOnline(file, btn) {
   const apiKey = document.getElementById('apiKey').value;
   if (!apiKey) {
-    document.getElementById('statusArea').innerHTML = '<div class="error-msg"><i class="ph ph-x-circle"></i> Please enter your OpenAI API key in the sidebar.</div>';
+    showInlineError(btn, 'Enter your OpenAI API key in the engine panel first.');
     return;
   }
 
-  document.getElementById('statusArea').innerHTML = '<div class="status-bar"><span class="spinner"></span> Transcribing, this may take a moment.</div>';
+  setBusy(btn, true, 'Transcribing...');
+  document.getElementById('statusArea').innerHTML = '<div class="status-bar"><span class="spinner"></span> Sending the audio to OpenAI. This can take a moment.</div>';
 
   try {
     const formData = new FormData();
@@ -284,13 +303,15 @@ async function transcribeOnline(file) {
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`API error (${response.status}): ${errText}`);
+      throw new Error(`The API returned ${response.status}: ${errText}`);
     }
 
     const transcript = await response.text();
     finishTranscript(transcript, file.name);
   } catch (e) {
-    document.getElementById('statusArea').innerHTML = `<div class="error-msg"><i class="ph ph-x-circle"></i> Error: ${e.message}</div>`;
+    document.getElementById('statusArea').innerHTML = `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>${escapeHTML(e.message)}</span></div>`;
+  } finally {
+    setBusy(btn, false);
   }
 }
 
@@ -303,8 +324,7 @@ function getOfflineTranscriber() {
         progress_callback: (p) => {
           if (p.status === 'progress' && p.file) {
             const pct = Math.round(p.progress || 0);
-            const el = document.getElementById('offlineProgress');
-            if (el) el.textContent = `Downloading offline model (${pct}%)...`;
+            setProgress(document.getElementById('statusArea'), pct, 'Downloading the offline model');
           }
         },
       });
@@ -329,31 +349,35 @@ async function decodeAudioTo16kMono(fileOrBlob) {
   return rendered.getChannelData(0);
 }
 
-async function transcribeOffline(file) {
-  document.getElementById('statusArea').innerHTML = '<div class="status-bar"><span class="spinner"></span> <span id="offlineProgress">Loading offline model...</span></div>';
+async function transcribeOffline(file, btn) {
+  setBusy(btn, true, 'Transcribing...');
+  setProgress(document.getElementById('statusArea'), 0, 'Loading the offline model');
   try {
     const pcm = await decodeAudioTo16kMono(file);
     const transcriber = await getOfflineTranscriber();
-    document.getElementById('offlineProgress') && (document.getElementById('offlineProgress').textContent = 'Transcribing...');
+    setProgress(document.getElementById('statusArea'), 100, 'Transcribing');
     const result = await transcriber(pcm);
     finishTranscript((result.text || '').trim(), file.name);
   } catch (e) {
-    document.getElementById('statusArea').innerHTML = `<div class="error-msg"><i class="ph ph-x-circle"></i> Error: ${e.message}</div>`;
+    document.getElementById('statusArea').innerHTML = `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>${escapeHTML(e.message)}</span></div>`;
+  } finally {
+    setBusy(btn, false);
   }
 }
 
 function finishTranscript(transcript, fileName) {
-  document.getElementById('statusArea').innerHTML = '<div class="success-msg"><i class="ph ph-check-circle"></i> Transcription completed</div>';
+  document.getElementById('statusArea').innerHTML = '';
   document.getElementById('transcriptBox').textContent = transcript;
   document.getElementById('transcriptSection').style.display = 'block';
   window._transcript = transcript;
   window._audioFileName = fileName;
+  showToast('Transcription finished', 'success');
 }
 
 // Actions
 function copyTranscript() {
   if (!window._transcript) return;
-  navigator.clipboard.writeText(window._transcript).then(() => showToast('Copied to clipboard'));
+  navigator.clipboard.writeText(window._transcript).then(() => showToast('Transcript copied to clipboard', 'success'));
 }
 
 function downloadTranscript() {
@@ -367,24 +391,12 @@ function downloadTranscript() {
   URL.revokeObjectURL(a.href);
 }
 
-function showToast(msg) {
-  const t = document.createElement('div');
-  t.className = 'toast';
-  t.innerHTML = `<i class="ph ph-check-circle"></i> ${msg}`;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2500);
+function escapeHTML(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
 </script>
-<script>
-function shareThisTool() {
-  const data = { title: document.title, text: 'A free browser tool that never uploads your files.', url: location.href };
-  if (navigator.share) { navigator.share(data).catch(() => {}); return; }
-  navigator.clipboard.writeText(location.href).then(() => showToast('Link copied to clipboard'));
-}
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
-}
-</script>
+<script src="../assets/app.js" defer></script>
 </body>
 </html>
