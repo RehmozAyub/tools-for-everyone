@@ -3,24 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PDF Suite - Merge, Split & Compress PDF Free, No Upload</title>
+<title>PDF Suite - Merge, Split and Compress PDF Free, No Upload</title>
 <meta name="description" content="Merge, split, compress, watermark, and edit PDFs for free. Everything happens in your browser, your files are never uploaded anywhere.">
 <link rel="canonical" href="https://rehmozayub.github.io/tools-for-everyone/PDF%20Suite/pdf_suite.html">
 <meta property="og:type" content="website">
-<meta property="og:title" content="PDF Suite - Merge, Split & Compress PDF Free, No Upload">
+<meta property="og:title" content="PDF Suite - Merge, Split and Compress PDF Free, No Upload">
 <meta property="og:description" content="Merge, split, compress, watermark, and edit PDFs for free. Everything happens in your browser, your files are never uploaded anywhere.">
 <meta property="og:url" content="https://rehmozayub.github.io/tools-for-everyone/PDF%20Suite/pdf_suite.html">
 <meta property="og:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="PDF Suite - Merge, Split & Compress PDF Free, No Upload">
+<meta name="twitter:title" content="PDF Suite - Merge, Split and Compress PDF Free, No Upload">
 <meta name="twitter:description" content="Merge, split, compress, watermark, and edit PDFs for free. Everything happens in your browser, your files are never uploaded anywhere.">
 <meta name="twitter:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
 <link rel="manifest" href="../manifest.json">
-<meta name="theme-color" content="#0b0d10">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f3f5">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1114">
+<link rel="icon" href="../assets/favicon.svg">
 <link rel="apple-touch-icon" href="../assets/icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script>
+  try {
+    var t = localStorage.getItem('theme');
+    if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+</script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <link rel="stylesheet" href="../assets/theme.css">
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
@@ -28,44 +33,64 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 <style>
-  .preview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin:16px 0}
-  .preview-grid canvas{width:100%;border-radius:var(--radius-sm);border:1px solid var(--border)}
-  .text-output{background:var(--surface-2);border:1px solid var(--border-strong);border-radius:var(--radius-sm);padding:16px;font-family:var(--font-mono);font-size:.85rem;max-height:400px;overflow-y:auto;white-space:pre-wrap;word-wrap:break-word;margin:12px 0}
+  .preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; margin: 16px 0; }
+  .preview-grid canvas { width: 100%; border-radius: var(--radius); border: 1px solid var(--border); }
+  .preview-caption { text-align: center; font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+  .text-output {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    max-height: 400px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin: 0 0 12px;
+  }
 </style>
 </head>
-<body>
-<div class="app">
-  <div class="sidebar">
-    <a class="hub-link" href="../index.html"><i class="ph ph-arrow-left"></i> All tools</a>
-    <h2><i class="ph ph-toolbox"></i> Select tool</h2>
-    <div id="toolList"></div>
-    <hr class="divider">
-    <h3>About</h3>
-    <p style="font-size:.85rem;color:var(--text-muted);">Free, open-source PDF toolkit. No file uploads to any server. Everything runs locally in your browser.</p>
-    <hr class="divider">
-    <p style="font-size:.85rem;">Made by <a href="https://github.com/RehmozAyub" style="color:var(--accent);text-decoration:none;">RehmozAyub</a></p>
+<body data-sw-path="../sw.js">
+
+<header class="tool-header">
+  <a class="back" href="../index.html"><i class="ph ph-arrow-left" aria-hidden="true"></i> <span>All tools</span></a>
+  <h1><i class="ph ph-file-pdf" aria-hidden="true"></i> PDF Suite</h1>
+  <div class="header-actions">
+    <button class="icon-btn" type="button" id="themeToggle" aria-label="Toggle theme"></button>
+    <a class="icon-btn" href="https://github.com/RehmozAyub/tools-for-everyone" aria-label="Source on GitHub"><i class="ph ph-github-logo" aria-hidden="true"></i></a>
   </div>
-  <div class="main">
-    <h1><i class="ph ph-file-pdf"></i> PDF Suite</h1>
-    <div class="sub-header">Merge, split, compress, and extract. Everything runs locally in your browser.</div>
+</header>
+
+<div class="tool-layout has-subtool-nav">
+  <nav class="subtool-nav" id="toolList" aria-label="PDF tools"></nav>
+
+  <main class="tool-main">
+    <p class="tool-intro">Merge, split, rotate, watermark, and extract. Every file stays in your browser.</p>
     <div id="toolContent"></div>
-    <div class="footer">PDF Suite v2.0 · Built with HTML and JavaScript · <a href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a> · <a href="#" onclick="shareThisTool();return false;">Share</a></div>
-  </div>
+  </main>
 </div>
+
+<footer class="tool-footer">
+  <span>Made by <a href="https://github.com/RehmozAyub">RehmozAyub</a></span>
+  <a href="https://github.com/RehmozAyub/tools-for-everyone">Source on GitHub</a>
+  <button class="link-btn" type="button" onclick="sharePage()">Share</button>
+</footer>
+
 <script>
 const TOOLS = [
   { id:'merge', icon:'link-simple', name:'Merge PDFs' },
-  { id:'split', icon:'scissors', name:'Split PDF' },
-  { id:'organize', icon:'squares-four', name:'Organize Pages' },
-  { id:'extract_text', icon:'text-align-left', name:'Extract Text' },
-  { id:'pdf_to_images', icon:'image', name:'PDF to Images' },
+  { id:'split', icon:'scissors', name:'Split a PDF' },
+  { id:'organize', icon:'squares-four', name:'Organize pages' },
+  { id:'extract_text', icon:'text-align-left', name:'Extract text' },
+  { id:'pdf_to_images', icon:'image', name:'PDF to images' },
   { id:'images_to_pdf', icon:'file-arrow-up', name:'Images to PDF' },
-  { id:'rotate', icon:'arrow-clockwise', name:'Rotate Pages' },
-  { id:'watermark', icon:'drop', name:'Add Watermark' },
-  { id:'page_numbers', icon:'hash', name:'Page Numbers' },
-  { id:'metadata', icon:'tag', name:'Edit Metadata' },
-  { id:'protect', icon:'lock', name:'Protect PDF' },
-  { id:'unlock', icon:'lock-open', name:'Unlock PDF' },
+  { id:'rotate', icon:'arrow-clockwise', name:'Rotate pages' },
+  { id:'watermark', icon:'drop', name:'Add watermark' },
+  { id:'page_numbers', icon:'hash', name:'Page numbers' },
+  { id:'metadata', icon:'tag', name:'Edit metadata' },
+  { id:'protect', icon:'lock', name:'Protect a PDF' },
+  { id:'unlock', icon:'lock-open', name:'Unlock a PDF' },
 ];
 
 let currentTool = 'merge';
@@ -73,7 +98,7 @@ let currentTool = 'merge';
 function initToolList() {
   const list = document.getElementById('toolList');
   list.innerHTML = TOOLS.map(t =>
-    `<div class="tool-item${t.id===currentTool?' active':''}" onclick="selectTool('${t.id}',this)"><i class="ph ph-${t.icon}"></i> ${t.name}</div>`
+    `<button class="tool-item${t.id===currentTool?' active':''}" type="button" onclick="selectTool('${t.id}',this)"><i class="ph ph-${t.icon}" aria-hidden="true"></i> ${t.name}</button>`
   ).join('');
 }
 
@@ -84,9 +109,11 @@ function selectTool(id, el) {
   renderTool();
 }
 
-function dropZoneHTML(id, accept, multiple, label) {
-  return `<div class="drop-zone" id="dz-${id}" onclick="document.getElementById('fi-${id}').click()">
-    <i class="ph ph-upload-simple"></i><p>${label || 'Drag & drop or click to browse'}</p>
+function dropZoneHTML(id, accept, multiple, label, hint) {
+  return `<div class="drop-zone" id="dz-${id}" role="button" tabindex="0" aria-label="${label}" onclick="document.getElementById('fi-${id}').click()">
+    <i class="ph ph-upload-simple" aria-hidden="true"></i>
+    <p class="dz-title">Drop ${multiple ? 'files' : 'a file'} here or browse</p>
+    <p class="dz-hint">${hint}</p>
     <input type="file" id="fi-${id}" ${accept?'accept="'+accept+'"':''} ${multiple?'multiple':''}>
   </div><div id="info-${id}"></div>`;
 }
@@ -94,64 +121,64 @@ function dropZoneHTML(id, accept, multiple, label) {
 function renderTool() {
   const c = document.getElementById('toolContent');
   switch (currentTool) {
-    case 'merge': c.innerHTML = `<h2><i class="ph ph-link-simple"></i> Merge PDFs</h2><p class="tool-info">Combine multiple PDF files into a single document.</p>
-      ${dropZoneHTML('merge','.pdf',true,'Upload PDFs to merge (order matters)')}<div id="mergeList"></div>
-      <button class="btn btn-primary" onclick="doMerge()"><i class="ph ph-link-simple"></i> Merge now</button><div id="mergeResult"></div>`; break;
-    case 'split': c.innerHTML = `<h2><i class="ph ph-scissors"></i> Split PDF</h2><p class="tool-info">Split a PDF into individual pages or custom ranges.</p>
-      ${dropZoneHTML('split','.pdf',false,'Upload PDF to split')}<div class="form-group"><label>Mode</label>
-      <div class="radio-group"><label><input type="radio" name="splitMode" value="all" checked><span>All pages</span></label>
-      <label><input type="radio" name="splitMode" value="range"><span>Page range</span></label></div></div>
-      <div class="form-group"><label>Page range (e.g. 1-3,5,7-9)</label><input type="text" id="splitRange" placeholder="1-3,5,7-9"></div>
-      <button class="btn btn-primary" onclick="doSplit()"><i class="ph ph-scissors"></i> Split now</button><div id="splitResult"></div>`; break;
-    case 'organize': c.innerHTML = `<h2><i class="ph ph-squares-four"></i> Organize Pages</h2><p class="tool-info">Reorder or remove pages from a PDF.</p>
-      ${dropZoneHTML('organize','.pdf',false,'Upload PDF')}<div class="form-group"><label>New page order (comma-separated, e.g. 3,1,2,5)</label>
+    case 'merge': c.innerHTML = `<h2>Merge PDFs</h2><p class="tool-info"><i class="ph ph-info" aria-hidden="true"></i> <span>Combine several PDF files into one document, in the order you choose them.</span></p>
+      ${dropZoneHTML('merge','.pdf',true,'Choose PDFs to merge','PDF, two files or more, order matters')}<div id="mergeList"></div>
+      <button class="btn btn-primary" type="button" onclick="doMerge(this)"><i class="ph ph-link-simple" aria-hidden="true"></i> Merge now</button><div id="mergeResult"></div>`; break;
+    case 'split': c.innerHTML = `<h2>Split a PDF</h2><p class="tool-info"><i class="ph ph-info" aria-hidden="true"></i> <span>Split a PDF into single pages, or pull out a range.</span></p>
+      ${dropZoneHTML('split','.pdf',false,'Choose a PDF to split','PDF, one file')}<div class="form-group"><label>Mode</label>
+      <div class="radio-group"><label><input type="radio" name="splitMode" value="all" checked><span>Every page</span></label>
+      <label><input type="radio" name="splitMode" value="range"><span>A page range</span></label></div></div>
+      <div class="form-group"><label for="splitRange">Page range</label><input type="text" id="splitRange" placeholder="1-3,5,7-9"></div>
+      <button class="btn btn-primary" type="button" onclick="doSplit(this)"><i class="ph ph-scissors" aria-hidden="true"></i> Split now</button><div id="splitResult"></div>`; break;
+    case 'organize': c.innerHTML = `<h2>Organize pages</h2><p class="tool-info"><i class="ph ph-info" aria-hidden="true"></i> <span>Put pages in a new order, or leave some out.</span></p>
+      ${dropZoneHTML('organize','.pdf',false,'Choose a PDF to reorganize','PDF, one file')}<div class="form-group"><label for="orgOrder">New page order, separated by commas</label>
       <input type="text" id="orgOrder" placeholder="3,1,2,5"></div>
-      <button class="btn btn-primary" onclick="doOrganize()"><i class="ph ph-squares-four"></i> Reorganize</button><div id="orgResult"></div>`; break;
-    case 'extract_text': c.innerHTML = `<h2><i class="ph ph-text-align-left"></i> Extract Text</h2><p class="tool-info">Extract all text content from a PDF.</p>
-      ${dropZoneHTML('text','.pdf',false,'Upload PDF')}<button class="btn btn-primary" onclick="doExtractText()"><i class="ph ph-text-align-left"></i> Extract text</button><div id="textResult"></div>`; break;
-    case 'pdf_to_images': c.innerHTML = `<h2><i class="ph ph-image"></i> PDF to Images</h2><p class="tool-info">Convert each page to a PNG image.</p>
-      ${dropZoneHTML('p2i','.pdf',false,'Upload PDF')}<div class="form-group"><label>Scale</label>
+      <button class="btn btn-primary" type="button" onclick="doOrganize(this)"><i class="ph ph-squares-four" aria-hidden="true"></i> Reorganize</button><div id="orgResult"></div>`; break;
+    case 'extract_text': c.innerHTML = `<h2>Extract text</h2><p class="tool-info"><i class="ph ph-info" aria-hidden="true"></i> <span>Pull all the text out of a PDF.</span></p>
+      ${dropZoneHTML('text','.pdf',false,'Choose a PDF to read','PDF, one file')}<button class="btn btn-primary" type="button" onclick="doExtractText(this)"><i class="ph ph-text-align-left" aria-hidden="true"></i> Extract text</button><div id="textResult"></div>`; break;
+    case 'pdf_to_images': c.innerHTML = `<h2>PDF to images</h2><p class="tool-info"><i class="ph ph-info" aria-hidden="true"></i> <span>Turn every page into a PNG image.</span></p>
+      ${dropZoneHTML('p2i','.pdf',false,'Choose a PDF to convert','PDF, one file')}<div class="form-group"><label for="p2iScale">Scale</label>
       <input type="range" id="p2iScale" min="1" max="4" value="2" step="0.5"><div class="slider-value" id="p2iScaleVal">2x</div></div>
-      <button class="btn btn-primary" onclick="doPdfToImages()"><i class="ph ph-image"></i> Convert to images</button><div id="p2iResult"></div>`; break;
-    case 'images_to_pdf': c.innerHTML = `<h2><i class="ph ph-file-arrow-up"></i> Images to PDF</h2><p class="tool-info">Convert images into a PDF document.</p>
-      ${dropZoneHTML('i2p','image/*',true,'Upload images (PNG, JPG)')}<button class="btn btn-primary" onclick="doImagesToPdf()"><i class="ph ph-file-arrow-up"></i> Create PDF</button><div id="i2pResult"></div>`; break;
-    case 'rotate': c.innerHTML = `<h2><i class="ph ph-arrow-clockwise"></i> Rotate Pages</h2><p class="tool-info">Rotate all or specific pages.</p>
-      ${dropZoneHTML('rotate','.pdf',false,'Upload PDF')}<div class="form-group"><label>Rotation</label>
-      <div class="radio-group"><label><input type="radio" name="rotDeg" value="90" checked><span>90&deg; CW</span></label>
-      <label><input type="radio" name="rotDeg" value="180"><span>180&deg;</span></label>
-      <label><input type="radio" name="rotDeg" value="270"><span>90&deg; CCW</span></label></div></div>
-      <div class="form-group"><label>Pages (blank = all, or e.g. 1,3,5)</label><input type="text" id="rotPages" placeholder="All pages"></div>
-      <button class="btn btn-primary" onclick="doRotate()"><i class="ph ph-arrow-clockwise"></i> Rotate</button><div id="rotResult"></div>`; break;
-    case 'watermark': c.innerHTML = `<h2><i class="ph ph-drop"></i> Add Watermark</h2><p class="tool-info">Add a text watermark to every page.</p>
-      ${dropZoneHTML('wm','.pdf',false,'Upload PDF')}<div class="form-row">
-      <div class="form-group"><label>Watermark text</label><input type="text" id="wmText" value="DRAFT" placeholder="DRAFT"></div>
-      <div class="form-group"><label>Font size</label><input type="number" id="wmSize" value="60" min="10" max="200"></div></div>
-      <div class="form-row"><div class="form-group"><label>Opacity</label><input type="range" id="wmOpacity" min="0.05" max="1" value="0.15" step="0.05">
+      <button class="btn btn-primary" type="button" onclick="doPdfToImages(this)"><i class="ph ph-image" aria-hidden="true"></i> Convert to images</button><div id="p2iResult"></div>`; break;
+    case 'images_to_pdf': c.innerHTML = `<h2>Images to PDF</h2><p class="tool-info"><i class="ph ph-info" aria-hidden="true"></i> <span>Put images together into one PDF, one image per page.</span></p>
+      ${dropZoneHTML('i2p','image/*',true,'Choose images to convert','PNG JPG, any number of files')}<button class="btn btn-primary" type="button" onclick="doImagesToPdf(this)"><i class="ph ph-file-arrow-up" aria-hidden="true"></i> Create PDF</button><div id="i2pResult"></div>`; break;
+    case 'rotate': c.innerHTML = `<h2>Rotate pages</h2><p class="tool-info"><i class="ph ph-info" aria-hidden="true"></i> <span>Turn every page, or just the ones you name.</span></p>
+      ${dropZoneHTML('rotate','.pdf',false,'Choose a PDF to rotate','PDF, one file')}<div class="form-group"><label>Rotation</label>
+      <div class="radio-group"><label><input type="radio" name="rotDeg" value="90" checked><span>90 clockwise</span></label>
+      <label><input type="radio" name="rotDeg" value="180"><span>180</span></label>
+      <label><input type="radio" name="rotDeg" value="270"><span>90 anticlockwise</span></label></div></div>
+      <div class="form-group"><label for="rotPages">Pages, or leave empty for all of them</label><input type="text" id="rotPages" placeholder="1,3,5"></div>
+      <button class="btn btn-primary" type="button" onclick="doRotate(this)"><i class="ph ph-arrow-clockwise" aria-hidden="true"></i> Rotate</button><div id="rotResult"></div>`; break;
+    case 'watermark': c.innerHTML = `<h2>Add watermark</h2><p class="tool-info"><i class="ph ph-info" aria-hidden="true"></i> <span>Lay a line of text diagonally across every page.</span></p>
+      ${dropZoneHTML('wm','.pdf',false,'Choose a PDF to watermark','PDF, one file')}<div class="form-row">
+      <div class="form-group"><label for="wmText">Watermark text</label><input type="text" id="wmText" value="DRAFT" placeholder="DRAFT"></div>
+      <div class="form-group"><label for="wmSize">Font size</label><input type="number" id="wmSize" value="60" min="10" max="200"></div></div>
+      <div class="form-row"><div class="form-group"><label for="wmOpacity">Opacity</label><input type="range" id="wmOpacity" min="0.05" max="1" value="0.15" step="0.05">
       <div class="slider-value" id="wmOpVal">0.15</div></div>
-      <div class="form-group"><label>Color</label><input type="color" id="wmColor" value="#888888"></div></div>
-      <button class="btn btn-primary" onclick="doWatermark()"><i class="ph ph-drop"></i> Add watermark</button><div id="wmResult"></div>`; break;
-    case 'page_numbers': c.innerHTML = `<h2><i class="ph ph-hash"></i> Page Numbers</h2><p class="tool-info">Add page numbers to every page.</p>
-      ${dropZoneHTML('pn','.pdf',false,'Upload PDF')}<div class="form-row">
-      <div class="form-group"><label>Position</label><select id="pnPos"><option value="bottom-center">Bottom Center</option>
-      <option value="bottom-right">Bottom Right</option><option value="bottom-left">Bottom Left</option>
-      <option value="top-center">Top Center</option><option value="top-right">Top Right</option></select></div>
-      <div class="form-group"><label>Format</label><select id="pnFmt"><option value="num">1, 2, 3</option>
-      <option value="page">Page 1, Page 2</option><option value="of">1 of N, 2 of N</option></select></div></div>
-      <div class="form-group"><label>Font size</label><input type="number" id="pnSize" value="10" min="6" max="24"></div>
-      <button class="btn btn-primary" onclick="doPageNumbers()"><i class="ph ph-hash"></i> Add page numbers</button><div id="pnResult"></div>`; break;
-    case 'metadata': c.innerHTML = `<h2><i class="ph ph-tag"></i> Edit Metadata</h2><p class="tool-info">View and edit PDF properties.</p>
-      ${dropZoneHTML('meta','.pdf',false,'Upload PDF')}<div id="metaFields"></div>
-      <button class="btn btn-primary" onclick="doMetadata()"><i class="ph ph-tag"></i> Save metadata</button><div id="metaResult"></div>`; break;
-    case 'protect': c.innerHTML = `<h2><i class="ph ph-lock"></i> Protect PDF</h2><p class="tool-info">Add password protection to a PDF.</p>
-      ${dropZoneHTML('protect','.pdf',false,'Upload PDF')}<div class="form-group"><label>User password</label>
-      <input type="password" id="protectPw" placeholder="Enter password"></div>
-      <div class="form-group"><label>Owner password (optional)</label><input type="password" id="protectOwnerPw" placeholder="Owner password"></div>
-      <button class="btn btn-primary" onclick="doProtect()"><i class="ph ph-lock"></i> Protect</button><div id="protectResult"></div>`; break;
-    case 'unlock': c.innerHTML = `<h2><i class="ph ph-lock-open"></i> Unlock PDF</h2><p class="tool-info">Remove password from a PDF (you must know the password).</p>
-      ${dropZoneHTML('unlock','.pdf',false,'Upload protected PDF')}<div class="form-group"><label>Password</label>
-      <input type="password" id="unlockPw" placeholder="Enter password"></div>
-      <button class="btn btn-primary" onclick="doUnlock()"><i class="ph ph-lock-open"></i> Unlock</button><div id="unlockResult"></div>`; break;
-    default: c.innerHTML = '<p>Select a tool from the sidebar.</p>';
+      <div class="form-group"><label for="wmColor">Colour</label><input type="color" id="wmColor" value="#888888"></div></div>
+      <button class="btn btn-primary" type="button" onclick="doWatermark(this)"><i class="ph ph-drop" aria-hidden="true"></i> Add watermark</button><div id="wmResult"></div>`; break;
+    case 'page_numbers': c.innerHTML = `<h2>Page numbers</h2><p class="tool-info"><i class="ph ph-info" aria-hidden="true"></i> <span>Number every page in the position and style you pick.</span></p>
+      ${dropZoneHTML('pn','.pdf',false,'Choose a PDF to number','PDF, one file')}<div class="form-row">
+      <div class="form-group"><label for="pnPos">Position</label><select id="pnPos"><option value="bottom-center">Bottom centre</option>
+      <option value="bottom-right">Bottom right</option><option value="bottom-left">Bottom left</option>
+      <option value="top-center">Top centre</option><option value="top-right">Top right</option></select></div>
+      <div class="form-group"><label for="pnFmt">Style</label><select id="pnFmt"><option value="num">1, 2, 3</option>
+      <option value="page">Page 1, Page 2</option><option value="of">1 of 9, 2 of 9</option></select></div></div>
+      <div class="form-group"><label for="pnSize">Font size</label><input type="number" id="pnSize" value="10" min="6" max="24"></div>
+      <button class="btn btn-primary" type="button" onclick="doPageNumbers(this)"><i class="ph ph-hash" aria-hidden="true"></i> Add page numbers</button><div id="pnResult"></div>`; break;
+    case 'metadata': c.innerHTML = `<h2>Edit metadata</h2><p class="tool-info"><i class="ph ph-info" aria-hidden="true"></i> <span>See and change the properties stored inside a PDF.</span></p>
+      ${dropZoneHTML('meta','.pdf',false,'Choose a PDF to edit','PDF, one file')}<div id="metaFields"></div>
+      <button class="btn btn-primary" type="button" onclick="doMetadata(this)"><i class="ph ph-tag" aria-hidden="true"></i> Save metadata</button><div id="metaResult"></div>`; break;
+    case 'protect': c.innerHTML = `<h2>Protect a PDF</h2><p class="tool-info"><i class="ph ph-info" aria-hidden="true"></i> <span>Lock a PDF so it asks for a password before it opens.</span></p>
+      ${dropZoneHTML('protect','.pdf',false,'Choose a PDF to protect','PDF, one file')}<div class="form-group"><label for="protectPw">Password to open the file</label>
+      <input type="password" id="protectPw" placeholder="Choose a password"></div>
+      <div class="form-group"><label for="protectOwnerPw">Owner password, optional</label><input type="password" id="protectOwnerPw" placeholder="Leave empty to reuse the one above"></div>
+      <button class="btn btn-primary" type="button" onclick="doProtect(this)"><i class="ph ph-lock" aria-hidden="true"></i> Protect</button><div id="protectResult"></div>`; break;
+    case 'unlock': c.innerHTML = `<h2>Unlock a PDF</h2><p class="tool-info"><i class="ph ph-info" aria-hidden="true"></i> <span>Remove the password from a PDF you already know the password for.</span></p>
+      ${dropZoneHTML('unlock','.pdf',false,'Choose a protected PDF','PDF, one file')}<div class="form-group"><label for="unlockPw">Password</label>
+      <input type="password" id="unlockPw" placeholder="The password the file uses now"></div>
+      <button class="btn btn-primary" type="button" onclick="doUnlock(this)"><i class="ph ph-lock-open" aria-hidden="true"></i> Unlock</button><div id="unlockResult"></div>`; break;
+    default: c.innerHTML = '<p>Pick a tool from the list.</p>';
   }
   setupDropZones();
 }
@@ -172,9 +199,12 @@ function setupDropZones() {
         const buf = await f.arrayBuffer();
         storedFiles[id].push({ name: f.name, bytes: new Uint8Array(buf), type: f.type });
       }
-      const infoEl = document.getElementById('info-'+id);
-      if (files.length === 1) infoEl.innerHTML = `<div class="success-msg"><i class="ph ph-check-circle"></i> ${files[0].name} (${(files[0].size/1024).toFixed(1)} KB)</div>`;
-      else infoEl.innerHTML = `<div class="success-msg"><i class="ph ph-check-circle"></i> ${files.length} files uploaded</div>`;
+      let rows = '<div class="file-list">';
+      for (const f of files) {
+        rows += `<div class="file-row"><span class="file-name">${escapeHTML(f.name)}</span><span class="file-size">${fmtSize(f.size)}</span></div>`;
+      }
+      rows += '</div>';
+      document.getElementById('info-'+id).innerHTML = rows;
       if (id === 'meta') loadMetadataFields();
     });
   });
@@ -184,18 +214,41 @@ function setupDropZones() {
   if (wmOp) wmOp.addEventListener('input', function(){ document.getElementById('wmOpVal').textContent = this.value; });
 }
 
+function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+
+function fmtSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
 function downloadBlob(blob, name) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); URL.revokeObjectURL(a.href);
 }
 
 function showResult(elId, html) { document.getElementById(elId).innerHTML = html; }
-function showLoading(elId) { showResult(elId, '<p><span class="spinner"></span> Processing...</p>'); }
+
+function resultPanel(title, downloadBtn, body) {
+  return `<div class="result">
+    <div class="result-head"><h2>${title}</h2>${downloadBtn || ''}</div>
+    ${body ? `<div class="result-body">${body}</div>` : ''}
+  </div>`;
+}
+
+function downloadBtn(varName, fileName, label) {
+  return `<button class="btn btn-sm btn-download" type="button" onclick="downloadBlob(window.${varName},'${fileName}')"><i class="ph ph-download-simple" aria-hidden="true"></i> ${label}</button>`;
+}
+
+function showError(elId, message) {
+  showResult(elId, `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>${escapeHTML(message)}</span></div>`);
+}
 
 // Merge
-async function doMerge() {
+async function doMerge(btn) {
   const files = storedFiles['merge'];
-  if (!files || files.length < 2) { alert('Upload at least 2 PDFs.'); return; }
-  showLoading('mergeResult');
+  if (!files || files.length < 2) { showInlineError(btn, 'Choose at least two PDFs first.'); return; }
+  setBusy(btn, true, 'Merging...');
+  showResult('mergeResult', '');
   try {
     const merged = await PDFLib.PDFDocument.create();
     for (const f of files) {
@@ -205,17 +258,19 @@ async function doMerge() {
     }
     const bytes = await merged.save();
     const blob = new Blob([bytes], { type: 'application/pdf' });
-    showResult('mergeResult', `<div class="success-msg"><i class="ph ph-check-circle"></i> Merged ${files.length} PDFs (${(bytes.length/1024).toFixed(1)} KB)</div>
-      <button class="btn btn-download" onclick="downloadBlob(window._mergedBlob,'merged.pdf')"><i class="ph ph-download-simple"></i> Download merged PDF</button>`);
     window._mergedBlob = blob;
-  } catch(e) { showResult('mergeResult', `<div class="error-msg"><i class="ph ph-x-circle"></i> Error: ${e.message}</div>`); }
+    showResult('mergeResult', resultPanel('Merged PDF', downloadBtn('_mergedBlob', 'merged.pdf', 'Download merged PDF'),
+      `<p class="muted small">${files.length} files, ${fmtSize(bytes.length)} in total.</p>`));
+  } catch(e) { showError('mergeResult', e.message); }
+  finally { setBusy(btn, false); }
 }
 
 // Split
-async function doSplit() {
+async function doSplit(btn) {
   const files = storedFiles['split'];
-  if (!files || !files.length) { alert('Upload a PDF.'); return; }
-  showLoading('splitResult');
+  if (!files || !files.length) { showInlineError(btn, 'Choose a PDF first.'); return; }
+  setBusy(btn, true, 'Splitting...');
+  showResult('splitResult', '');
   try {
     const src = await PDFLib.PDFDocument.load(files[0].bytes);
     const total = src.getPageCount();
@@ -226,6 +281,7 @@ async function doSplit() {
       const rangeStr = document.getElementById('splitRange').value;
       pageNums = parsePageRange(rangeStr, total);
     }
+    if (!pageNums.length) { showError('splitResult', 'That range does not match any page in this file.'); return; }
     const zip = new JSZip();
     for (let i = 0; i < pageNums.length; i++) {
       const doc = await PDFLib.PDFDocument.create();
@@ -234,10 +290,11 @@ async function doSplit() {
       zip.file(`page_${pageNums[i]+1}.pdf`, await doc.save());
     }
     const blob = await zip.generateAsync({ type: 'blob' });
-    showResult('splitResult', `<div class="success-msg"><i class="ph ph-check-circle"></i> Split into ${pageNums.length} page(s)</div>
-      <button class="btn btn-download" onclick="downloadBlob(window._splitBlob,'split_pages.zip')"><i class="ph ph-download-simple"></i> Download ZIP</button>`);
     window._splitBlob = blob;
-  } catch(e) { showResult('splitResult', `<div class="error-msg"><i class="ph ph-x-circle"></i> Error: ${e.message}</div>`); }
+    showResult('splitResult', resultPanel('Split pages', downloadBtn('_splitBlob', 'split_pages.zip', 'Download ZIP'),
+      `<p class="muted small">${plural(pageNums.length, 'separate PDF', 'separate PDFs')}, one per page.</p>`));
+  } catch(e) { showError('splitResult', e.message); }
+  finally { setBusy(btn, false); }
 }
 
 function parsePageRange(str, total) {
@@ -253,30 +310,32 @@ function parsePageRange(str, total) {
 }
 
 // Organize
-async function doOrganize() {
+async function doOrganize(btn) {
   const files = storedFiles['organize'];
-  if (!files || !files.length) { alert('Upload a PDF.'); return; }
-  showLoading('orgResult');
+  if (!files || !files.length) { showInlineError(btn, 'Choose a PDF first.'); return; }
+  setBusy(btn, true, 'Reorganizing...');
+  showResult('orgResult', '');
   try {
     const src = await PDFLib.PDFDocument.load(files[0].bytes);
     const order = document.getElementById('orgOrder').value.split(',').map(s => parseInt(s.trim()) - 1).filter(n => !isNaN(n) && n >= 0 && n < src.getPageCount());
-    if (!order.length) { showResult('orgResult', '<div class="error-msg"><i class="ph ph-x-circle"></i> Invalid page order.</div>'); return; }
+    if (!order.length) { showError('orgResult', 'That page order does not match any page in this file.'); return; }
     const doc = await PDFLib.PDFDocument.create();
     const pages = await doc.copyPages(src, order);
     pages.forEach(p => doc.addPage(p));
     const bytes = await doc.save();
-    const blob = new Blob([bytes], { type: 'application/pdf' });
-    showResult('orgResult', `<div class="success-msg"><i class="ph ph-check-circle"></i> Reorganized ${order.length} pages</div>
-      <button class="btn btn-download" onclick="downloadBlob(window._orgBlob,'reorganized.pdf')"><i class="ph ph-download-simple"></i> Download</button>`);
-    window._orgBlob = blob;
-  } catch(e) { showResult('orgResult', `<div class="error-msg"><i class="ph ph-x-circle"></i> Error: ${e.message}</div>`); }
+    window._orgBlob = new Blob([bytes], { type: 'application/pdf' });
+    showResult('orgResult', resultPanel('Reorganized PDF', downloadBtn('_orgBlob', 'reorganized.pdf', 'Download PDF'),
+      `<p class="muted small">${plural(order.length, 'page', 'pages')}, in the order you asked for.</p>`));
+  } catch(e) { showError('orgResult', e.message); }
+  finally { setBusy(btn, false); }
 }
 
 // Extract text
-async function doExtractText() {
+async function doExtractText(btn) {
   const files = storedFiles['text'];
-  if (!files || !files.length) { alert('Upload a PDF.'); return; }
-  showLoading('textResult');
+  if (!files || !files.length) { showInlineError(btn, 'Choose a PDF first.'); return; }
+  setBusy(btn, true, 'Reading...');
+  showResult('textResult', '');
   try {
     const pdf = await pdfjsLib.getDocument({ data: files[0].bytes }).promise;
     let allText = '';
@@ -284,20 +343,22 @@ async function doExtractText() {
       const page = await pdf.getPage(i);
       const content = await page.getTextContent();
       const text = content.items.map(item => item.str).join(' ');
-      allText += `--- Page ${i} ---\n${text}\n\n`;
+      allText += `Page ${i}\n${text}\n\n`;
     }
-    showResult('textResult', `<div class="success-msg"><i class="ph ph-check-circle"></i> Extracted text from ${pdf.numPages} pages</div>
-      <div class="text-output">${escapeHTML(allText)}</div>
-      <button class="btn btn-download" onclick="downloadBlob(new Blob([window._extractedText]),'extracted_text.txt')"><i class="ph ph-download-simple"></i> Download TXT</button>`);
     window._extractedText = allText;
-  } catch(e) { showResult('textResult', `<div class="error-msg"><i class="ph ph-x-circle"></i> Error: ${e.message}</div>`); }
+    showResult('textResult', resultPanel('Text from this PDF',
+      `<button class="btn btn-sm btn-download" type="button" onclick="downloadBlob(new Blob([window._extractedText]),'extracted_text.txt')"><i class="ph ph-download-simple" aria-hidden="true"></i> Download TXT</button>`,
+      `<div class="text-output">${escapeHTML(allText)}</div><p class="muted small">${plural(pdf.numPages, 'page', 'pages')} read.</p>`));
+  } catch(e) { showError('textResult', e.message); }
+  finally { setBusy(btn, false); }
 }
 
 // PDF to images
-async function doPdfToImages() {
+async function doPdfToImages(btn) {
   const files = storedFiles['p2i'];
-  if (!files || !files.length) { alert('Upload a PDF.'); return; }
-  showLoading('p2iResult');
+  if (!files || !files.length) { showInlineError(btn, 'Choose a PDF first.'); return; }
+  setBusy(btn, true, 'Converting...');
+  showResult('p2iResult', '');
   try {
     const scale = parseFloat(document.getElementById('p2iScale').value);
     const pdf = await pdfjsLib.getDocument({ data: files[0].bytes }).promise;
@@ -312,21 +373,22 @@ async function doPdfToImages() {
       const dataUrl = canvas.toDataURL('image/png');
       const base64 = dataUrl.split(',')[1];
       zip.file(`page_${String(i).padStart(3,'0')}.png`, base64, { base64: true });
-      if (i <= 8) previewHtml += `<div><canvas width="${Math.min(vp.width,200)}" height="${Math.min(vp.height,280)}" id="prev-${i}"></canvas><div style="text-align:center;font-size:.75rem;color:var(--text-muted);">Page ${i}</div></div>`;
+      if (i <= 8) previewHtml += `<div><canvas width="${Math.min(vp.width,200)}" height="${Math.min(vp.height,280)}" id="prev-${i}"></canvas><div class="preview-caption">Page ${i}</div></div>`;
     }
     previewHtml += '</div>';
-    const blob = await zip.generateAsync({ type: 'blob' });
-    showResult('p2iResult', `<div class="success-msg"><i class="ph ph-check-circle"></i> Converted ${pdf.numPages} pages to images</div>${previewHtml}
-      <button class="btn btn-download" onclick="downloadBlob(window._p2iBlob,'pdf_images.zip')"><i class="ph ph-download-simple"></i> Download ZIP</button>`);
-    window._p2iBlob = blob;
-  } catch(e) { showResult('p2iResult', `<div class="error-msg"><i class="ph ph-x-circle"></i> Error: ${e.message}</div>`); }
+    window._p2iBlob = await zip.generateAsync({ type: 'blob' });
+    showResult('p2iResult', resultPanel('Page images', downloadBtn('_p2iBlob', 'pdf_images.zip', 'Download ZIP'),
+      `<p class="muted small">${plural(pdf.numPages, 'page', 'pages')} turned into PNG images.</p>${previewHtml}`));
+  } catch(e) { showError('p2iResult', e.message); }
+  finally { setBusy(btn, false); }
 }
 
 // Images to PDF
-async function doImagesToPdf() {
+async function doImagesToPdf(btn) {
   const files = storedFiles['i2p'];
-  if (!files || !files.length) { alert('Upload images.'); return; }
-  showLoading('i2pResult');
+  if (!files || !files.length) { showInlineError(btn, 'Choose at least one image first.'); return; }
+  setBusy(btn, true, 'Building...');
+  showResult('i2pResult', '');
   try {
     const doc = await PDFLib.PDFDocument.create();
     for (const f of files) {
@@ -337,18 +399,19 @@ async function doImagesToPdf() {
       page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
     }
     const bytes = await doc.save();
-    const blob = new Blob([bytes], { type: 'application/pdf' });
-    showResult('i2pResult', `<div class="success-msg"><i class="ph ph-check-circle"></i> Created PDF with ${files.length} page(s)</div>
-      <button class="btn btn-download" onclick="downloadBlob(window._i2pBlob,'images.pdf')"><i class="ph ph-download-simple"></i> Download PDF</button>`);
-    window._i2pBlob = blob;
-  } catch(e) { showResult('i2pResult', `<div class="error-msg"><i class="ph ph-x-circle"></i> Error: ${e.message}</div>`); }
+    window._i2pBlob = new Blob([bytes], { type: 'application/pdf' });
+    showResult('i2pResult', resultPanel('Your PDF', downloadBtn('_i2pBlob', 'images.pdf', 'Download PDF'),
+      `<p class="muted small">${plural(files.length, 'page', 'pages')}, one per image.</p>`));
+  } catch(e) { showError('i2pResult', e.message); }
+  finally { setBusy(btn, false); }
 }
 
 // Rotate
-async function doRotate() {
+async function doRotate(btn) {
   const files = storedFiles['rotate'];
-  if (!files || !files.length) { alert('Upload a PDF.'); return; }
-  showLoading('rotResult');
+  if (!files || !files.length) { showInlineError(btn, 'Choose a PDF first.'); return; }
+  setBusy(btn, true, 'Rotating...');
+  showResult('rotResult', '');
   try {
     const doc = await PDFLib.PDFDocument.load(files[0].bytes);
     const deg = parseInt(document.querySelector('input[name="rotDeg"]:checked').value);
@@ -358,18 +421,19 @@ async function doRotate() {
     else { indices = []; for (let i = 0; i < doc.getPageCount(); i++) indices.push(i); }
     for (const i of indices) { const page = doc.getPage(i); page.setRotation(PDFLib.degrees((page.getRotation().angle + deg) % 360)); }
     const bytes = await doc.save();
-    const blob = new Blob([bytes], { type: 'application/pdf' });
-    showResult('rotResult', `<div class="success-msg"><i class="ph ph-check-circle"></i> Rotated ${indices.length} page(s) by ${deg}&deg;</div>
-      <button class="btn btn-download" onclick="downloadBlob(window._rotBlob,'rotated.pdf')"><i class="ph ph-download-simple"></i> Download</button>`);
-    window._rotBlob = blob;
-  } catch(e) { showResult('rotResult', `<div class="error-msg"><i class="ph ph-x-circle"></i> Error: ${e.message}</div>`); }
+    window._rotBlob = new Blob([bytes], { type: 'application/pdf' });
+    showResult('rotResult', resultPanel('Rotated PDF', downloadBtn('_rotBlob', 'rotated.pdf', 'Download PDF'),
+      `<p class="muted small">${plural(indices.length, 'page', 'pages')} turned by ${deg} degrees.</p>`));
+  } catch(e) { showError('rotResult', e.message); }
+  finally { setBusy(btn, false); }
 }
 
 // Watermark
-async function doWatermark() {
+async function doWatermark(btn) {
   const files = storedFiles['wm'];
-  if (!files || !files.length) { alert('Upload a PDF.'); return; }
-  showLoading('wmResult');
+  if (!files || !files.length) { showInlineError(btn, 'Choose a PDF first.'); return; }
+  setBusy(btn, true, 'Adding...');
+  showResult('wmResult', '');
   try {
     const doc = await PDFLib.PDFDocument.load(files[0].bytes);
     const text = document.getElementById('wmText').value || 'DRAFT';
@@ -385,18 +449,19 @@ async function doWatermark() {
       page.drawText(text, { x: width/2 - tw/2, y: height/2, size: fontSize, font, color: PDFLib.rgb(r,g,b), opacity, rotate: PDFLib.degrees(-45) });
     }
     const bytes = await doc.save();
-    const blob = new Blob([bytes], { type: 'application/pdf' });
-    showResult('wmResult', `<div class="success-msg"><i class="ph ph-check-circle"></i> Watermark added to ${doc.getPageCount()} page(s)</div>
-      <button class="btn btn-download" onclick="downloadBlob(window._wmBlob,'watermarked.pdf')"><i class="ph ph-download-simple"></i> Download</button>`);
-    window._wmBlob = blob;
-  } catch(e) { showResult('wmResult', `<div class="error-msg"><i class="ph ph-x-circle"></i> Error: ${e.message}</div>`); }
+    window._wmBlob = new Blob([bytes], { type: 'application/pdf' });
+    showResult('wmResult', resultPanel('Watermarked PDF', downloadBtn('_wmBlob', 'watermarked.pdf', 'Download PDF'),
+      `<p class="muted small">Added to all ${plural(doc.getPageCount(), 'page', 'pages')}.</p>`));
+  } catch(e) { showError('wmResult', e.message); }
+  finally { setBusy(btn, false); }
 }
 
 // Page numbers
-async function doPageNumbers() {
+async function doPageNumbers(btn) {
   const files = storedFiles['pn'];
-  if (!files || !files.length) { alert('Upload a PDF.'); return; }
-  showLoading('pnResult');
+  if (!files || !files.length) { showInlineError(btn, 'Choose a PDF first.'); return; }
+  setBusy(btn, true, 'Numbering...');
+  showResult('pnResult', '');
   try {
     const doc = await PDFLib.PDFDocument.load(files[0].bytes);
     const pos = document.getElementById('pnPos').value;
@@ -420,11 +485,11 @@ async function doPageNumbers() {
       page.drawText(txt, { x, y, size: fontSize, font, color: PDFLib.rgb(0.4,0.4,0.4) });
     }
     const bytes = await doc.save();
-    const blob = new Blob([bytes], { type: 'application/pdf' });
-    showResult('pnResult', `<div class="success-msg"><i class="ph ph-check-circle"></i> Added page numbers to ${total} page(s)</div>
-      <button class="btn btn-download" onclick="downloadBlob(window._pnBlob,'numbered.pdf')"><i class="ph ph-download-simple"></i> Download</button>`);
-    window._pnBlob = blob;
-  } catch(e) { showResult('pnResult', `<div class="error-msg"><i class="ph ph-x-circle"></i> Error: ${e.message}</div>`); }
+    window._pnBlob = new Blob([bytes], { type: 'application/pdf' });
+    showResult('pnResult', resultPanel('Numbered PDF', downloadBtn('_pnBlob', 'numbered.pdf', 'Download PDF'),
+      `<p class="muted small">Numbers added to all ${plural(total, 'page', 'pages')}.</p>`));
+  } catch(e) { showError('pnResult', e.message); }
+  finally { setBusy(btn, false); }
 }
 
 // Metadata
@@ -442,15 +507,16 @@ async function loadMetadataFields() {
       { id:'metaKeywords', label:'Keywords', val: doc.getKeywords()||'' },
     ];
     let html = '';
-    for (const f of fields) html += `<div class="form-group"><label>${f.label}</label><input type="text" id="${f.id}" value="${escapeHTML(f.val)}"></div>`;
+    for (const f of fields) html += `<div class="form-group"><label for="${f.id}">${f.label}</label><input type="text" id="${f.id}" value="${escapeHTML(f.val)}"></div>`;
     document.getElementById('metaFields').innerHTML = html;
-  } catch(e) { document.getElementById('metaFields').innerHTML = `<div class="error-msg"><i class="ph ph-x-circle"></i> Error: ${e.message}</div>`; }
+  } catch(e) { showError('metaFields', e.message); }
 }
 
-async function doMetadata() {
+async function doMetadata(btn) {
   const files = storedFiles['meta'];
-  if (!files || !files.length) { alert('Upload a PDF.'); return; }
-  showLoading('metaResult');
+  if (!files || !files.length) { showInlineError(btn, 'Choose a PDF first.'); return; }
+  setBusy(btn, true, 'Saving...');
+  showResult('metaResult', '');
   try {
     const doc = await PDFLib.PDFDocument.load(files[0].bytes);
     doc.setTitle(document.getElementById('metaTitle').value);
@@ -460,45 +526,46 @@ async function doMetadata() {
     doc.setProducer(document.getElementById('metaProducer').value);
     doc.setKeywords([document.getElementById('metaKeywords').value]);
     const bytes = await doc.save();
-    const blob = new Blob([bytes], { type: 'application/pdf' });
-    showResult('metaResult', `<div class="success-msg"><i class="ph ph-check-circle"></i> Metadata updated</div>
-      <button class="btn btn-download" onclick="downloadBlob(window._metaBlob,'metadata_updated.pdf')"><i class="ph ph-download-simple"></i> Download</button>`);
-    window._metaBlob = blob;
-  } catch(e) { showResult('metaResult', `<div class="error-msg"><i class="ph ph-x-circle"></i> Error: ${e.message}</div>`); }
+    window._metaBlob = new Blob([bytes], { type: 'application/pdf' });
+    showResult('metaResult', resultPanel('Updated PDF', downloadBtn('_metaBlob', 'metadata_updated.pdf', 'Download PDF'),
+      `<p class="muted small">The properties you entered are now stored in the file.</p>`));
+  } catch(e) { showError('metaResult', e.message); }
+  finally { setBusy(btn, false); }
 }
 
 // Protect
-async function doProtect() {
+async function doProtect(btn) {
   const files = storedFiles['protect'];
-  if (!files || !files.length) { alert('Upload a PDF.'); return; }
+  if (!files || !files.length) { showInlineError(btn, 'Choose a PDF first.'); return; }
   const pw = document.getElementById('protectPw').value;
-  if (!pw) { alert('Enter a password.'); return; }
-  showLoading('protectResult');
+  if (!pw) { showInlineError(btn, 'Enter a password first.'); return; }
+  setBusy(btn, true, 'Protecting...');
+  showResult('protectResult', '');
   try {
     const ownerPw = document.getElementById('protectOwnerPw').value || pw;
     const doc = await PDFLib.PDFDocument.load(files[0].bytes);
     const bytes = await doc.save({ userPassword: pw, ownerPassword: ownerPw, permissions: { printing: 'lowResolution', modifying: false, copying: false } });
-    const blob = new Blob([bytes], { type: 'application/pdf' });
-    showResult('protectResult', `<div class="success-msg"><i class="ph ph-check-circle"></i> PDF protected with password</div>
-      <button class="btn btn-download" onclick="downloadBlob(window._protBlob,'protected.pdf')"><i class="ph ph-download-simple"></i> Download</button>`);
-    window._protBlob = blob;
-  } catch(e) { showResult('protectResult', `<div class="error-msg"><i class="ph ph-x-circle"></i> Error: ${e.message}</div>`); }
+    window._protBlob = new Blob([bytes], { type: 'application/pdf' });
+    showResult('protectResult', resultPanel('Protected PDF', downloadBtn('_protBlob', 'protected.pdf', 'Download PDF'),
+      `<p class="muted small">The file now asks for your password before it opens.</p>`));
+  } catch(e) { showError('protectResult', e.message); }
+  finally { setBusy(btn, false); }
 }
 
 // Unlock
-async function doUnlock() {
+async function doUnlock(btn) {
   const files = storedFiles['unlock'];
-  if (!files || !files.length) { alert('Upload a PDF.'); return; }
-  const pw = document.getElementById('unlockPw').value;
-  showLoading('unlockResult');
+  if (!files || !files.length) { showInlineError(btn, 'Choose a PDF first.'); return; }
+  setBusy(btn, true, 'Unlocking...');
+  showResult('unlockResult', '');
   try {
     const doc = await PDFLib.PDFDocument.load(files[0].bytes, { ignoreEncryption: true });
     const bytes = await doc.save();
-    const blob = new Blob([bytes], { type: 'application/pdf' });
-    showResult('unlockResult', `<div class="success-msg"><i class="ph ph-check-circle"></i> PDF unlocked (encryption removed)</div>
-      <button class="btn btn-download" onclick="downloadBlob(window._unlockBlob,'unlocked.pdf')"><i class="ph ph-download-simple"></i> Download</button>`);
-    window._unlockBlob = blob;
-  } catch(e) { showResult('unlockResult', `<div class="error-msg"><i class="ph ph-x-circle"></i> Error: ${e.message}</div>`); }
+    window._unlockBlob = new Blob([bytes], { type: 'application/pdf' });
+    showResult('unlockResult', resultPanel('Unlocked PDF', downloadBtn('_unlockBlob', 'unlocked.pdf', 'Download PDF'),
+      `<p class="muted small">The password has been removed from this copy.</p>`));
+  } catch(e) { showError('unlockResult', e.message); }
+  finally { setBusy(btn, false); }
 }
 
 function escapeHTML(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
@@ -506,24 +573,6 @@ function escapeHTML(str) { const d = document.createElement('div'); d.textConten
 initToolList();
 renderTool();
 </script>
-<script>
-function shareThisTool() {
-  const data = { title: document.title, text: 'A free browser tool that never uploads your files.', url: location.href };
-  if (navigator.share) { navigator.share(data).catch(() => {}); return; }
-  navigator.clipboard.writeText(location.href).then(() => showToast('Link copied to clipboard'));
-}
-
-function showToast(msg) {
-  const t = document.createElement('div');
-  t.className = 'toast';
-  t.innerHTML = '<i class="ph ph-check-circle"></i> ' + msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2500);
-}
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
-}
-</script>
+<script src="../assets/app.js" defer></script>
 </body>
 </html>
