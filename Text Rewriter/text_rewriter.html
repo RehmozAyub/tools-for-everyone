@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Text Rewriter - Free Offline Paraphraser and Summariser</title>
+<meta name="description" content="Paraphrase, summarise, fix grammar, and simplify text with a small language model that runs entirely in your browser. No account, no upload.">
+<link rel="canonical" href="https://rehmozayub.github.io/tools-for-everyone/Text%20Rewriter/text_rewriter.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Text Rewriter - Free Offline Paraphraser and Summariser">
+<meta property="og:description" content="Paraphrase, summarise, fix grammar, and simplify text with a small language model that runs entirely in your browser. No account, no upload.">
+<meta property="og:url" content="https://rehmozayub.github.io/tools-for-everyone/Text%20Rewriter/text_rewriter.html">
+<meta property="og:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Text Rewriter - Free Offline Paraphraser and Summariser">
+<meta name="twitter:description" content="Paraphrase, summarise, fix grammar, and simplify text with a small language model that runs entirely in your browser. No account, no upload.">
+<meta name="twitter:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f3f5">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1114">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="apple-touch-icon" href="../assets/icon-192.png">
+<script>
+  try {
+    var t = localStorage.getItem('theme');
+    if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="../assets/theme.css">
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<style>
+  .text-area {
+    width: 100%;
+    min-height: 180px;
+    font-family: inherit;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+  .output-box {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    min-height: 120px;
+    max-height: 460px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin: 0 0 12px;
+  }
+  .actions-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .counter {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.75rem;
+    color: var(--text-faint);
+    text-align: right;
+    margin-top: 4px;
+  }
+  .model-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: start;
+    gap: 4px 10px;
+    padding: 12px 0;
+    margin: 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    font-weight: 400;
+    color: var(--text);
+  }
+  .model-row:last-of-type { border-bottom: none; }
+  .model-row input { width: 16px; height: 16px; accent-color: var(--accent); margin-top: 2px; }
+  .model-row .detail { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .model-row .name { font-size: 0.875rem; font-weight: 500; }
+  .model-row .size {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.75rem;
+    color: var(--text-faint);
+    white-space: nowrap;
+  }
+  .model-state { font-size: 0.75rem; color: var(--text-muted); }
+  .model-state.ready { color: var(--success); }
+  .model-desc { font-size: 0.75rem; color: var(--text-muted); line-height: 1.45; }
+  .status-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin: 12px 0;
+    font-size: 0.875rem;
+  }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="tool-header">
+  <a class="back" href="../index.html"><i class="ph ph-arrow-left" aria-hidden="true"></i> <span>All tools</span></a>
+  <h1><i class="ph ph-text-aa" aria-hidden="true"></i> Text Rewriter</h1>
+  <div class="header-actions">
+    <button class="icon-btn" type="button" id="themeToggle" aria-label="Toggle theme"></button>
+    <a class="icon-btn" href="https://github.com/RehmozAyub/tools-for-everyone" aria-label="Source on GitHub"><i class="ph ph-github-logo" aria-hidden="true"></i></a>
+  </div>
+</header>
+
+<div class="tool-layout has-subtool-nav">
+  <nav class="subtool-nav" id="taskList" aria-label="Rewriting jobs"></nav>
+
+  <aside class="tool-controls">
+    <details class="panel" open data-mobile-collapsed>
+      <summary><span>Model</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
+      <div id="modelList"></div>
+      <p class="muted xsmall mt-3">The model downloads once and is then kept in this browser, so coming back is instant and works with the internet off.</p>
+    </details>
+
+    <details class="panel" open data-mobile-collapsed>
+      <summary><span>Keep a model</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
+      <p class="muted xsmall mb-3">Save a downloaded model as a file you keep, then load it straight back in later, on this machine or another one, with no download at all.</p>
+      <button class="btn btn-export" type="button" onclick="exportModel(this)"><i class="ph ph-download-simple" aria-hidden="true"></i> Save model to a file</button>
+      <button class="btn btn-export mt-2" type="button" onclick="document.getElementById('modelFileInput').click()"><i class="ph ph-folder-open" aria-hidden="true"></i> Browse for a saved model</button>
+      <input type="file" id="modelFileInput" accept=".zip" class="hidden">
+      <div id="modelManageResult"></div>
+    </details>
+  </aside>
+
+  <main class="tool-main">
+    <p class="tool-intro">Paraphrase, summarise, tidy up grammar, and change tone. The model runs inside your browser, so your text never leaves the machine.</p>
+
+    <div id="taskInfo"></div>
+
+    <div class="form-group">
+      <label for="inputText">Your text</label>
+      <textarea id="inputText" class="text-area" rows="8" placeholder="Paste or type the text you want to change."></textarea>
+      <div class="counter" id="counter">0 words</div>
+    </div>
+
+    <button class="btn btn-primary" type="button" id="runBtn" onclick="runTask(this)"><i class="ph ph-sparkle" aria-hidden="true"></i> Rewrite</button>
+
+    <div id="statusArea"></div>
+
+    <div id="resultSection" class="result" style="display:none;">
+      <div class="result-head">
+        <h2 id="resultTitle">Result</h2>
+        <div class="actions-row">
+          <button class="btn btn-sm" type="button" onclick="copyResult()"><i class="ph ph-copy" aria-hidden="true"></i> Copy</button>
+          <button class="btn btn-sm btn-download" type="button" onclick="downloadResult()"><i class="ph ph-download-simple" aria-hidden="true"></i> Download TXT</button>
+        </div>
+      </div>
+      <div class="result-body">
+        <div class="output-box" id="outputBox"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<footer class="tool-footer">
+  <span>Made with ❤️ by <a href="https://github.com/RehmozAyub">RehmozAyub</a></span>
+  <a href="https://github.com/RehmozAyub/tools-for-everyone">Source on GitHub</a>
+  <button class="link-btn" type="button" onclick="sharePage()">Share</button>
+</footer>
+
+<script>
+// Every prompt and generation setting below was chosen by trying them against these
+// models and keeping what actually worked. "Rewrite this politely" on its own, for
+// example, made the model answer the message rather than rewrite it.
+const TASKS = [
+  {
+    id: 'paraphrase', icon: 'shuffle', name: 'Paraphrase',
+    blurb: 'Say the same thing in different words.',
+    prompt: (t) => `Rewrite this in your own words: ${t}`,
+    options: { do_sample: true, temperature: 0.8, top_p: 0.95, repetition_penalty: 1.2 },
+  },
+  {
+    id: 'summarise', icon: 'text-align-left', name: 'Summarise',
+    blurb: 'Cut it down to the main points.',
+    prompt: (t) => `Summarize this: ${t}`,
+    options: { do_sample: false, repetition_penalty: 1.2 },
+    lengthFactor: 0.6,
+  },
+  {
+    id: 'grammar', icon: 'check-circle', name: 'Fix grammar',
+    blurb: 'Correct spelling and grammar, leaving the wording alone.',
+    prompt: (t) => `Fix the grammar and spelling: ${t}`,
+    options: { do_sample: false, repetition_penalty: 1.1 },
+  },
+  {
+    id: 'polite', icon: 'handshake', name: 'Make polite',
+    blurb: 'Soften a blunt message into something you can send.',
+    prompt: (t) => `Rewrite this message to be more polite and professional: ${t}`,
+    options: { do_sample: true, temperature: 0.7, top_p: 0.95, repetition_penalty: 1.2 },
+  },
+  {
+    id: 'simplify', icon: 'feather', name: 'Simplify',
+    blurb: 'Swap jargon and long sentences for plain words.',
+    prompt: (t) => `Rewrite this in simpler words: ${t}`,
+    options: { do_sample: true, temperature: 0.7, top_p: 0.95, repetition_penalty: 1.2 },
+  },
+  {
+    id: 'bullets', icon: 'list-bullets', name: 'Bullet points',
+    blurb: 'Turn a paragraph into a short list.',
+    prompt: (t) => `Write three short bullet points summarising: ${t}`,
+    options: { do_sample: false, repetition_penalty: 1.3 },
+    lengthFactor: 0.8,
+  },
+];
+
+// Both were tested on every job above before being offered. The 77M handles grammar
+// and summarising but tends to hand paraphrasing back unchanged, which is why it is
+// not the default and why that is said out loud rather than buried.
+const MODELS = [
+  {
+    id: 'Xenova/LaMini-Flan-T5-248M',
+    name: 'Balanced',
+    size: '262 MB',
+    desc: 'Handles every job here. The one to use unless the download is a problem.',
+  },
+  {
+    id: 'Xenova/LaMini-Flan-T5-77M',
+    name: 'Small',
+    size: '90 MB',
+    desc: 'A third of the download and quicker, but it often returns a paraphrase unchanged. Fine for grammar and summarising.',
+  },
+];
+
+// Files transformers.js fetches per model, and the cache it keeps them in.
+const MODEL_FILES = [
+  'config.json',
+  'tokenizer.json',
+  'tokenizer_config.json',
+  'generation_config.json',
+  'onnx/encoder_model_quantized.onnx',
+  'onnx/decoder_model_merged_quantized.onnx',
+];
+const MODEL_CACHE = 'transformers-cache';
+const HF_BASE = 'https://huggingface.co/';
+
+// T5 takes 512 tokens in one go. Splitting on sentence ends near this many characters
+// keeps each piece inside that and avoids cutting mid sentence.
+const CHUNK_CHARS = 900;
+
+let currentTask = 'paraphrase';
+let selectedModelId = MODELS[0].id;
+let lastResult = '';
+
+function modelUrl(id, file) {
+  return `${HF_BASE}${id}/resolve/main/${file}`;
+}
+
+function currentTaskDef() {
+  return TASKS.find((t) => t.id === currentTask) || TASKS[0];
+}
+
+function initTaskList() {
+  document.getElementById('taskList').innerHTML = TASKS.map((t) =>
+    `<button class="tool-item${t.id === currentTask ? ' active' : ''}" type="button" onclick="selectTask('${t.id}', this)"><i class="ph ph-${t.icon}" aria-hidden="true"></i> ${t.name}</button>`
+  ).join('');
+  renderTaskInfo();
+}
+
+function selectTask(id, el) {
+  currentTask = id;
+  document.querySelectorAll('.tool-item').forEach((e) => e.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderTaskInfo();
+}
+
+function renderTaskInfo() {
+  const task = currentTaskDef();
+  document.getElementById('taskInfo').innerHTML =
+    `<p class="tool-info"><i class="ph ph-info" aria-hidden="true"></i> <span>${escapeHTML(task.blurb)}</span></p>`;
+  document.getElementById('resultTitle').textContent = task.name;
+}
+
+async function isModelDownloaded(id) {
+  try {
+    const cache = await caches.open(MODEL_CACHE);
+    for (const file of MODEL_FILES) {
+      const hit = await cache.match(modelUrl(id, file));
+      if (!hit) return false;
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function renderModelList() {
+  const rows = [];
+  for (const model of MODELS) {
+    const ready = await isModelDownloaded(model.id);
+    rows.push(`<label class="model-row">
+        <input type="radio" name="modelChoice" value="${model.id}"${model.id === selectedModelId ? ' checked' : ''}>
+        <span class="detail">
+          <span class="name">${model.name}</span>
+          <span class="model-state${ready ? ' ready' : ''}">${ready ? 'Saved on this device' : 'Not downloaded yet'}</span>
+          <span class="model-desc">${escapeHTML(model.desc)}</span>
+        </span>
+        <span class="size">${model.size}</span>
+      </label>`);
+  }
+  document.getElementById('modelList').innerHTML = rows.join('');
+  document.querySelectorAll('input[name="modelChoice"]').forEach((radio) => {
+    radio.addEventListener('change', () => { selectedModelId = radio.value; });
+  });
+}
+
+function countWords(text) {
+  const t = text.trim();
+  return t ? t.split(/\s+/).length : 0;
+}
+
+document.getElementById('inputText').addEventListener('input', function () {
+  document.getElementById('counter').textContent = countWords(this.value) + ' words';
+});
+
+// Split on sentence ends so a piece never stops mid thought.
+function splitIntoChunks(text) {
+  const sentences = text.replace(/\s+/g, ' ').trim().match(/[^.!?]+[.!?]*\s*/g) || [];
+  const chunks = [];
+  let current = '';
+  for (const sentence of sentences) {
+    if (current && (current + sentence).length > CHUNK_CHARS) {
+      chunks.push(current.trim());
+      current = '';
+    }
+    current += sentence;
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks.length ? chunks : [text.trim()];
+}
+
+function startWorker(model, onDownload) {
+  return new Promise((resolve, reject) => {
+    let worker;
+    try {
+      worker = new Worker('../assets/rewriter-worker.js', { type: 'module' });
+    } catch (e) {
+      reject(e);
+      return;
+    }
+    const fail = (err) => {
+      try { worker.terminate(); } catch (_) {}
+      reject(err instanceof Error ? err : new Error('The model could not start.'));
+    };
+    const onMessage = (ev) => {
+      const m = ev.data || {};
+      if (m.type === 'download') { onDownload(m.progress); return; }
+      if (m.type === 'ready') {
+        worker.removeEventListener('message', onMessage);
+        worker.removeEventListener('error', fail);
+        resolve(worker);
+        return;
+      }
+      if (m.type === 'error') fail(new Error(m.message));
+    };
+    worker.addEventListener('message', onMessage);
+    worker.addEventListener('error', fail);
+    worker.postMessage({ type: 'load', model: model });
+  });
+}
+
+function workerRewrite(worker, prompt, options) {
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      worker.removeEventListener('message', onMessage);
+      worker.removeEventListener('error', onError);
+    };
+    const onMessage = (ev) => {
+      const m = ev.data || {};
+      if (m.type === 'result') { cleanup(); resolve(m.text); }
+      else if (m.type === 'error') { cleanup(); reject(new Error(m.message)); }
+    };
+    const onError = () => { cleanup(); reject(new Error('The model stopped part way through.')); };
+    worker.addEventListener('message', onMessage);
+    worker.addEventListener('error', onError);
+    worker.postMessage({ type: 'rewrite', prompt: prompt, options: options });
+  });
+}
+
+async function runTask(btn) {
+  const text = document.getElementById('inputText').value.trim();
+  if (!text) {
+    showInlineError(btn, 'Put some text in the box first.');
+    return;
+  }
+
+  const task = currentTaskDef();
+  const model = selectedModelId;
+  setBusy(btn, true, 'Rewriting...');
+  let worker = null;
+
+  try {
+    const alreadyHere = await isModelDownloaded(model);
+    setProgress(document.getElementById('statusArea'), 0,
+      alreadyHere ? 'Starting the model' : 'Downloading the model, this happens once');
+
+    worker = await startWorker(model, (p) => {
+      setProgress(document.getElementById('statusArea'), p, 'Downloading the model, this happens once');
+    });
+
+    const chunks = splitIntoChunks(text);
+    const pieces = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+      setProgress(document.getElementById('statusArea'),
+        (i / chunks.length) * 100,
+        chunks.length > 1 ? `Rewriting part ${i + 1} of ${chunks.length}` : 'Rewriting');
+
+      const words = countWords(chunks[i]);
+      const budget = Math.round(words * (task.lengthFactor || 1.6)) + 24;
+      const options = Object.assign({}, task.options, {
+        max_new_tokens: Math.max(48, Math.min(512, budget)),
+      });
+      const out = await workerRewrite(worker, task.prompt(chunks[i]), options);
+      pieces.push(tidy(out, chunks[i]));
+      showResult(pieces.join('\n\n'), task.name);
+    }
+
+    lastResult = pieces.join('\n\n');
+    document.getElementById('statusArea').innerHTML = '';
+    if (!lastResult) {
+      document.getElementById('statusArea').innerHTML =
+        '<div class="warning-msg"><i class="ph ph-warning" aria-hidden="true"></i> <span>The model returned nothing. A shorter passage, or the Balanced model, usually works better.</span></div>';
+    } else {
+      showToast(task.name + ' finished', 'success');
+    }
+    await renderModelList();
+  } catch (e) {
+    document.getElementById('statusArea').innerHTML =
+      `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>${escapeHTML(describeFailure(e))}</span></div>`;
+  } finally {
+    if (worker) { try { worker.terminate(); } catch (_) {} }
+    setBusy(btn, false);
+  }
+}
+
+function describeFailure(e) {
+  const message = (e && e.message) || String(e);
+  if (/allocat|out of memory|Array buffer/i.test(message)) {
+    return 'This browser ran out of memory loading the model. The Small model needs a lot less, and closing other tabs helps.';
+  }
+  if (/fetch|network|Failed to load/i.test(message)) {
+    return 'The model could not be downloaded. Check the connection, or load a saved model from a file.';
+  }
+  return message;
+}
+
+// These models like to wrap a rewrite in quote marks, which is noise unless the
+// original was quoted too.
+function tidy(text, source) {
+  let t = (text || '').trim();
+  const quoted = /^["'“‘]/.test(source.trim());
+  if (!quoted) t = t.replace(/^["'“‘]+/, '').replace(/["'”’]+$/, '');
+  return t.trim();
+}
+
+function showResult(text, title) {
+  document.getElementById('outputBox').textContent = text;
+  document.getElementById('resultTitle').textContent = title;
+  document.getElementById('resultSection').style.display = 'block';
+  lastResult = text;
+}
+
+function copyResult() {
+  if (!lastResult) return;
+  navigator.clipboard.writeText(lastResult).then(() => showToast('Copied to clipboard', 'success'));
+}
+
+function downloadResult() {
+  if (!lastResult) return;
+  const blob = new Blob([lastResult], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${currentTask}_${new Date().toISOString().slice(0, 10)}.txt`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// Keeping a model as a file. The browser already stores every piece it downloaded, so
+// saving is a matter of reading them back out and zipping them, and loading is writing
+// them into the same place the library reads from.
+async function exportModel(btn) {
+  const model = selectedModelId;
+  if (!(await isModelDownloaded(model))) {
+    showInlineError(btn, 'Use this model once first, so there is something to save.');
+    return;
+  }
+  setBusy(btn, true, 'Packing...');
+  try {
+    const cache = await caches.open(MODEL_CACHE);
+    const zip = new JSZip();
+    zip.file('model.txt', model);
+    for (const file of MODEL_FILES) {
+      const hit = await cache.match(modelUrl(model, file));
+      if (!hit) throw new Error('Part of the model is missing from this browser. Run it once more, then save.');
+      zip.file(file, await hit.arrayBuffer());
+    }
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = model.split('/').pop() + '.zip';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    document.getElementById('modelManageResult').innerHTML =
+      '<div class="success-msg"><i class="ph ph-check-circle" aria-hidden="true"></i> <span>Saved. Keep the file somewhere safe and load it back with Browse whenever you need it.</span></div>';
+  } catch (e) {
+    document.getElementById('modelManageResult').innerHTML =
+      `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>${escapeHTML(e.message)}</span></div>`;
+  } finally {
+    setBusy(btn, false);
+  }
+}
+
+document.getElementById('modelFileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const result = document.getElementById('modelManageResult');
+  result.innerHTML = '<div class="status-bar"><span class="spinner"></span> Reading the file</div>';
+  try {
+    const zip = await JSZip.loadAsync(file);
+    const nameEntry = zip.file('model.txt');
+    if (!nameEntry) throw new Error('That zip was not saved by this tool.');
+    const model = (await nameEntry.async('string')).trim();
+
+    const cache = await caches.open(MODEL_CACHE);
+    for (const wanted of MODEL_FILES) {
+      const entry = zip.file(wanted);
+      if (!entry) throw new Error(`The file is missing ${wanted}.`);
+      const body = await entry.async('arraybuffer');
+      const type = wanted.endsWith('.json') ? 'application/json' : 'application/octet-stream';
+      await cache.put(modelUrl(model, wanted), new Response(body, { headers: { 'Content-Type': type } }));
+    }
+
+    const known = MODELS.find((m) => m.id === model);
+    if (known) {
+      selectedModelId = model;
+      await renderModelList();
+    }
+    result.innerHTML = `<div class="success-msg"><i class="ph ph-check-circle" aria-hidden="true"></i> <span>${escapeHTML(known ? known.name : model)} loaded from your file. It will run without downloading anything.</span></div>`;
+  } catch (err) {
+    result.innerHTML = `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>${escapeHTML(err.message)}</span></div>`;
+  } finally {
+    e.target.value = '';
+  }
+});
+
+function escapeHTML(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+initTaskList();
+renderModelList();
+</script>
+<script src="../assets/app.js" defer></script>
+</body>
+</html>

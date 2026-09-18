@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tools-for-everyone-v5';
+const CACHE_NAME = 'tools-for-everyone-v6';
 const APP_SHELL = [
   './',
   './index.html',
@@ -6,6 +6,7 @@ const APP_SHELL = [
   './assets/theme.css',
   './assets/app.js',
   './assets/transcriber-worker.js',
+  './assets/rewriter-worker.js',
   './assets/favicon.svg',
   './assets/fonts/geist-latin-wght-normal.woff2',
   './assets/fonts/geist-mono-latin-wght-normal.woff2',
@@ -17,6 +18,7 @@ const APP_SHELL = [
   './Virtual%20Card%20Manager/virtual_card_manager.html',
   './Image%20Compressor/image_compressor.html',
   './Video%20Converter/video_converter.html',
+  './Text%20Rewriter/text_rewriter.html',
 ];
 
 self.addEventListener('install', (event) => {

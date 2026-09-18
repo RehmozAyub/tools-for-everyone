@@ -55,6 +55,10 @@ Rename many files at once with find and replace, regex patterns, prefix/suffix, 
 Transcribe audio files or live recordings two ways: fully offline with a small Whisper model that runs in your browser and needs no key at all (the default), or with OpenAI's Whisper API using a key you provide. There is no file size or length limit either way: long recordings are decoded once and transcribed in parts, with the transcript building up as it goes.
 [Open in browser](https://rehmozayub.github.io/tools-for-everyone/Audio%20Transcriber/audio_transcriber.html) · [Streamlit version](Audio%20Transcriber/)
 
+### Text Rewriter
+Paraphrase, summarise, fix grammar, make a blunt message polite, simplify jargon, or turn a paragraph into bullet points, using a small language model that runs inside your browser. Pick between a 90MB model and a 262MB one, with the size shown before you commit to the download. The model is kept after the first download, and you can save it as a file and load it back later so it runs with no download at all.
+[Open in browser](https://rehmozayub.github.io/tools-for-everyone/Text%20Rewriter/text_rewriter.html) - browser only, built with [transformers.js](https://github.com/huggingface/transformers.js)
+
 ### Virtual Card Manager
 Generate Luhn-valid test card numbers with spending caps and expiry dates, so you never hand real banking details to a site you don't trust yet. Freeze/unfreeze, spending progress bar, CSV export, and links to real virtual-card providers. Zero network calls, everything stays on your machine.
 [Open in browser](https://rehmozayub.github.io/tools-for-everyone/Virtual%20Card%20Manager/virtual_card_manager.html) · [Streamlit version](Virtual%20Card%20Manager/)
