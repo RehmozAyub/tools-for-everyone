@@ -307,6 +307,10 @@
     color: var(--text);
   }
   .lib-blurb { font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 12px; max-width: none; }
+  .lib-search { display: flex; gap: 8px; margin-bottom: 14px; }
+  .lib-search input { flex: 1; min-width: 0; }
+  .lib-note { font-size: 0.75rem; color: var(--text-faint); }
+  .lib-card select { font-size: 0.8125rem; padding: 5px 8px; min-height: 32px; max-width: 230px; }
   .lib-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .lib-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
 
@@ -388,6 +392,15 @@
   <div class="library-body">
     <p class="muted small">Bigger models write better, hold more of the conversation, and answer at greater length. They also cost a longer download and a slower reply. Longest reply is how much a model can write in one go before it has to stop, which is the usual reason an answer ends early. Each model is kept after its first download.</p>
     <div id="libraryBody"></div>
+
+    <h3 class="lib-group">Everything else<span>Any model that runs in a browser, not just the few picked here.</span></h3>
+    <p class="muted xsmall mb-3">Searching asks huggingface.co for its list of browser ready models, which is the one thing on this page that talks to anyone else. It sends what you type in the box and nothing more, never your conversation. None of what comes back has been tried here, so expect some of it to be poor.</p>
+    <div class="lib-search">
+      <label class="hidden" for="modelSearch">Search for a model</label>
+      <input type="text" id="modelSearch" placeholder="A name, for example smol, llama, or qwen">
+      <button class="btn" type="button" id="searchBtn" onclick="searchModels(this)"><i class="ph ph-magnifying-glass" aria-hidden="true"></i> Search</button>
+    </div>
+    <div id="searchResults"></div>
   </div>
 </dialog>
 
@@ -507,7 +520,33 @@ const LIBRARY = [
   },
 ];
 
-const ALL_MODELS = LIBRARY.reduce((acc, g) => acc.concat(g.models), []);
+/* The few above are the ones that have been tried. Anything somebody adds from the
+   search lives here instead, kept in this browser, and is marked as untested wherever
+   it shows up. It is the same shape as an entry above, so everything else treats the
+   two alike. */
+const CUSTOM_KEY = 'chatAddedModels';
+
+function readCustom() {
+  try {
+    const raw = localStorage.getItem(CUSTOM_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list.filter((m) => m && m.id && m.kind) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function writeCustom() {
+  try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(customModels)); } catch (e) {}
+}
+
+let customModels = readCustom();
+let ALL_MODELS = [];
+
+function refreshModels() {
+  ALL_MODELS = LIBRARY.reduce((acc, g) => acc.concat(g.models), []).concat(customModels);
+}
+refreshModels();
 
 // The instruction only model is the one that runs everywhere, so it is what somebody
 // falls back to. A browser with WebGPU gets a chat model instead. Nobody arriving for
@@ -518,6 +557,18 @@ const PREFERRED_MODEL = 'HuggingFaceTB/SmolLM2-360M-Instruct';
 const BEST_MODEL = 'onnx-community/Llama-3.2-1B-Instruct-ONNX';
 
 const HF_BASE = 'https://huggingface.co/';
+const HF_API = 'https://huggingface.co/api/models';
+
+/* The builds worth offering, best first. A model is usually published in several
+   precisions: 4 bit weights with 16 bit activations is much the smallest but needs
+   WebGPU, and is also the one that can come out broken, which is what happened to
+   the two Qwen2.5 entries that used to be on the list. The others are bigger and
+   safer, so both are offered and the choice is visible. */
+const PRECISIONS = [
+  { file: 'model_q4f16.onnx', dtype: 'q4f16', label: 'smallest, needs WebGPU', webgpu: true },
+  { file: 'model_q4.onnx', dtype: 'q4', label: 'larger, runs anywhere', webgpu: false },
+  { file: 'model_quantized.onnx', dtype: 'quantized', label: 'older build, runs anywhere', webgpu: false },
+];
 
 let selectedModelId = DEFAULT_MODEL;
 let webgpuReady = false;
@@ -895,43 +946,251 @@ async function renderModelList() {
     </div>`;
 }
 
+function libraryGroups() {
+  const groups = LIBRARY.slice();
+  if (customModels.length) {
+    groups.push({
+      group: 'Added by you',
+      note: 'Found through the search below, and not tested here.',
+      models: customModels,
+    });
+  }
+  return groups;
+}
+
+function libraryCard(model, ready, held, blocked, chosen) {
+  const state = blocked
+    ? 'This browser has no WebGPU'
+    : (ready ? 'Saved on this device' + (held ? ', ' + held : '') : 'Not downloaded');
+  const drop = model.custom
+    ? `<button class="btn btn-sm" type="button" onclick="dropCustom('${model.id}', this)"><i class="ph ph-x" aria-hidden="true"></i> Take off the list</button>`
+    : '';
+  const remove = ready
+    ? `<button class="btn btn-sm" type="button" onclick="forgetModel('${model.id}', this)"><i class="ph ph-trash" aria-hidden="true"></i> Remove</button>`
+    : '';
+  return `<div class="lib-card${chosen ? ' chosen' : ''}${blocked ? ' blocked' : ''}">
+    <div class="lib-head">
+      <span class="lib-name">${escapeHTML(model.name)}</span>
+      ${model.recommended ? '<span class="lib-pick">Start here</span>' : ''}
+      ${model.custom ? '<span class="lib-note">not tested here</span>' : ''}
+      <span class="lib-size">${escapeHTML(model.size)}</span>
+    </div>
+    <dl class="lib-specs">
+      <div><dt>Parameters</dt><dd>${escapeHTML(model.params)}</dd></div>
+      <div><dt>Context</dt><dd>${escapeHTML(model.context)}</dd></div>
+      <div><dt>Longest reply</dt><dd>${replyWords(model)} words</dd></div>
+      <div><dt>Conversation</dt><dd>${isChatModel(model) ? 'Remembers' : 'One message'}</dd></div>
+      <div><dt>Runs on</dt><dd>${model.webgpu ? 'WebGPU' : 'Any browser'}</dd></div>
+    </dl>
+    <p class="lib-blurb">${escapeHTML(model.blurb)}</p>
+    <div class="lib-foot">
+      <span class="model-state${ready ? ' ready' : ''}">${state}</span>
+      <span class="lib-buttons">${drop}${remove}
+        <button class="btn btn-sm${chosen ? '' : ' btn-download'}" type="button" ${blocked || chosen ? 'disabled' : ''} onclick="chooseModel('${model.id}')">${chosen ? 'In use' : 'Use this one'}</button>
+      </span>
+    </div>
+  </div>`;
+}
+
 async function renderLibrary() {
   const body = document.getElementById('libraryBody');
   const rows = [];
-  for (const group of LIBRARY) {
-    rows.push(`<h3 class="lib-group">${group.group}<span>${escapeHTML(group.note)}</span></h3>`);
+  for (const group of libraryGroups()) {
+    rows.push(`<h3 class="lib-group">${escapeHTML(group.group)}<span>${escapeHTML(group.note)}</span></h3>`);
     for (const model of group.models) {
       const ready = await isModelDownloaded(model.id);
       const held = ready ? readableBytes(await bytesHeld(model.id)) : '';
       const blocked = model.webgpu && !webgpuReady;
-      const chosen = model.id === selectedModelId;
-      rows.push(`<div class="lib-card${chosen ? ' chosen' : ''}${blocked ? ' blocked' : ''}">
-        <div class="lib-head">
-          <span class="lib-name">${escapeHTML(model.name)}</span>
-          ${model.recommended ? '<span class="lib-pick">Start here</span>' : ''}
-          <span class="lib-size">${model.size}</span>
-        </div>
-        <dl class="lib-specs">
-          <div><dt>Parameters</dt><dd>${model.params}</dd></div>
-          <div><dt>Context</dt><dd>${model.context}</dd></div>
-          <div><dt>Longest reply</dt><dd>${replyWords(model)} words</dd></div>
-          <div><dt>Conversation</dt><dd>${isChatModel(model) ? 'Remembers' : 'One message'}</dd></div>
-          <div><dt>Runs on</dt><dd>${model.webgpu ? 'WebGPU' : 'Any browser'}</dd></div>
-        </dl>
-        <p class="lib-blurb">${escapeHTML(model.blurb)}</p>
-        <div class="lib-foot">
-          <span class="model-state${ready ? ' ready' : ''}">${blocked ? 'This browser has no WebGPU' : (ready ? 'Saved on this device' + (held ? ', ' + held : '') : 'Not downloaded')}</span>
-          <span class="lib-buttons">
-            ${ready ? `<button class="btn btn-sm" type="button" onclick="forgetModel('${model.id}', this)"><i class="ph ph-trash" aria-hidden="true"></i> Remove</button>` : ''}
-            <button class="btn btn-sm${chosen ? '' : ' btn-download'}" type="button" ${blocked || chosen ? 'disabled' : ''} onclick="chooseModel('${model.id}')">${chosen ? 'In use' : 'Use this one'}</button>
-          </span>
-        </div>
-      </div>`);
+      rows.push(libraryCard(model, ready, held, blocked, model.id === selectedModelId));
     }
   }
   body.innerHTML = rows.join('');
 }
 
+
+/* ---------- Looking beyond the few that were picked ---------- */
+
+// Hugging Face tags the models that have been converted to run in a browser, so that
+// tag is the whole of the filter. Sorting by downloads is a rough stand in for
+// whether a model is any good, which is all there is to go on without running it.
+let searchFound = [];
+
+function prettyName(id) {
+  return id.split('/').pop().replace(/-/g, ' ').replace(/\bONNX\b/i, '').trim();
+}
+
+// The size is usually written into the name, and reading it from there beats an empty
+// field. Anything else says so rather than inventing a number.
+function paramsFromName(id) {
+  const match = id.match(/(\d+(?:\.\d+)?)\s*([BM])(?![a-z])/i);
+  return match ? match[1] + match[2].toUpperCase() : 'not stated';
+}
+
+function readableTokens(count) {
+  if (!count) return 'not stated';
+  if (count >= 1024) return Math.round(count / 1024) + 'K tokens';
+  return count + ' tokens';
+}
+
+function candidate(entry) {
+  const files = new Set((entry.siblings || []).map((s) => s.rfilename));
+  const builds = PRECISIONS.filter((p) => files.has('onnx/' + p.file)).map((p) => Object.assign({}, p));
+  if (!builds.length) return null;
+  if (ALL_MODELS.some((m) => m.id === entry.id)) return null;
+  return { id: entry.id, name: prettyName(entry.id), downloads: entry.downloads || 0, builds: builds, ctx: 0 };
+}
+
+// One call for the file sizes, one for the settings that hold the context length.
+// External data files sit beside the model file they belong to and count towards it.
+async function candidateDetails(model) {
+  const [tree, config] = await Promise.all([
+    fetch(`${HF_API}/${model.id}/tree/main/onnx`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+    fetch(`${HF_BASE}${model.id}/resolve/main/config.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
+  ]);
+  const sizes = {};
+  for (const file of tree) {
+    const name = String(file.path || '').replace('onnx/', '');
+    sizes[name] = (file.lfs && file.lfs.size) || file.size || 0;
+  }
+  for (const build of model.builds) {
+    let total = sizes[build.file] || 0;
+    for (const name of Object.keys(sizes)) {
+      if (name.startsWith(build.file + '_data')) total += sizes[name];
+    }
+    build.bytes = total;
+  }
+  model.builds = model.builds.filter((b) => b.bytes > 0);
+  model.ctx = config.max_position_embeddings || 0;
+  return model;
+}
+
+async function searchModels(btn) {
+  const box = document.getElementById('modelSearch');
+  const results = document.getElementById('searchResults');
+  setBusy(btn, true, 'Searching...');
+  results.innerHTML = '<div class="status-bar"><span class="spinner" aria-hidden="true"></span> Asking Hugging Face</div>';
+  try {
+    const url = new URL(HF_API);
+    url.searchParams.set('filter', 'transformers.js');
+    url.searchParams.set('pipeline_tag', 'text-generation');
+    url.searchParams.set('sort', 'downloads');
+    url.searchParams.set('direction', '-1');
+    url.searchParams.set('limit', '40');
+    url.searchParams.set('full', 'true');
+    const query = box.value.trim();
+    if (query) url.searchParams.set('search', query);
+
+    const response = await fetch(url.toString());
+    if (!response.ok) throw new Error('Hugging Face answered ' + response.status + '.');
+    const entries = await response.json();
+    const shortlist = entries.map(candidate).filter(Boolean).slice(0, 10);
+    const detailed = await Promise.all(shortlist.map(candidateDetails));
+    searchFound = detailed.filter((m) => m.builds.length);
+    renderResults();
+  } catch (e) {
+    results.innerHTML = `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>${escapeHTML(describeFailure(e))}</span></div>`;
+  } finally {
+    setBusy(btn, false);
+  }
+}
+
+function renderResults() {
+  const results = document.getElementById('searchResults');
+  if (!searchFound.length) {
+    results.innerHTML = '<p class="muted small">Nothing came back that runs in a browser. A shorter word usually finds more.</p>';
+    return;
+  }
+  results.innerHTML = searchFound.map((model) => {
+    const usable = model.builds.filter((b) => !b.webgpu || webgpuReady);
+    const offer = usable.length ? usable : model.builds;
+    const choices = offer.map((b) => `<option value="${b.dtype}">${readableBytes(b.bytes)}, ${b.label}</option>`).join('');
+    return `<div class="lib-card">
+      <div class="lib-head">
+        <span class="lib-name">${escapeHTML(model.name)}</span>
+        <span class="lib-size">${model.downloads.toLocaleString()} downloads</span>
+      </div>
+      <dl class="lib-specs">
+        <div><dt>Parameters</dt><dd>${paramsFromName(model.id)}</dd></div>
+        <div><dt>Context</dt><dd>${readableTokens(model.ctx)}</dd></div>
+        <div><dt>Published by</dt><dd>${escapeHTML(model.id.split('/')[0])}</dd></div>
+      </dl>
+      <div class="lib-foot">
+        <label class="lib-note" for="dtype-${escapeHTML(model.id)}">Which build to use</label>
+        <span class="lib-buttons">
+          <select id="dtype-${escapeHTML(model.id)}">${choices}</select>
+          <button class="btn btn-sm btn-download" type="button" ${usable.length ? '' : 'disabled'} onclick="addCandidate('${model.id}')">Add to the list</button>
+        </span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Adding is only a note kept in this browser. Nothing is downloaded until the model
+// is actually used, which is how the ones that came with the page work too.
+async function addCandidate(id) {
+  const found = searchFound.find((m) => m.id === id);
+  if (!found) return;
+  const picked = document.getElementById('dtype-' + id);
+  const build = found.builds.find((b) => b.dtype === (picked && picked.value)) || found.builds[0];
+  customModels = customModels.filter((m) => m.id !== id).concat([{
+    id: found.id,
+    name: found.name,
+    params: paramsFromName(found.id),
+    context: readableTokens(found.ctx),
+    ctx: found.ctx || 4096,
+    size: readableBytes(build.bytes),
+    kind: 'text-generation',
+    dtype: build.dtype,
+    webgpu: build.webgpu,
+    maxNew: 1024,
+    custom: true,
+    blurb: 'Added by you from Hugging Face, and not tried here. It may repeat itself or answer badly, and if it does, the other build of it is worth a go before giving up on it.',
+  }]);
+  writeCustom();
+  refreshModels();
+  searchFound = searchFound.filter((m) => m.id !== id);
+  renderResults();
+  await renderLibrary();
+  showToast(prettyName(id) + ' added to your list', 'success');
+}
+
+async function dropCustom(id, btn) {
+  if (busy) return;
+  const model = customModels.find((m) => m.id === id);
+  if (!model) return;
+  setBusy(btn, true, 'Removing...');
+  if (id === selectedModelId) { releaseWorker(); selectedModelId = DEFAULT_MODEL; }
+  customModels = customModels.filter((m) => m.id !== id);
+  writeCustom();
+  refreshModels();
+  try {
+    const store = await storeReady;
+    await store.removeAll(`${HF_BASE}${id}/resolve/main/`);
+  } catch (e) { /* nothing had been downloaded */ }
+  await renderModelList();
+  await renderLibrary();
+  showToast(model.name + ' taken off your list', 'success');
+}
+
+/* A model that is no longer on the list cannot be chosen, used, or removed through
+   the library, so its weights would sit on the disk forever with nothing able to
+   reach them. This clears those when the page opens. Anything somebody added
+   themselves counts as on the list, which is why it runs after those are read back. */
+async function sweepUnlisted() {
+  try {
+    const store = await storeReady;
+    const known = new Set(ALL_MODELS.map((m) => `${HF_BASE}${m.id}/resolve/main/`));
+    let freed = 0;
+    for (const prefix of await store.listModels()) {
+      if (known.has(prefix)) continue;
+      freed += await store.bytesFor(prefix);
+      await store.removeAll(prefix);
+    }
+    if (freed > 1024 * 1024 && typeof showToast === 'function') {
+      showToast('Cleared ' + readableBytes(freed) + ' of models no longer offered', 'info');
+    }
+  } catch (e) { /* nothing to clear */ }
+}
 // A two gigabyte download deserves a way out that is not buried in browser settings.
 async function forgetModel(id, btn) {
   if (busy) return;
@@ -1247,6 +1506,12 @@ function growComposer() {
   box.style.height = Math.min(box.scrollHeight, 240) + 'px';
 }
 
+document.getElementById('modelSearch').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  searchModels(document.getElementById('searchBtn'));
+});
+
 document.getElementById('message').addEventListener('input', growComposer);
 document.getElementById('message').addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
@@ -1348,6 +1613,7 @@ renderChat();
 // Drawn straight away rather than waiting on the graphics check, which can take a
 // second and would otherwise leave the panel blank.
 renderModelList();
+sweepUnlisted();
 detectWebGPU().then(async (ok) => {
   webgpuReady = ok;
   // Falling back to a model this browser can actually run beats failing on send.

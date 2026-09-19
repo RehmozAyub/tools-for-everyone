@@ -125,6 +125,29 @@ export async function filesFor(prefix) {
   return found;
 }
 
+// Every model the store holds, as the address the files of each one sit under. Used
+// to find weights belonging to a model that is no longer offered, which nothing else
+// could ever reach again.
+export async function listModels() {
+  const prefixes = new Set();
+  const mark = '/resolve/main/';
+  const add = (url) => {
+    const at = url.indexOf(mark);
+    if (at > 0) prefixes.add(url.slice(0, at + mark.length));
+  };
+  try {
+    const keys = await run(FILES, 'readonly', (store) => asValue(store.getAllKeys()));
+    for (const url of keys || []) if (typeof url === 'string') add(url);
+  } catch (e) { /* the store may not exist yet */ }
+  try {
+    if (typeof caches !== 'undefined') {
+      const cache = await caches.open(LEGACY_CACHE);
+      for (const request of await cache.keys()) add(request.url);
+    }
+  } catch (e) { /* no cache storage here */ }
+  return Array.from(prefixes);
+}
+
 export async function bytesFor(prefix) {
   const files = await filesFor(prefix);
   return files.reduce((total, file) => total + (file.size || 0), 0);
