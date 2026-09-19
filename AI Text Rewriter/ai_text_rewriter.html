@@ -129,6 +129,87 @@
     margin: 12px 0;
     font-size: 0.875rem;
   }
+  .model-specs {
+    grid-column: 1 / -1;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .library {
+    width: min(760px, calc(100vw - 32px));
+    max-height: min(80vh, 720px);
+    padding: 24px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg);
+    color: var(--text);
+    box-shadow: var(--shadow);
+    overflow-y: auto;
+  }
+  .library::backdrop { background: rgba(21, 24, 30, 0.45); }
+  .library-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+  .library-head h2 { margin-bottom: 0; font-size: 1.125rem; }
+  .lib-group {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 24px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .lib-group span { font-weight: 400; color: var(--text-muted); }
+  .lib-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .lib-card.chosen { border-color: var(--accent); background: var(--accent-tint); }
+  .lib-card.blocked { opacity: 0.55; }
+  .lib-head { display: flex; align-items: baseline; gap: 10px; }
+  .lib-name { font-size: 0.9375rem; font-weight: 600; }
+  .lib-size {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+  }
+  .lib-specs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    margin: 10px 0;
+  }
+  .lib-specs dt {
+    font-size: 0.6875rem;
+    text-transform: none;
+    color: var(--text-faint);
+  }
+  .lib-specs dd {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8125rem;
+    color: var(--text);
+  }
+  .lib-blurb { font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 12px; max-width: none; }
+  .lib-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  @media (max-width: 640px) {
+    .library { padding: 16px; }
+    .lib-specs { gap: 8px 16px; }
+  }
 </style>
 </head>
 <body data-sw-path="../sw.js">
@@ -149,7 +230,8 @@
     <details class="panel" open data-mobile-collapsed>
       <summary><span>Model</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
       <div id="modelList"></div>
-      <p class="muted xsmall">Downloads once, then stays in this browser. Coming back is instant and works with the internet off.</p>
+      <button class="btn btn-export mt-2" type="button" onclick="openLibrary()"><i class="ph ph-books" aria-hidden="true"></i> Browse models</button>
+      <p class="muted xsmall mt-3">Downloads once, then stays in this browser. Coming back is instant and works with the internet off.</p>
     </details>
 
     <details class="panel" open data-mobile-collapsed>
@@ -185,6 +267,15 @@
     </div>
   </main>
 </div>
+
+<dialog id="libraryDialog" class="library" aria-label="Model library">
+  <div class="library-head">
+    <h2>Model library</h2>
+    <button class="icon-btn" type="button" onclick="closeLibrary()" aria-label="Close the library"><i class="ph ph-x" aria-hidden="true"></i></button>
+  </div>
+  <p class="muted small">Bigger models write better and hold more text at once, and cost a longer download and a slower reply. Each one is kept after its first download.</p>
+  <div id="libraryBody"></div>
+</dialog>
 
 <footer class="tool-footer">
   <span>Made with ❤️ by <a href="https://github.com/RehmozAyub">RehmozAyub</a></span>
@@ -233,22 +324,81 @@ const MODES = [
 
 const DEFAULT_OPTIONS = { do_sample: true, temperature: 0.7, top_p: 0.95, repetition_penalty: 1.2 };
 
-const MODEL = {
-  id: 'Xenova/LaMini-Flan-T5-248M',
-  name: 'LaMini Flan T5',
-  size: '262 MB',
-};
-
-const MODEL_FILES = [
-  'config.json',
-  'tokenizer.json',
-  'tokenizer_config.json',
-  'generation_config.json',
-  'onnx/encoder_model_quantized.onnx',
-  'onnx/decoder_model_merged_quantized.onnx',
+// Sizes are the real download measured from the files themselves, and context is
+// read from each model's own config, rather than quoted from memory. The chat models
+// are held as 4 bit weights with 16 bit activations, which needs WebGPU, so they are
+// marked accordingly and switched off when the browser cannot run them.
+const LIBRARY = [
+  {
+    group: 'Small', note: 'Runs anywhere, including phones.',
+    models: [
+      {
+        id: 'Xenova/LaMini-Flan-T5-248M', name: 'LaMini Flan T5',
+        params: '248M', context: '512 tokens', size: '262 MB', bytes: 275 * 1024 * 1024,
+        kind: 'text2text-generation',
+        blurb: 'Built for following a short written instruction. The most reliable of these at plain rewriting, and the only one tested on every job here.',
+      },
+      {
+        id: 'HuggingFaceTB/SmolLM2-360M-Instruct', name: 'SmolLM2 360M',
+        params: '360M', context: '8K tokens', size: '260 MB', bytes: 273 * 1024 * 1024,
+        kind: 'text-generation', dtype: 'q4f16', webgpu: true,
+        blurb: 'A chat model at almost the same download. Holds much longer passages and takes freer instructions.',
+      },
+      {
+        id: 'onnx-community/Qwen2.5-0.5B-Instruct', name: 'Qwen2.5 0.5B',
+        params: '0.5B', context: '32K tokens', size: '460 MB', bytes: 482 * 1024 * 1024,
+        kind: 'text-generation', dtype: 'q4f16', webgpu: true,
+        blurb: 'Stronger writing than its size suggests, and a context long enough for a whole document.',
+      },
+    ],
+  },
+  {
+    group: 'Medium', note: 'About a gigabyte. Comfortable on a laptop.',
+    models: [
+      {
+        id: 'onnx-community/Llama-3.2-1B-Instruct', name: 'Llama 3.2 1B',
+        params: '1B', context: '128K tokens', size: '1.0 GB', bytes: 1039 * 1024 * 1024,
+        kind: 'text-generation', dtype: 'q4f16', webgpu: true,
+        blurb: 'A clear step up in how naturally it writes, with room for very long input.',
+      },
+      {
+        id: 'onnx-community/Qwen2.5-1.5B-Instruct', name: 'Qwen2.5 1.5B',
+        params: '1.5B', context: '32K tokens', size: '1.1 GB', bytes: 1165 * 1024 * 1024,
+        kind: 'text-generation', dtype: 'q4f16', webgpu: true,
+        blurb: 'The strongest of the medium options at summarising and keeping the original meaning.',
+      },
+    ],
+  },
+  {
+    group: 'Large', note: 'Two gigabytes and up. A desktop with a real graphics card.',
+    models: [
+      {
+        id: 'onnx-community/Llama-3.2-3B-Instruct', name: 'Llama 3.2 3B',
+        params: '3B', context: '128K tokens', size: '2.0 GB', bytes: 1999 * 1024 * 1024,
+        kind: 'text-generation', dtype: 'q4f16', webgpu: true,
+        blurb: 'The best writing available here. Slow to download and to start, and it will not fit on most phones.',
+      },
+    ],
+  },
 ];
+
+const ALL_MODELS = LIBRARY.reduce((acc, g) => acc.concat(g.models), []);
+const DEFAULT_MODEL = ALL_MODELS[0].id;
+
 const MODEL_CACHE = 'transformers-cache';
 const HF_BASE = 'https://huggingface.co/';
+
+let selectedModelId = DEFAULT_MODEL;
+let webgpuReady = false;
+
+function currentModel() {
+  return ALL_MODELS.find((m) => m.id === selectedModelId) || ALL_MODELS[0];
+}
+
+try {
+  const saved = localStorage.getItem('rewriterModel');
+  if (saved && ALL_MODELS.some((m) => m.id === saved)) selectedModelId = saved;
+} catch (e) {}
 
 // The model reads 512 tokens at a time. Splitting on sentence ends near this many
 // characters keeps each piece inside that without cutting mid sentence.
@@ -260,9 +410,29 @@ const FOLLOW_UP_WORDS = 12;
 
 let messages = [];
 let busy = false;
+let stickToBottom = true;
 
-function modelUrl(file) {
-  return `${HF_BASE}${MODEL.id}/resolve/main/${file}`;
+function modelUrl(repo, file) {
+  return `${HF_BASE}${repo}/resolve/main/${file}`;
+}
+
+// Each family ships a different set of files, so rather than hardcoding a list the
+// cache is asked what it actually holds for a given model.
+async function cachedFiles(repo) {
+  try {
+    const cache = await caches.open(MODEL_CACHE);
+    const prefix = `${HF_BASE}${repo}/resolve/main/`;
+    const keys = await cache.keys();
+    return keys.filter((r) => r.url.startsWith(prefix)).map((r) => ({ request: r, path: r.url.slice(prefix.length) }));
+  } catch (e) {
+    return [];
+  }
+}
+
+// A model counts as here when its settings and at least one weights file are cached.
+async function isModelDownloaded(repo) {
+  const files = await cachedFiles(repo);
+  return files.some((f) => f.path === 'config.json') && files.some((f) => f.path.endsWith('.onnx'));
 }
 
 function initModeList() {
@@ -368,8 +538,39 @@ function renderChat() {
       : '';
     return `<div class="msg bot"><div class="bubble">${note}${escapeHTML(m.text || '')}${actions}</div></div>`;
   }).join('');
-  chat.lastElementChild.scrollIntoView({ block: 'end' });
+  if (stickToBottom) scrollToLatest();
 }
+
+// The composer is stuck to the bottom of the window, so scrolling the last message
+// fully into view would park it underneath. The page is what scrolls here, not the
+// chat box, so the sum has to place the end of the conversation just above the
+// composer rather than at the bottom of the document, where the footer lives.
+function scrollToLatest() {
+  const chat = document.getElementById('chat');
+  const composer = document.querySelector('.composer');
+  if (!chat || !chat.lastElementChild) return;
+  const composerHeight = composer ? composer.getBoundingClientRect().height : 0;
+  const chatBottom = chat.getBoundingClientRect().bottom + window.scrollY;
+  const target = chatBottom - (window.innerHeight - composerHeight) + 24;
+  // Instant, not smooth. A smooth scroll is silently dropped while the tab is not
+  // being painted, and during a multi part reply successive animations fight each
+  // other, so the view can end up parked on an older message either way.
+  window.scrollTo({ top: Math.max(0, target), behavior: 'auto' });
+}
+
+// Someone who has scrolled up to reread something should not be yanked back down by
+// a reply arriving, so following the conversation is switched off until they return
+// to the bottom themselves.
+function nearBottom() {
+  const composer = document.querySelector('.composer');
+  const composerHeight = composer ? composer.getBoundingClientRect().height : 0;
+  const fromBottom = document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
+  return fromBottom <= composerHeight + 180;
+}
+
+window.addEventListener('scroll', () => {
+  if (!busy) stickToBottom = nearBottom();
+}, { passive: true });
 
 function copyMessage(index) {
   const m = messages[index];
@@ -397,32 +598,72 @@ function downloadChat() {
   URL.revokeObjectURL(a.href);
 }
 
-async function isModelDownloaded() {
-  try {
-    const cache = await caches.open(MODEL_CACHE);
-    for (const file of MODEL_FILES) {
-      if (!(await cache.match(modelUrl(file)))) return false;
-    }
-    return true;
-  } catch (e) {
-    return false;
-  }
+async function renderModelList() {
+  const model = currentModel();
+  const ready = await isModelDownloaded(model.id);
+  const blocked = model.webgpu && !webgpuReady;
+  document.getElementById('modelList').innerHTML = `<div class="model-row">
+      <span class="name">${escapeHTML(model.name)}</span>
+      <span class="size">${model.size}</span>
+      <span class="model-specs">${model.params} parameters, ${model.context}</span>
+      <span class="model-state${ready ? ' ready' : ''}">${blocked ? 'Needs WebGPU, which this browser does not have' : (ready ? 'Saved on this device' : 'Downloads on first use')}</span>
+    </div>`;
 }
 
-async function renderModelList() {
-  const ready = await isModelDownloaded();
-  document.getElementById('modelList').innerHTML = `<div class="model-row">
-      <span class="name">${MODEL.name}</span>
-      <span class="size">${MODEL.size}</span>
-      <span class="model-state${ready ? ' ready' : ''}">${ready ? 'Saved on this device' : 'Downloads on first use'}</span>
-    </div>`;
+async function renderLibrary() {
+  const body = document.getElementById('libraryBody');
+  const rows = [];
+  for (const group of LIBRARY) {
+    rows.push(`<h3 class="lib-group">${group.group}<span>${escapeHTML(group.note)}</span></h3>`);
+    for (const model of group.models) {
+      const ready = await isModelDownloaded(model.id);
+      const blocked = model.webgpu && !webgpuReady;
+      const chosen = model.id === selectedModelId;
+      rows.push(`<div class="lib-card${chosen ? ' chosen' : ''}${blocked ? ' blocked' : ''}">
+        <div class="lib-head">
+          <span class="lib-name">${escapeHTML(model.name)}</span>
+          <span class="lib-size">${model.size}</span>
+        </div>
+        <dl class="lib-specs">
+          <div><dt>Parameters</dt><dd>${model.params}</dd></div>
+          <div><dt>Context</dt><dd>${model.context}</dd></div>
+          <div><dt>Runs on</dt><dd>${model.webgpu ? 'WebGPU' : 'Any browser'}</dd></div>
+        </dl>
+        <p class="lib-blurb">${escapeHTML(model.blurb)}</p>
+        <div class="lib-foot">
+          <span class="model-state${ready ? ' ready' : ''}">${blocked ? 'This browser has no WebGPU' : (ready ? 'Saved on this device' : 'Not downloaded')}</span>
+          <button class="btn btn-sm${chosen ? '' : ' btn-download'}" type="button" ${blocked || chosen ? 'disabled' : ''} onclick="chooseModel('${model.id}')">${chosen ? 'In use' : 'Use this one'}</button>
+        </div>
+      </div>`);
+    }
+  }
+  body.innerHTML = rows.join('');
+}
+
+async function chooseModel(id) {
+  selectedModelId = id;
+  try { localStorage.setItem('rewriterModel', id); } catch (e) {}
+  await renderModelList();
+  await renderLibrary();
+  showToast(currentModel().name + ' selected', 'success');
+}
+
+function openLibrary() {
+  renderLibrary();
+  const dialog = document.getElementById('libraryDialog');
+  if (dialog.showModal) dialog.showModal(); else dialog.setAttribute('open', '');
+}
+
+function closeLibrary() {
+  const dialog = document.getElementById('libraryDialog');
+  if (dialog.close) dialog.close(); else dialog.removeAttribute('open');
 }
 
 function startWorker(onDownload) {
   return new Promise((resolve, reject) => {
     let worker;
     try {
-      worker = new Worker('../assets/rewriter-worker.js', { type: 'module' });
+      worker = new Worker('../assets/rewriter-worker.js?v=2', { type: 'module' });
     } catch (e) {
       reject(e);
       return;
@@ -444,7 +685,14 @@ function startWorker(onDownload) {
     };
     worker.addEventListener('message', onMessage);
     worker.addEventListener('error', fail);
-    worker.postMessage({ type: 'load', model: MODEL.id });
+    const model = currentModel();
+    worker.postMessage({
+      type: 'load',
+      model: model.id,
+      kind: model.kind,
+      dtype: model.dtype || null,
+      device: model.webgpu && webgpuReady ? 'webgpu' : null,
+    });
   });
 }
 
@@ -462,7 +710,7 @@ function workerRewrite(worker, prompt, options) {
     const onError = () => { cleanup(); reject(new Error('The model stopped part way through.')); };
     worker.addEventListener('message', onMessage);
     worker.addEventListener('error', onError);
-    worker.postMessage({ type: 'rewrite', prompt: prompt, options: options });
+    worker.postMessage({ type: 'rewrite', prompt: prompt, options: options, kind: currentModel().kind });
   });
 }
 
@@ -507,7 +755,12 @@ async function send(btn) {
     });
 
     const chunks = splitIntoChunks(request.body);
-    const options = Object.assign({}, mode ? mode.options : DEFAULT_OPTIONS);
+    // The T5 settings were tuned on T5. Handing the same warmth to a small chat model
+    // makes it wander off and invent new facts rather than rewrite what it was given,
+    // so those take the most predictable path instead.
+    const options = currentModel().kind === 'text-generation'
+      ? { do_sample: false, repetition_penalty: 1.1 }
+      : Object.assign({}, mode ? mode.options : DEFAULT_OPTIONS);
     const factor = mode && mode.lengthFactor ? mode.lengthFactor : 1.6;
     const pieces = [];
 
@@ -563,24 +816,26 @@ document.getElementById('message').addEventListener('keydown', (e) => {
 // so saving is reading them back out and zipping them, and loading is writing them
 // into the same place the library reads from.
 async function exportModel(btn) {
-  if (!(await isModelDownloaded())) {
-    showInlineError(btn, 'Send one message first, so there is something to save.');
+  const model = currentModel();
+  if (!(await isModelDownloaded(model.id))) {
+    showInlineError(btn, 'Send one message with this model first, so there is something to save.');
     return;
   }
   setBusy(btn, true, 'Packing...');
   try {
     const cache = await caches.open(MODEL_CACHE);
     const zip = new JSZip();
-    zip.file('model.txt', MODEL.id);
-    for (const file of MODEL_FILES) {
-      const hit = await cache.match(modelUrl(file));
-      if (!hit) throw new Error('Part of the model is missing from this browser. Send another message, then save.');
-      zip.file(file, await hit.arrayBuffer());
+    zip.file('model.txt', model.id);
+    const files = await cachedFiles(model.id);
+    for (const file of files) {
+      const hit = await cache.match(file.request);
+      if (!hit) continue;
+      zip.file(file.path, await hit.arrayBuffer());
     }
     const blob = await zip.generateAsync({ type: 'blob' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = MODEL.id.split('/').pop() + '.zip';
+    a.download = model.id.split('/').pop() + '.zip';
     a.click();
     URL.revokeObjectURL(a.href);
     document.getElementById('modelManageResult').innerHTML =
@@ -603,18 +858,22 @@ document.getElementById('modelFileInput').addEventListener('change', async (e) =
     const nameEntry = zip.file('model.txt');
     if (!nameEntry) throw new Error('That zip was not saved by this tool.');
     const model = (await nameEntry.async('string')).trim();
-    if (model !== MODEL.id) throw new Error('That file holds a different model to the one this tool uses.');
+    const known = ALL_MODELS.find((m) => m.id === model);
+    if (!known) throw new Error('That file holds a model this tool does not offer.');
 
     const cache = await caches.open(MODEL_CACHE);
-    for (const wanted of MODEL_FILES) {
-      const entry = zip.file(wanted);
-      if (!entry) throw new Error(`The file is missing ${wanted}.`);
-      const body = await entry.async('arraybuffer');
-      const type = wanted.endsWith('.json') ? 'application/json' : 'application/octet-stream';
-      await cache.put(modelUrl(wanted), new Response(body, { headers: { 'Content-Type': type } }));
+    const entries = [];
+    zip.forEach((path, entry) => { if (path !== 'model.txt' && !entry.dir) entries.push(path); });
+    if (!entries.length) throw new Error('That zip has no model files in it.');
+    for (const path of entries) {
+      const body = await zip.file(path).async('arraybuffer');
+      const type = path.endsWith('.json') ? 'application/json' : 'application/octet-stream';
+      await cache.put(modelUrl(model, path), new Response(body, { headers: { 'Content-Type': type } }));
     }
+    selectedModelId = model;
+    try { localStorage.setItem('rewriterModel', model); } catch (e) {}
     await renderModelList();
-    result.innerHTML = '<div class="success-msg"><i class="ph ph-check-circle" aria-hidden="true"></i> <span>Loaded from your file. It will run without downloading anything.</span></div>';
+    result.innerHTML = `<div class="success-msg"><i class="ph ph-check-circle" aria-hidden="true"></i> <span>${escapeHTML(known.name)} loaded from your file. It will run without downloading anything.</span></div>`;
   } catch (err) {
     result.innerHTML = `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>${escapeHTML(err.message)}</span></div>`;
   } finally {
@@ -628,9 +887,27 @@ function escapeHTML(str) {
   return div.innerHTML;
 }
 
+async function detectWebGPU() {
+  if (!navigator.gpu) return false;
+  try {
+    const adapter = await navigator.gpu.requestAdapter();
+    return !!adapter;
+  } catch (e) {
+    return false;
+  }
+}
+
 initModeList();
 renderChat();
+// Drawn straight away rather than waiting on the graphics check, which can take a
+// second and would otherwise leave the panel blank.
 renderModelList();
+detectWebGPU().then((ok) => {
+  webgpuReady = ok;
+  // Falling back to a model this browser can actually run beats failing on send.
+  if (currentModel().webgpu && !ok) selectedModelId = DEFAULT_MODEL;
+  renderModelList();
+});
 </script>
 <script src="../assets/app.js" defer></script>
 </body>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tools-for-everyone-v7';
+const CACHE_NAME = 'tools-for-everyone-v8';
 const APP_SHELL = [
   './',
   './index.html',
@@ -6,7 +6,7 @@ const APP_SHELL = [
   './assets/theme.css',
   './assets/app.js',
   './assets/transcriber-worker.js',
-  './assets/rewriter-worker.js',
+  './assets/rewriter-worker.js?v=2',
   './assets/favicon.svg',
   './assets/fonts/geist-latin-wght-normal.woff2',
   './assets/fonts/geist-mono-latin-wght-normal.woff2',

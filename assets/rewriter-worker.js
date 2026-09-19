@@ -2,31 +2,76 @@
 
    A language model saturates whichever thread it runs on. On the main thread the
    page stops repainting for the whole job, which on a long passage looks like the
-   tab has died. Running it here leaves the page free to draw and stay clickable.
+   tab has died. Running it here leaves the page free to draw.
 
-   Terminating this worker when a job finishes hands back the model and its
-   WebAssembly heap. The model files stay in the browser's cache, so the next run
-   loads them from disk rather than the network. */
+   Two families are supported. The T5 models are sequence to sequence and take a
+   plain instruction string. The others are chat models and take a list of messages
+   that the library turns into whatever prompt format that model was trained on. */
 
 import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.0/dist/transformers.min.js';
 
-let rewriter = null;
-let loadedModel = null;
+let generator = null;
+let loadedKey = null;
+
+const SYSTEM_PROMPT =
+  'You rewrite text exactly as asked. Reply with the rewritten text only, with no preamble, ' +
+  'no explanation and no quotation marks around it.';
+
+function extractText(output) {
+  const generated = output && output[0] && output[0].generated_text;
+  if (typeof generated === 'string') return generated;
+  if (Array.isArray(generated)) {
+    for (let i = generated.length - 1; i >= 0; i--) {
+      const turn = generated[i];
+      if (turn && turn.role === 'assistant' && typeof turn.content === 'string') return turn.content;
+    }
+    const last = generated[generated.length - 1];
+    if (last && typeof last.content === 'string') return last.content;
+  }
+  return '';
+}
 
 self.addEventListener('message', async (event) => {
   const message = event.data || {};
 
   if (message.type === 'load') {
     try {
-      if (!rewriter || loadedModel !== message.model) {
-        rewriter = await pipeline('text2text-generation', message.model, {
+      const key = [message.model, message.kind, message.device, message.dtype].join('|');
+      if (!generator || loadedKey !== key) {
+        /* A model is several files, and the library reports each one's progress
+           separately. Forwarding those raw makes the bar jump backwards every time a
+           new file starts, which reads as flickering. Totalling the bytes across
+           every file gives one honest figure, and it is never allowed to fall,
+           because the total keeps growing as further files are discovered. */
+        const seen = new Map();
+        let highest = 0;
+
+        const options = {
           progress_callback: (p) => {
-            if (p.status === 'progress' && p.file) {
-              self.postMessage({ type: 'download', progress: Math.round(p.progress || 0), file: p.file });
+            if (!p.file) return;
+            if (p.status === 'done') {
+              const known = seen.get(p.file);
+              if (known) known.loaded = known.total;
+            } else if (p.status === 'progress') {
+              seen.set(p.file, { loaded: p.loaded || 0, total: p.total || 0 });
+            } else {
+              return;
             }
+            let loaded = 0, total = 0;
+            for (const v of seen.values()) { loaded += v.loaded; total += v.total; }
+            if (total <= 0) return;
+            const pct = Math.min(99, Math.round((loaded / total) * 100));
+            if (pct <= highest) return;
+            highest = pct;
+            self.postMessage({ type: 'download', progress: pct });
           },
-        });
-        loadedModel = message.model;
+        };
+        if (message.dtype) options.dtype = message.dtype;
+        if (message.device) options.device = message.device;
+
+        generator = await pipeline(message.kind || 'text2text-generation', message.model, options);
+        loadedKey = key;
+        self.postMessage({ type: 'download', progress: 100 });
       }
       self.postMessage({ type: 'ready' });
     } catch (e) {
@@ -37,10 +82,18 @@ self.addEventListener('message', async (event) => {
 
   if (message.type === 'rewrite') {
     try {
-      if (!rewriter) throw new Error('The model was not ready.');
-      const output = await rewriter(message.prompt, message.options || {});
-      const text = (output && output[0] && output[0].generated_text) || '';
-      self.postMessage({ type: 'result', index: message.index, text: text });
+      if (!generator) throw new Error('The model was not ready.');
+      const options = message.options || {};
+      let output;
+      if (message.kind === 'text-generation') {
+        output = await generator([
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: message.prompt },
+        ], options);
+      } else {
+        output = await generator(message.prompt, options);
+      }
+      self.postMessage({ type: 'result', index: message.index, text: extractText(output) });
     } catch (e) {
       self.postMessage({ type: 'error', message: (e && e.message) || String(e) });
     }
