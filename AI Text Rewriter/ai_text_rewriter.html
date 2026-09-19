@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Text Rewriter - Free Offline Paraphraser and Summariser</title>
-<meta name="description" content="Paraphrase, summarise, fix grammar, and simplify text by chatting with a small AI model that runs entirely in your browser. No account, no upload.">
+<title>Private AI Chat - A Free AI That Runs In Your Browser</title>
+<meta name="description" content="Chat with an AI model that runs entirely inside your browser. Rewrite, summarise, draft, and ask questions with nothing sent to a server. No account, no upload.">
 <link rel="canonical" href="https://rehmozayub.github.io/tools-for-everyone/AI%20Text%20Rewriter/ai_text_rewriter.html">
 <meta property="og:type" content="website">
-<meta property="og:title" content="AI Text Rewriter - Free Offline Paraphraser and Summariser">
-<meta property="og:description" content="Paraphrase, summarise, fix grammar, and simplify text by chatting with a small AI model that runs entirely in your browser. No account, no upload.">
+<meta property="og:title" content="Private AI Chat - A Free AI That Runs In Your Browser">
+<meta property="og:description" content="Chat with an AI model that runs entirely inside your browser. Rewrite, summarise, draft, and ask questions with nothing sent to a server. No account, no upload.">
 <meta property="og:url" content="https://rehmozayub.github.io/tools-for-everyone/AI%20Text%20Rewriter/ai_text_rewriter.html">
 <meta property="og:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="AI Text Rewriter - Free Offline Paraphraser and Summariser">
-<meta name="twitter:description" content="Paraphrase, summarise, fix grammar, and simplify text by chatting with a small AI model that runs entirely in your browser. No account, no upload.">
+<meta name="twitter:title" content="Private AI Chat - A Free AI That Runs In Your Browser">
+<meta name="twitter:description" content="Chat with an AI model that runs entirely inside your browser. Rewrite, summarise, draft, and ask questions with nothing sent to a server. No account, no upload.">
 <meta name="twitter:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
 <link rel="manifest" href="../manifest.json">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f3f5">
@@ -29,33 +29,57 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <link rel="stylesheet" href="../assets/theme.css">
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script type="module">
+  /* The store is a module, the page script below is not, so it is passed across
+     rather than imported. Modules run after the page script has been parsed, which
+     is why the page waits on this promise before it reads anything back. */
+  import * as store from "../assets/model-store.js";
+  window.__modelStoreReady(store);
+</script>
 <style>
+  /* ---------- Conversation ---------- */
+
   .chat {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    min-height: 260px;
-    padding: 4px 0 16px;
+    gap: 18px;
+    min-height: 280px;
+    padding: 4px 0 20px;
   }
-  .msg { display: flex; }
-  .msg.user { justify-content: flex-end; }
+  .msg { display: flex; flex-direction: column; max-width: 46rem; }
+  .msg.user { align-self: flex-end; align-items: flex-end; }
+  .who {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 6px;
+  }
   .bubble {
-    max-width: 46rem;
     padding: 12px 16px;
     border-radius: var(--radius-lg);
     font-size: 0.9375rem;
-    line-height: 1.6;
+    line-height: 1.65;
     white-space: pre-wrap;
-    word-wrap: break-word;
+    overflow-wrap: anywhere;
   }
   .msg.user .bubble {
     background: var(--accent-tint);
-    border: 1px solid var(--accent-tint);
-    color: var(--text);
+    border: 1px solid transparent;
+    border-bottom-right-radius: var(--radius);
   }
   .msg.bot .bubble {
     background: var(--surface);
     border: 1px solid var(--border);
+    border-bottom-left-radius: var(--radius);
+  }
+  .bubble code {
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+    background: var(--surface-2);
+    border-radius: 4px;
+    padding: 1px 5px;
   }
   .bubble .applied {
     display: block;
@@ -69,13 +93,60 @@
     margin-top: 10px;
     flex-wrap: wrap;
   }
-  .empty-chat {
-    text-align: center;
-    padding: 40px 16px;
+  .cut-note {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    font-size: 0.8125rem;
     color: var(--text-muted);
   }
-  .empty-chat .ph { font-size: 2rem; color: var(--text-faint); display: block; margin-bottom: 12px; }
-  .empty-chat p { max-width: 44ch; margin: 0 auto; }
+  .cut-note .ph { color: var(--warning); }
+
+  /* Three dots while the model is reading the question and has written nothing
+     back yet, so the wait has a visible reason. */
+  .dots { display: inline-flex; gap: 5px; padding: 4px 0; }
+  .dots i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-faint);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .dots i { animation: blink 1.2s infinite; }
+    .dots i:nth-child(2) { animation-delay: 0.2s; }
+    .dots i:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink { 0%, 60%, 100% { opacity: 0.25; } 30% { opacity: 1; } }
+  }
+
+  .empty-chat { text-align: center; padding: 32px 16px 8px; color: var(--text-muted); }
+  .empty-chat > .ph { font-size: 2rem; color: var(--text-faint); display: block; margin-bottom: 12px; }
+  .empty-chat p { max-width: 46ch; margin: 0 auto 20px; }
+  .suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    max-width: 40rem;
+    margin: 0 auto;
+  }
+  .chip {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    cursor: pointer;
+  }
+  .chip:hover { background: var(--surface-2); border-color: var(--border-strong); }
+
+  /* ---------- Composer ---------- */
+
   .composer {
     position: sticky;
     bottom: 0;
@@ -88,8 +159,10 @@
     font-family: inherit;
     font-size: 0.9375rem;
     line-height: 1.6;
-    min-height: 84px;
-    resize: vertical;
+    min-height: 54px;
+    max-height: 240px;
+    resize: none;
+    overflow-y: auto;
   }
   .composer-row {
     display: flex;
@@ -104,6 +177,23 @@
     margin-right: auto;
   }
   .composer .btn-primary { margin-top: 0; }
+  .btn-stop { background: var(--surface); border-color: var(--danger); color: var(--danger); margin-top: 0; }
+  .btn-stop:hover { background: var(--danger-tint); }
+
+  /* Appears only when the conversation has been scrolled away from, so a reply
+     arriving while someone is rereading does not drag the page around. */
+  .jump {
+    position: fixed;
+    left: 50%;
+    bottom: 120px;
+    transform: translateX(-50%);
+    z-index: 5;
+    box-shadow: var(--shadow);
+    background: var(--surface);
+  }
+
+  /* ---------- Model panel ---------- */
+
   .model-row {
     display: grid;
     grid-template-columns: 1fr auto;
@@ -120,6 +210,12 @@
   }
   .model-state { font-size: 0.75rem; color: var(--text-muted); grid-column: 1 / -1; }
   .model-state.ready { color: var(--success); }
+  .model-specs {
+    grid-column: 1 / -1;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
   .status-bar {
     display: flex; align-items: center; gap: 8px;
     padding: 10px 14px;
@@ -129,33 +225,35 @@
     margin: 12px 0;
     font-size: 0.875rem;
   }
-  .model-specs {
-    grid-column: 1 / -1;
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--text-muted);
-  }
+
+  /* ---------- Model library ---------- */
 
   .library {
     width: min(760px, calc(100vw - 32px));
-    max-height: min(80vh, 720px);
-    padding: 24px;
+    max-height: min(84vh, 760px);
+    padding: 0;
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     background: var(--bg);
     color: var(--text);
     box-shadow: var(--shadow);
-    overflow-y: auto;
+    overflow: hidden;
   }
-  .library::backdrop { background: rgba(21, 24, 30, 0.45); }
+  .library::backdrop { background: rgba(21, 24, 30, 0.5); }
   .library-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 4px;
+    gap: 16px;
+    padding: 18px 24px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
   }
   .library-head h2 { margin-bottom: 0; font-size: 1.125rem; }
+  .library-body { padding: 20px 24px 28px; overflow-y: auto; max-height: calc(min(84vh, 760px) - 70px); }
   .lib-group {
     display: flex;
     align-items: baseline;
@@ -188,16 +286,12 @@
     color: var(--text-muted);
   }
   .lib-specs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 24px;
-    margin: 10px 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+    gap: 10px 20px;
+    margin: 12px 0;
   }
-  .lib-specs dt {
-    font-size: 0.6875rem;
-    text-transform: none;
-    color: var(--text-faint);
-  }
+  .lib-specs dt { font-size: 0.6875rem; color: var(--text-faint); }
   .lib-specs dd {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
@@ -206,9 +300,13 @@
   }
   .lib-blurb { font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 12px; max-width: none; }
   .lib-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .lib-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+
   @media (max-width: 640px) {
-    .library { padding: 16px; }
-    .lib-specs { gap: 8px 16px; }
+    .library-head { padding: 14px 16px; }
+    .library-body { padding: 16px 16px 24px; }
+    .lib-specs { gap: 10px 12px; }
+    .jump { bottom: 132px; }
   }
 </style>
 </head>
@@ -216,7 +314,7 @@
 
 <header class="tool-header">
   <a class="back" href="../index.html"><i class="ph ph-arrow-left" aria-hidden="true"></i> <span>All tools</span></a>
-  <h1><i class="ph ph-chat-teardrop-text" aria-hidden="true"></i> AI Text Rewriter</h1>
+  <h1><i class="ph ph-chat-teardrop-text" aria-hidden="true"></i> Private AI Chat</h1>
   <div class="header-actions">
     <button class="icon-btn" type="button" id="themeToggle" aria-label="Toggle theme"></button>
     <a class="icon-btn" href="https://github.com/RehmozAyub/tools-for-everyone" aria-label="Source on GitHub"><i class="ph ph-github-logo" aria-hidden="true"></i></a>
@@ -251,30 +349,36 @@
   </aside>
 
   <main class="tool-main">
-    <p class="tool-intro">Ask for a rewrite, then keep going. Say "make it shorter" or "more formal" and it works on the last reply. The model runs inside your browser, so nothing you write is sent anywhere.</p>
+    <p class="tool-intro">A real AI chat with nothing behind it. The model is downloaded once and then runs inside your browser, so every word you type stays on your machine, and the whole thing keeps working with the internet switched off.</p>
 
-    <div class="chat" id="chat" role="log" aria-live="polite"></div>
+    <div class="chat" id="chat" role="log"></div>
+    <p class="hidden" id="liveStatus" role="status" aria-live="polite"></p>
 
     <div id="statusArea"></div>
 
     <div class="composer">
       <label class="hidden" for="message">Your message</label>
-      <textarea id="message" placeholder="Paste your text, or pick a starting point on the left."></textarea>
+      <textarea id="message" rows="2" placeholder="Ask anything, or paste some text and say what to do with it."></textarea>
       <div class="composer-row">
         <span class="hint" id="composerHint">Enter sends, Shift and Enter makes a new line</span>
+        <button class="btn btn-stop hidden" type="button" id="stopBtn" onclick="stopReply()"><i class="ph ph-stop-circle" aria-hidden="true"></i> Stop</button>
         <button class="btn btn-primary" type="button" id="sendBtn" onclick="send(this)"><i class="ph ph-paper-plane-tilt" aria-hidden="true"></i> Send</button>
       </div>
     </div>
   </main>
 </div>
 
+<button class="btn btn-sm jump hidden" type="button" id="jumpBtn" onclick="jumpToLatest()"><i class="ph ph-arrow-down" aria-hidden="true"></i> Jump to latest</button>
+
 <dialog id="libraryDialog" class="library" aria-label="Model library">
   <div class="library-head">
     <h2>Model library</h2>
-    <button class="icon-btn" type="button" onclick="closeLibrary()" aria-label="Close the library"><i class="ph ph-x" aria-hidden="true"></i></button>
+    <button class="btn" type="button" onclick="closeLibrary()"><i class="ph ph-x" aria-hidden="true"></i> Close</button>
   </div>
-  <p class="muted small">Bigger models write better and hold more text at once, and cost a longer download and a slower reply. Each one is kept after its first download.</p>
-  <div id="libraryBody"></div>
+  <div class="library-body">
+    <p class="muted small">Bigger models write better, hold more of the conversation, and answer at greater length. They also cost a longer download and a slower reply. Longest reply is how much a model can write in one go before it has to stop, which is the usual reason an answer ends early. Each model is kept after its first download.</p>
+    <div id="libraryBody"></div>
+  </div>
 </dialog>
 
 <footer class="tool-footer">
@@ -324,31 +428,33 @@ const MODES = [
 
 const DEFAULT_OPTIONS = { do_sample: true, temperature: 0.7, top_p: 0.95, repetition_penalty: 1.2 };
 
-// Sizes are the real download measured from the files themselves, and context is
-// read from each model's own config, rather than quoted from memory. The chat models
-// are held as 4 bit weights with 16 bit activations, which needs WebGPU, so they are
-// marked accordingly and switched off when the browser cannot run them.
+// Sizes are the real download measured from the files themselves, and context is read
+// from each model's own config, rather than quoted from memory. Longest reply is this
+// page's own budget for one answer, chosen so a small model is not left running for
+// several minutes: it is a real ceiling, and the chat says so when an answer hits it.
+// The chat models are held as 4 bit weights with 16 bit activations, which needs
+// WebGPU, so they are marked accordingly and switched off when the browser lacks it.
 const LIBRARY = [
   {
     group: 'Small', note: 'Runs anywhere, including phones.',
     models: [
       {
         id: 'Xenova/LaMini-Flan-T5-248M', name: 'LaMini Flan T5',
-        params: '248M', context: '512 tokens', size: '262 MB', bytes: 275 * 1024 * 1024,
-        kind: 'text2text-generation',
-        blurb: 'Built for following a short written instruction. The most reliable of these at plain rewriting, and the only one tested on every job here.',
+        params: '248M', context: '512 tokens', ctx: 512, size: '262 MB', bytes: 275 * 1024 * 1024,
+        kind: 'text2text-generation', maxNew: 512,
+        blurb: 'Built for following one short written instruction at a time. The most reliable of these at plain rewriting, and the only one that runs without WebGPU. It answers each message on its own and does not remember the conversation.',
       },
       {
         id: 'HuggingFaceTB/SmolLM2-360M-Instruct', name: 'SmolLM2 360M',
-        params: '360M', context: '8K tokens', size: '260 MB', bytes: 273 * 1024 * 1024,
-        kind: 'text-generation', dtype: 'q4f16', webgpu: true,
-        blurb: 'A chat model at almost the same download. Holds much longer passages and takes freer instructions.',
+        params: '360M', context: '8K tokens', ctx: 8192, size: '260 MB', bytes: 273 * 1024 * 1024,
+        kind: 'text-generation', dtype: 'q4f16', webgpu: true, maxNew: 1024,
+        blurb: 'A proper chat model at almost the same download. Good for short questions and quick rewrites, and it follows a conversation.',
       },
       {
         id: 'onnx-community/Qwen2.5-0.5B-Instruct', name: 'Qwen2.5 0.5B',
-        params: '0.5B', context: '32K tokens', size: '460 MB', bytes: 482 * 1024 * 1024,
-        kind: 'text-generation', dtype: 'q4f16', webgpu: true,
-        blurb: 'Stronger writing than its size suggests, and a context long enough for a whole document.',
+        params: '0.5B', context: '32K tokens', ctx: 32768, size: '460 MB', bytes: 482 * 1024 * 1024,
+        kind: 'text-generation', dtype: 'q4f16', webgpu: true, maxNew: 2048,
+        blurb: 'Stronger writing than its size suggests, a context long enough for a whole document, and the smallest one here that will write at real length.',
       },
     ],
   },
@@ -357,15 +463,15 @@ const LIBRARY = [
     models: [
       {
         id: 'onnx-community/Llama-3.2-1B-Instruct', name: 'Llama 3.2 1B',
-        params: '1B', context: '128K tokens', size: '1.0 GB', bytes: 1039 * 1024 * 1024,
-        kind: 'text-generation', dtype: 'q4f16', webgpu: true,
+        params: '1B', context: '128K tokens', ctx: 131072, size: '1.0 GB', bytes: 1039 * 1024 * 1024,
+        kind: 'text-generation', dtype: 'q4f16', webgpu: true, maxNew: 2048,
         blurb: 'A clear step up in how naturally it writes, with room for very long input.',
       },
       {
         id: 'onnx-community/Qwen2.5-1.5B-Instruct', name: 'Qwen2.5 1.5B',
-        params: '1.5B', context: '32K tokens', size: '1.1 GB', bytes: 1165 * 1024 * 1024,
-        kind: 'text-generation', dtype: 'q4f16', webgpu: true,
-        blurb: 'The strongest of the medium options at summarising and keeping the original meaning.',
+        params: '1.5B', context: '32K tokens', ctx: 32768, size: '1.1 GB', bytes: 1165 * 1024 * 1024,
+        kind: 'text-generation', dtype: 'q4f16', webgpu: true, maxNew: 2048,
+        blurb: 'The strongest of the medium options at summarising and at keeping the original meaning.',
       },
     ],
   },
@@ -374,8 +480,8 @@ const LIBRARY = [
     models: [
       {
         id: 'onnx-community/Llama-3.2-3B-Instruct', name: 'Llama 3.2 3B',
-        params: '3B', context: '128K tokens', size: '2.0 GB', bytes: 1999 * 1024 * 1024,
-        kind: 'text-generation', dtype: 'q4f16', webgpu: true,
+        params: '3B', context: '128K tokens', ctx: 131072, size: '2.0 GB', bytes: 1999 * 1024 * 1024,
+        kind: 'text-generation', dtype: 'q4f16', webgpu: true, maxNew: 2048,
         blurb: 'The best writing available here. Slow to download and to start, and it will not fit on most phones.',
       },
     ],
@@ -383,9 +489,13 @@ const LIBRARY = [
 ];
 
 const ALL_MODELS = LIBRARY.reduce((acc, g) => acc.concat(g.models), []);
-const DEFAULT_MODEL = ALL_MODELS[0].id;
 
-const MODEL_CACHE = 'transformers-cache';
+// The instruction only model is the one that runs everywhere, so it is what somebody
+// falls back to. A browser with WebGPU gets the chat model of the same size instead,
+// because this is a conversation and that one can hold one.
+const DEFAULT_MODEL = 'Xenova/LaMini-Flan-T5-248M';
+const PREFERRED_MODEL = 'HuggingFaceTB/SmolLM2-360M-Instruct';
+
 const HF_BASE = 'https://huggingface.co/';
 
 let selectedModelId = DEFAULT_MODEL;
@@ -395,45 +505,84 @@ function currentModel() {
   return ALL_MODELS.find((m) => m.id === selectedModelId) || ALL_MODELS[0];
 }
 
+// A token is about three quarters of an English word, and words are what somebody
+// choosing a model actually cares about.
+function replyWords(model) {
+  return Math.round((model.maxNew * 0.75) / 10) * 10;
+}
+
+function isChatModel(model) {
+  return model.kind === 'text-generation';
+}
+
+let pickedBefore = false;
 try {
   const saved = localStorage.getItem('rewriterModel');
-  if (saved && ALL_MODELS.some((m) => m.id === saved)) selectedModelId = saved;
+  if (saved && ALL_MODELS.some((m) => m.id === saved)) { selectedModelId = saved; pickedBefore = true; }
 } catch (e) {}
 
-// The model reads 512 tokens at a time. Splitting on sentence ends near this many
-// characters keeps each piece inside that without cutting mid sentence.
+// The instruction only model reads 512 tokens at a time. Splitting on sentence ends
+// near this many characters keeps each piece inside that without cutting mid sentence.
 const CHUNK_CHARS = 900;
 
 // A short message with no body of its own is treated as an instruction about the
-// previous reply, which is what "make it shorter" has to mean.
+// previous reply, which is what "make it shorter" has to mean. It applies only to the
+// instruction only model, which has no memory; a chat model is handed the conversation
+// and works this out for itself. The opening word has to look like an instruction, or
+// a genuine new question of a few words gets swallowed and answered as a rewrite.
 const FOLLOW_UP_WORDS = 12;
+const FOLLOW_UP_START = /^(make|keep|try|now|again|shorter|longer|more|less|rewrite|redo|reword|simplify|shorten|expand|summari[sz]e|translate|fix|tidy|polish|formal|casual|friendlier|politer)\b/i;
 
 let messages = [];
 let busy = false;
 let stickToBottom = true;
+let worker = null;
+let workerKey = null;
+let jobId = 0;
 
 function modelUrl(repo, file) {
   return `${HF_BASE}${repo}/resolve/main/${file}`;
 }
 
+// Filled in by the module above. Everything that reads a model waits on it.
+let modelStore = null;
+const storeReady = new Promise((resolve) => {
+  window.__modelStoreReady = (api) => { modelStore = api; resolve(api); };
+});
+
 // Each family ships a different set of files, so rather than hardcoding a list the
-// cache is asked what it actually holds for a given model.
+// store is asked what it actually holds for a given model.
 async function cachedFiles(repo) {
+  const store = await storeReady;
   try {
-    const cache = await caches.open(MODEL_CACHE);
-    const prefix = `${HF_BASE}${repo}/resolve/main/`;
-    const keys = await cache.keys();
-    return keys.filter((r) => r.url.startsWith(prefix)).map((r) => ({ request: r, path: r.url.slice(prefix.length) }));
+    return await store.filesFor(`${HF_BASE}${repo}/resolve/main/`);
   } catch (e) {
     return [];
   }
 }
 
-// A model counts as here when its settings and at least one weights file are cached.
+// A model counts as here when its settings and at least one weights file are held.
 async function isModelDownloaded(repo) {
-  const files = await cachedFiles(repo);
+  const files = await cachedFiles(repo || selectedModelId);
   return files.some((f) => f.path === 'config.json') && files.some((f) => f.path.endsWith('.onnx'));
 }
+
+async function bytesHeld(repo) {
+  const store = await storeReady;
+  try {
+    return await store.bytesFor(`${HF_BASE}${repo}/resolve/main/`);
+  } catch (e) {
+    return 0;
+  }
+}
+
+function readableBytes(bytes) {
+  if (!bytes) return '';
+  const mb = bytes / (1024 * 1024);
+  return mb >= 1024 ? (mb / 1024).toFixed(1) + ' GB' : Math.round(mb) + ' MB';
+}
+
+/* ---------- Starting points ---------- */
 
 function initModeList() {
   document.getElementById('modeList').innerHTML = MODES.map((m) =>
@@ -453,6 +602,7 @@ function useMode(id, el) {
   box.value = mode.prefill + body;
   box.focus();
   box.setSelectionRange(box.value.length, box.value.length);
+  growComposer();
 }
 
 function countWords(text) {
@@ -475,11 +625,12 @@ function lastReply() {
 // Whether this message carries its own text, or is an instruction about the last reply.
 function isFollowUp(text) {
   if (!lastReply()) return false;
-  if (matchMode(text)) {
-    const body = text.trim().slice(matchMode(text).prefill.trim().length).replace(/^[:\s]+/, '');
+  const mode = matchMode(text);
+  if (mode) {
+    const body = text.trim().slice(mode.prefill.trim().length).replace(/^[:\s]+/, '');
     return countWords(body) === 0;
   }
-  return countWords(text) <= FOLLOW_UP_WORDS && !/\n/.test(text.trim());
+  return countWords(text) <= FOLLOW_UP_WORDS && !/\n/.test(text.trim()) && FOLLOW_UP_START.test(text.trim());
 }
 
 // Instruction and body are kept apart so that a long passage can be cut into pieces
@@ -488,12 +639,12 @@ function isFollowUp(text) {
 function splitRequest(text) {
   const trimmed = text.trim();
   if (isFollowUp(trimmed)) {
-    return { instruction: trimmed.replace(/[:：]\s*$/, ''), body: lastReply(), applied: true };
+    return { instruction: trimmed.replace(/:\s*$/, ''), body: lastReply(), applied: true };
   }
   const mode = matchMode(trimmed);
   if (mode) {
-    const body = trimmed.slice(mode.prefill.trim().length).replace(/^[:：\s]+/, '');
-    return { instruction: mode.prefill.trim().replace(/[:：]$/, ''), body: body, applied: false };
+    const body = trimmed.slice(mode.prefill.trim().length).replace(/^[:\s]+/, '');
+    return { instruction: mode.prefill.trim().replace(/:$/, ''), body: body, applied: false };
   }
   return { instruction: '', body: trimmed, applied: false };
 }
@@ -517,27 +668,96 @@ function splitIntoChunks(text) {
   return chunks.length ? chunks : [text.trim()];
 }
 
+// The conversation handed to a chat model, newest first until the model's own context
+// is full, then put back in order. Four characters to a token is the usual rule, and
+// half of that is left free for the answer and for the model's own prompt format.
+function conversationTurns(model) {
+  const budget = Math.min(model.ctx * 2, 24000);
+  const turns = [];
+  let used = 0;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (!m.text) continue;
+    used += m.text.length;
+    if (used > budget && turns.length) break;
+    turns.unshift({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text });
+  }
+  return turns;
+}
+
+/* ---------- Drawing the conversation ---------- */
+
+// Escaped first, so nothing in a reply can become markup. These models write the
+// occasional bit of markdown, and leaving the asterisks on screen looks like a fault.
+function formatReply(text) {
+  return escapeHTML(text)
+    .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+}
+
 function renderChat() {
   const chat = document.getElementById('chat');
   if (!messages.length) {
     chat.innerHTML = `<div class="empty-chat">
       <i class="ph ph-chat-teardrop-text" aria-hidden="true"></i>
-      <p>Paste some text and ask for what you want, or pick a starting point from the list to fill in the wording for you.</p>
+      <p>Ask a question, or paste some text and say what you want done with it. Nothing you type leaves this device.</p>
+      <div class="suggestions">${MODES.map((m) =>
+        `<button class="chip" type="button" onclick="useMode('${m.id}')">${m.name}</button>`
+      ).join('')}</div>
     </div>`;
+    updateJump();
     return;
   }
+
+  const lastBot = messages.reduce((acc, m, i) => (m.role === 'bot' ? i : acc), -1);
+
   chat.innerHTML = messages.map((m, i) => {
     if (m.role === 'user') {
-      return `<div class="msg user"><div class="bubble">${escapeHTML(m.text)}</div></div>`;
+      return `<div class="msg user"><span class="who">You</span><div class="bubble">${escapeHTML(m.text)}</div></div>`;
     }
+
     const note = m.applied ? '<span class="applied">Applied to the previous reply</span>' : '';
-    const actions = m.text
-      ? `<div class="bubble-actions">
-           <button class="btn btn-sm" type="button" onclick="copyMessage(${i})"><i class="ph ph-copy" aria-hidden="true"></i> Copy</button>
-         </div>`
-      : '';
-    return `<div class="msg bot"><div class="bubble">${note}${escapeHTML(m.text || '')}${actions}</div></div>`;
+    const dots = m.pending && !m.text
+      ? '<span class="dots" aria-label="Writing a reply"><i></i><i></i><i></i></span>' : '';
+    const body = `<span class="text">${m.text ? formatReply(m.text) : ''}</span>${dots}`;
+
+    let extra = '';
+    if (!m.pending && m.text) {
+      if (m.stopped) {
+        extra += '<div class="cut-note"><i class="ph ph-hand-palm" aria-hidden="true"></i> <span>You stopped this reply.</span></div>';
+      } else if (m.truncated) {
+        const model = currentModel();
+        extra += `<div class="cut-note">
+            <i class="ph ph-scissors" aria-hidden="true"></i>
+            <span>This model stopped at its limit of about ${replyWords(model)} words for one reply.</span>
+            ${isChatModel(model)
+              ? `<button class="btn btn-sm" type="button" onclick="continueReply(${i}, this)"><i class="ph ph-arrow-bend-down-right" aria-hidden="true"></i> Carry on</button>`
+              : '<span>A larger model from the library writes longer answers.</span>'}
+          </div>`;
+      }
+      extra += `<div class="bubble-actions">
+          <button class="btn btn-sm" type="button" onclick="copyMessage(${i})"><i class="ph ph-copy" aria-hidden="true"></i> Copy</button>
+          ${i === lastBot ? '<button class="btn btn-sm" type="button" onclick="regenerate(this)"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i> Try again</button>' : ''}
+        </div>`;
+    }
+
+    return `<div class="msg bot"><span class="who">${escapeHTML(m.from || currentModel().name)}</span><div class="bubble">${note}${body}${extra}</div></div>`;
   }).join('');
+
+  if (stickToBottom) scrollToLatest();
+  updateJump();
+}
+
+// Streaming rewrites one text node rather than the whole conversation. Rebuilding the
+// list on every token would throw away any text the reader had selected, and would
+// spend more time in layout than the model spends thinking.
+function paintStreaming(index) {
+  const node = document.querySelectorAll('#chat .msg')[index];
+  const text = node && node.querySelector('.text');
+  if (!text) { renderChat(); return; }
+  text.innerHTML = formatReply(messages[index].text);
+  const dots = node.querySelector('.dots');
+  if (dots && messages[index].text) dots.remove();
   if (stickToBottom) scrollToLatest();
 }
 
@@ -553,14 +773,14 @@ function scrollToLatest() {
   const chatBottom = chat.getBoundingClientRect().bottom + window.scrollY;
   const target = chatBottom - (window.innerHeight - composerHeight) + 24;
   // Instant, not smooth. A smooth scroll is silently dropped while the tab is not
-  // being painted, and during a multi part reply successive animations fight each
+  // being painted, and during a streaming reply successive animations fight each
   // other, so the view can end up parked on an older message either way.
   window.scrollTo({ top: Math.max(0, target), behavior: 'auto' });
 }
 
-// Someone who has scrolled up to reread something should not be yanked back down by
-// a reply arriving, so following the conversation is switched off until they return
-// to the bottom themselves.
+// Someone who has scrolled up to reread something should not be yanked back down by a
+// reply arriving, so following the conversation is switched off until they come back
+// to the bottom, by scrolling or with the button that appears while they are away.
 function nearBottom() {
   const composer = document.querySelector('.composer');
   const composerHeight = composer ? composer.getBoundingClientRect().height : 0;
@@ -568,9 +788,29 @@ function nearBottom() {
   return fromBottom <= composerHeight + 180;
 }
 
+function updateJump() {
+  const btn = document.getElementById('jumpBtn');
+  if (!btn) return;
+  btn.classList.toggle('hidden', stickToBottom || !messages.length);
+}
+
+function jumpToLatest() {
+  stickToBottom = true;
+  scrollToLatest();
+  updateJump();
+}
+
 window.addEventListener('scroll', () => {
-  if (!busy) stickToBottom = nearBottom();
+  stickToBottom = nearBottom();
+  updateJump();
 }, { passive: true });
+
+function announce(text) {
+  const el = document.getElementById('liveStatus');
+  if (el) el.textContent = text;
+}
+
+/* ---------- Conversation actions ---------- */
 
 function copyMessage(index) {
   const m = messages[index];
@@ -579,9 +819,24 @@ function copyMessage(index) {
 }
 
 function clearChat() {
+  if (busy) return;
   messages = [];
+  stickToBottom = true;
   renderChat();
   document.querySelectorAll('#modeList .tool-item').forEach((b) => b.classList.remove('active'));
+}
+
+function regenerate(btn) {
+  if (busy) return;
+  let lastUser = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === 'user') { lastUser = i; break; }
+  }
+  if (lastUser < 0) return;
+  const text = messages[lastUser].text;
+  messages = messages.slice(0, lastUser);
+  renderChat();
+  run(text, btn);
 }
 
 function downloadChat() {
@@ -589,24 +844,28 @@ function downloadChat() {
     showToast('There is no conversation to save yet', 'info');
     return;
   }
-  const text = messages.map((m) => (m.role === 'user' ? 'You: ' : 'Rewriter: ') + m.text).join('\n\n');
+  const name = currentModel().name;
+  const text = messages.map((m) => (m.role === 'user' ? 'You: ' : (m.from || name) + ': ') + m.text).join('\n\n');
   const blob = new Blob([text], { type: 'text/plain' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `rewriter_${new Date().toISOString().slice(0, 10)}.txt`;
+  a.download = `chat_${new Date().toISOString().slice(0, 10)}.txt`;
   a.click();
   URL.revokeObjectURL(a.href);
 }
 
+/* ---------- Model panel and library ---------- */
+
 async function renderModelList() {
   const model = currentModel();
   const ready = await isModelDownloaded(model.id);
+  const held = ready ? readableBytes(await bytesHeld(model.id)) : '';
   const blocked = model.webgpu && !webgpuReady;
   document.getElementById('modelList').innerHTML = `<div class="model-row">
       <span class="name">${escapeHTML(model.name)}</span>
       <span class="size">${model.size}</span>
-      <span class="model-specs">${model.params} parameters, ${model.context}</span>
-      <span class="model-state${ready ? ' ready' : ''}">${blocked ? 'Needs WebGPU, which this browser does not have' : (ready ? 'Saved on this device' : 'Downloads on first use')}</span>
+      <span class="model-specs">${model.params} parameters, ${model.context} of context, replies up to about ${replyWords(model)} words</span>
+      <span class="model-state${ready ? ' ready' : ''}">${blocked ? 'Needs WebGPU, which this browser does not have' : (ready ? 'Saved on this device' + (held ? ', ' + held : '') : 'Downloads on first use')}</span>
     </div>`;
 }
 
@@ -617,6 +876,7 @@ async function renderLibrary() {
     rows.push(`<h3 class="lib-group">${group.group}<span>${escapeHTML(group.note)}</span></h3>`);
     for (const model of group.models) {
       const ready = await isModelDownloaded(model.id);
+      const held = ready ? readableBytes(await bytesHeld(model.id)) : '';
       const blocked = model.webgpu && !webgpuReady;
       const chosen = model.id === selectedModelId;
       rows.push(`<div class="lib-card${chosen ? ' chosen' : ''}${blocked ? ' blocked' : ''}">
@@ -627,12 +887,17 @@ async function renderLibrary() {
         <dl class="lib-specs">
           <div><dt>Parameters</dt><dd>${model.params}</dd></div>
           <div><dt>Context</dt><dd>${model.context}</dd></div>
+          <div><dt>Longest reply</dt><dd>${replyWords(model)} words</dd></div>
+          <div><dt>Conversation</dt><dd>${isChatModel(model) ? 'Remembers' : 'One message'}</dd></div>
           <div><dt>Runs on</dt><dd>${model.webgpu ? 'WebGPU' : 'Any browser'}</dd></div>
         </dl>
         <p class="lib-blurb">${escapeHTML(model.blurb)}</p>
         <div class="lib-foot">
-          <span class="model-state${ready ? ' ready' : ''}">${blocked ? 'This browser has no WebGPU' : (ready ? 'Saved on this device' : 'Not downloaded')}</span>
-          <button class="btn btn-sm${chosen ? '' : ' btn-download'}" type="button" ${blocked || chosen ? 'disabled' : ''} onclick="chooseModel('${model.id}')">${chosen ? 'In use' : 'Use this one'}</button>
+          <span class="model-state${ready ? ' ready' : ''}">${blocked ? 'This browser has no WebGPU' : (ready ? 'Saved on this device' + (held ? ', ' + held : '') : 'Not downloaded')}</span>
+          <span class="lib-buttons">
+            ${ready ? `<button class="btn btn-sm" type="button" onclick="forgetModel('${model.id}', this)"><i class="ph ph-trash" aria-hidden="true"></i> Remove</button>` : ''}
+            <button class="btn btn-sm${chosen ? '' : ' btn-download'}" type="button" ${blocked || chosen ? 'disabled' : ''} onclick="chooseModel('${model.id}')">${chosen ? 'In use' : 'Use this one'}</button>
+          </span>
         </div>
       </div>`);
     }
@@ -640,11 +905,33 @@ async function renderLibrary() {
   body.innerHTML = rows.join('');
 }
 
+// A two gigabyte download deserves a way out that is not buried in browser settings.
+async function forgetModel(id, btn) {
+  if (busy) return;
+  const model = ALL_MODELS.find((m) => m.id === id);
+  if (!model) return;
+  setBusy(btn, true, 'Removing...');
+  try {
+    if (id === selectedModelId) releaseWorker();
+    const store = await storeReady;
+    await store.removeAll(`${HF_BASE}${id}/resolve/main/`);
+    await renderModelList();
+    await renderLibrary();
+    showToast(model.name + ' removed from this device', 'success');
+  } catch (err) {
+    showToast('That model could not be removed.', 'error');
+    setBusy(btn, false);
+  }
+}
+
 async function chooseModel(id) {
+  if (busy) return;
   selectedModelId = id;
   try { localStorage.setItem('rewriterModel', id); } catch (e) {}
+  releaseWorker();
   await renderModelList();
   await renderLibrary();
+  renderChat();
   showToast(currentModel().name + ' selected', 'success');
 }
 
@@ -659,34 +946,57 @@ function closeLibrary() {
   if (dialog.close) dialog.close(); else dialog.removeAttribute('open');
 }
 
-function startWorker(onDownload) {
+// Clicking the darkened area around a dialog is the other half of how people expect to
+// get out of one, alongside the button and the escape key.
+document.getElementById('libraryDialog').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeLibrary();
+});
+
+/* ---------- The model itself ---------- */
+
+function releaseWorker() {
+  if (worker) { try { worker.terminate(); } catch (e) {} }
+  worker = null;
+  workerKey = null;
+}
+
+// The model is loaded once and kept for the rest of the conversation. Starting a
+// worker per message meant reading the whole thing back out of the cache every time
+// somebody pressed send, which for a gigabyte is most of the wait.
+function getWorker(onDownload) {
+  const model = currentModel();
+  const key = model.id + '|' + (model.webgpu && webgpuReady ? 'webgpu' : 'cpu');
+  if (worker && workerKey === key) return Promise.resolve(worker);
+  releaseWorker();
+
   return new Promise((resolve, reject) => {
-    let worker;
+    let started;
     try {
-      worker = new Worker('../assets/rewriter-worker.js?v=2', { type: 'module' });
+      started = new Worker('../assets/rewriter-worker.js?v=4', { type: 'module' });
     } catch (e) {
       reject(e);
       return;
     }
     const fail = (err) => {
-      try { worker.terminate(); } catch (_) {}
+      try { started.terminate(); } catch (e) {}
       reject(err instanceof Error ? err : new Error('The model could not start.'));
     };
     const onMessage = (ev) => {
       const m = ev.data || {};
       if (m.type === 'download') { onDownload(m.progress); return; }
       if (m.type === 'ready') {
-        worker.removeEventListener('message', onMessage);
-        worker.removeEventListener('error', fail);
-        resolve(worker);
+        started.removeEventListener('message', onMessage);
+        started.removeEventListener('error', fail);
+        worker = started;
+        workerKey = key;
+        resolve(started);
         return;
       }
       if (m.type === 'error') fail(new Error(m.message));
     };
-    worker.addEventListener('message', onMessage);
-    worker.addEventListener('error', fail);
-    const model = currentModel();
-    worker.postMessage({
+    started.addEventListener('message', onMessage);
+    started.addEventListener('error', fail);
+    started.postMessage({
       type: 'load',
       model: model.id,
       kind: model.kind,
@@ -696,35 +1006,51 @@ function startWorker(onDownload) {
   });
 }
 
-function workerRewrite(worker, prompt, options) {
+// One answer. Tokens arrive as they are produced and go straight to the bubble, so a
+// long reply reads as it is written instead of landing in one lump at the end.
+function generate(activeWorker, payload, onDelta) {
   return new Promise((resolve, reject) => {
+    const id = ++jobId;
     const cleanup = () => {
-      worker.removeEventListener('message', onMessage);
-      worker.removeEventListener('error', onError);
+      activeWorker.removeEventListener('message', onMessage);
+      activeWorker.removeEventListener('error', onError);
     };
     const onMessage = (ev) => {
       const m = ev.data || {};
-      if (m.type === 'result') { cleanup(); resolve(m.text); }
-      else if (m.type === 'error') { cleanup(); reject(new Error(m.message)); }
+      if (m.id && m.id !== id) return;
+      if (m.type === 'delta') { onDelta(m.text); return; }
+      if (m.type === 'done') { cleanup(); resolve(m); return; }
+      if (m.type === 'error') { cleanup(); reject(new Error(m.message)); }
     };
     const onError = () => { cleanup(); reject(new Error('The model stopped part way through.')); };
-    worker.addEventListener('message', onMessage);
-    worker.addEventListener('error', onError);
-    worker.postMessage({ type: 'rewrite', prompt: prompt, options: options, kind: currentModel().kind });
+    activeWorker.addEventListener('message', onMessage);
+    activeWorker.addEventListener('error', onError);
+    activeWorker.postMessage(Object.assign({ type: 'generate', id: id }, payload));
   });
+}
+
+function stopReply() {
+  if (!busy || !worker) return;
+  worker.postMessage({ type: 'stop' });
 }
 
 // These models like to wrap a rewrite in quote marks, which is noise unless the
 // original was quoted too.
 function tidy(text, source) {
   let t = (text || '').trim();
-  if (!/^["'“‘]/.test(source.trim())) {
-    t = t.replace(/^["'“‘]+/, '').replace(/["'”’]+$/, '');
+  if (!/^["']/.test(source.trim())) {
+    t = t.replace(/^["']+/, '').replace(/["']+$/, '');
   }
   return t.trim();
 }
 
-async function send(btn) {
+function setSending(sending) {
+  busy = sending;
+  document.getElementById('stopBtn').classList.toggle('hidden', !sending);
+  setBusy(document.getElementById('sendBtn'), sending, 'Thinking...');
+}
+
+function send(btn) {
   if (busy) return;
   const box = document.getElementById('message');
   const text = box.value.trim();
@@ -732,65 +1058,145 @@ async function send(btn) {
     showInlineError(btn, 'Type or paste something first.');
     return;
   }
+  box.value = '';
+  growComposer();
+  run(text, btn);
+}
 
-  const request = splitRequest(text);
+async function run(text, btn) {
+  const model = currentModel();
+  const chat = isChatModel(model);
+  const request = chat ? null : splitRequest(text);
   const mode = matchMode(text);
 
   messages.push({ role: 'user', text: text });
-  const botIndex = messages.push({ role: 'bot', text: '', applied: request.applied }) - 1;
+  const botIndex = messages.push({
+    role: 'bot', text: '', pending: true, applied: request ? request.applied : false, from: model.name,
+  }) - 1;
+  stickToBottom = true;
   renderChat();
-  box.value = '';
 
-  busy = true;
-  setBusy(btn, true, 'Thinking...');
-  let worker = null;
+  setSending(true);
+  announce('Working on a reply');
 
   try {
-    const here = await isModelDownloaded();
-    setProgress(document.getElementById('statusArea'), 0,
-      here ? 'Starting the model' : 'Downloading the model, this happens once');
+    // Reading a gigabyte back off the disk also takes a moment, and calling that a
+    // download would be a lie to somebody who is offline and watching it work.
+    const here = await isModelDownloaded(model.id);
+    const loading = here ? 'Reading the model off this device' : 'Downloading the model, this happens once';
+    setProgress(document.getElementById('statusArea'), 0, loading);
 
-    worker = await startWorker((p) => {
-      setProgress(document.getElementById('statusArea'), p, 'Downloading the model, this happens once');
+    const active = await getWorker((p) => {
+      setProgress(document.getElementById('statusArea'), p, loading);
     });
+    document.getElementById('statusArea').innerHTML = '';
 
-    const chunks = splitIntoChunks(request.body);
-    // The T5 settings were tuned on T5. Handing the same warmth to a small chat model
-    // makes it wander off and invent new facts rather than rewrite what it was given,
-    // so those take the most predictable path instead.
-    const options = currentModel().kind === 'text-generation'
-      ? { do_sample: false, repetition_penalty: 1.1 }
-      : Object.assign({}, mode ? mode.options : DEFAULT_OPTIONS);
-    const factor = mode && mode.lengthFactor ? mode.lengthFactor : 1.6;
-    const pieces = [];
+    if (chat) {
+      // A chat model is given the conversation and answers the last turn itself, so
+      // none of the splitting below applies to it. Feeding it a lone instruction
+      // instead was what made a new question come back as a rewrite of the last reply.
+      const done = await generate(active, {
+        kind: model.kind,
+        turns: conversationTurns(model),
+        maxNew: model.maxNew,
+        // Greedy decoding. The warmer settings that suit the instruction model make a
+        // small chat model wander off and invent facts rather than answer.
+        options: { do_sample: false, repetition_penalty: 1.1 },
+      }, (delta) => {
+        messages[botIndex].pending = false;
+        messages[botIndex].text += delta;
+        paintStreaming(botIndex);
+      });
+      messages[botIndex].text = (done.text || messages[botIndex].text).trim();
+      messages[botIndex].truncated = done.truncated;
+      messages[botIndex].stopped = done.stopped;
+    } else {
+      const chunks = splitIntoChunks(request.body);
+      const options = Object.assign({}, mode ? mode.options : DEFAULT_OPTIONS);
+      const factor = mode && mode.lengthFactor ? mode.lengthFactor : 1.6;
+      const pieces = [];
 
-    for (let i = 0; i < chunks.length; i++) {
-      setProgress(document.getElementById('statusArea'),
-        (i / chunks.length) * 100,
-        chunks.length > 1 ? `Working on part ${i + 1} of ${chunks.length}` : 'Working on it');
-      const budget = Math.round(countWords(chunks[i]) * factor) + 24;
-      const out = await workerRewrite(worker, joinPrompt(request.instruction, chunks[i]),
-        Object.assign({}, options, { max_new_tokens: Math.max(48, Math.min(512, budget)) }));
-      pieces.push(tidy(out, chunks[i]));
-      messages[botIndex].text = pieces.join('\n\n');
-      renderChat();
+      for (let i = 0; i < chunks.length; i++) {
+        if (chunks.length > 1) {
+          setProgress(document.getElementById('statusArea'),
+            (i / chunks.length) * 100, `Working on part ${i + 1} of ${chunks.length}`);
+        }
+        const budget = Math.round(countWords(chunks[i]) * factor) + 24;
+        const carried = pieces.join('\n\n');
+        // The pieces already finished, plus what is arriving now. Each delta is one
+        // fragment rather than the whole answer so far, so it is added up here.
+        let streamed = '';
+        const done = await generate(active, {
+          kind: model.kind,
+          prompt: joinPrompt(request.instruction, chunks[i]),
+          maxNew: Math.max(48, Math.min(model.maxNew, budget)),
+          options: options,
+        }, (delta) => {
+          messages[botIndex].pending = false;
+          streamed += delta;
+          messages[botIndex].text = (carried ? carried + '\n\n' : '') + streamed;
+          paintStreaming(botIndex);
+        });
+        pieces.push(tidy(done.text, chunks[i]));
+        messages[botIndex].text = pieces.join('\n\n');
+        messages[botIndex].truncated = done.truncated;
+        messages[botIndex].stopped = done.stopped;
+        paintStreaming(botIndex);
+        if (done.stopped) break;
+      }
     }
 
+    messages[botIndex].pending = false;
     document.getElementById('statusArea').innerHTML = '';
     if (!messages[botIndex].text) {
       messages[botIndex].text = 'Nothing came back for that. A shorter passage, or wording it as an instruction, usually helps.';
-      renderChat();
     }
+    renderChat();
+    announce('Reply finished');
     await renderModelList();
   } catch (e) {
     messages.splice(botIndex, 1);
     renderChat();
     document.getElementById('statusArea').innerHTML =
       `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>${escapeHTML(describeFailure(e))}</span></div>`;
+    announce('The reply failed');
   } finally {
-    if (worker) { try { worker.terminate(); } catch (_) {} }
-    busy = false;
-    setBusy(btn, false);
+    setSending(false);
+  }
+}
+
+// Picking up an answer that ran out of room. The half written reply is still the
+// model's own last turn, so it carries on from the word it stopped at.
+async function continueReply(index, btn) {
+  if (busy || !worker) return;
+  const model = currentModel();
+  if (!isChatModel(model)) return;
+
+  setSending(true);
+  setBusy(btn, true, 'Carrying on...');
+  try {
+    const turns = conversationTurns(model).concat([
+      { role: 'user', content: 'Carry on from exactly where you stopped. Do not repeat anything you have already written.' },
+    ]);
+    const before = messages[index].text;
+    const done = await generate(worker, {
+      kind: model.kind,
+      turns: turns,
+      maxNew: model.maxNew,
+      options: { do_sample: false, repetition_penalty: 1.1 },
+    }, (delta) => {
+      messages[index].text += delta;
+      paintStreaming(index);
+    });
+    const added = (done.text || messages[index].text.slice(before.length)).trim();
+    messages[index].text = (before + (/\s$/.test(before) ? '' : ' ') + added).trim();
+    messages[index].truncated = done.truncated;
+    messages[index].stopped = done.stopped;
+    renderChat();
+  } catch (e) {
+    showToast(describeFailure(e), 'error');
+  } finally {
+    setSending(false);
   }
 }
 
@@ -805,6 +1211,17 @@ function describeFailure(e) {
   return message;
 }
 
+/* ---------- Composer ---------- */
+
+// Grows with what is being written, up to the height the stylesheet allows, then
+// scrolls. A fixed box either wastes the screen or hides the start of a long paste.
+function growComposer() {
+  const box = document.getElementById('message');
+  box.style.height = 'auto';
+  box.style.height = Math.min(box.scrollHeight, 240) + 'px';
+}
+
+document.getElementById('message').addEventListener('input', growComposer);
 document.getElementById('message').addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
@@ -812,9 +1229,11 @@ document.getElementById('message').addEventListener('keydown', (e) => {
   }
 });
 
-// Keeping the model as a file. The browser already stores every piece it downloaded,
-// so saving is reading them back out and zipping them, and loading is writing them
-// into the same place the library reads from.
+/* ---------- Keeping the model as a file ---------- */
+
+// The browser already stores every piece it downloaded, so saving is reading them back
+// out and zipping them, and loading is writing them into the same place the library
+// reads from.
 async function exportModel(btn) {
   const model = currentModel();
   if (!(await isModelDownloaded(model.id))) {
@@ -823,14 +1242,14 @@ async function exportModel(btn) {
   }
   setBusy(btn, true, 'Packing...');
   try {
-    const cache = await caches.open(MODEL_CACHE);
+    const store = await storeReady;
     const zip = new JSZip();
     zip.file('model.txt', model.id);
     const files = await cachedFiles(model.id);
     for (const file of files) {
-      const hit = await cache.match(file.request);
-      if (!hit) continue;
-      zip.file(file.path, await hit.arrayBuffer());
+      const body = await store.readFile(file.url);
+      if (!body) continue;
+      zip.file(file.path, body);
     }
     const blob = await zip.generateAsync({ type: 'blob' });
     const a = document.createElement('a');
@@ -861,17 +1280,18 @@ document.getElementById('modelFileInput').addEventListener('change', async (e) =
     const known = ALL_MODELS.find((m) => m.id === model);
     if (!known) throw new Error('That file holds a model this tool does not offer.');
 
-    const cache = await caches.open(MODEL_CACHE);
+    const store = await storeReady;
     const entries = [];
     zip.forEach((path, entry) => { if (path !== 'model.txt' && !entry.dir) entries.push(path); });
     if (!entries.length) throw new Error('That zip has no model files in it.');
     for (const path of entries) {
-      const body = await zip.file(path).async('arraybuffer');
       const type = path.endsWith('.json') ? 'application/json' : 'application/octet-stream';
-      await cache.put(modelUrl(model, path), new Response(body, { headers: { 'Content-Type': type } }));
+      const body = await zip.file(path).async('blob');
+      await store.writeFile(modelUrl(model, path), body, type);
     }
     selectedModelId = model;
-    try { localStorage.setItem('rewriterModel', model); } catch (e) {}
+    try { localStorage.setItem('rewriterModel', model); } catch (err) {}
+    releaseWorker();
     await renderModelList();
     result.innerHTML = `<div class="success-msg"><i class="ph ph-check-circle" aria-hidden="true"></i> <span>${escapeHTML(known.name)} loaded from your file. It will run without downloading anything.</span></div>`;
   } catch (err) {
@@ -906,7 +1326,10 @@ detectWebGPU().then((ok) => {
   webgpuReady = ok;
   // Falling back to a model this browser can actually run beats failing on send.
   if (currentModel().webgpu && !ok) selectedModelId = DEFAULT_MODEL;
+  else if (!pickedBefore && ok) selectedModelId = PREFERRED_MODEL;
   renderModelList();
+  renderChat();
+  if (document.getElementById('libraryDialog').open) renderLibrary();
 });
 </script>
 <script src="../assets/app.js" defer></script>
