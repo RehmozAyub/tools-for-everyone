@@ -40,6 +40,41 @@ const SYSTEM_PROMPT =
   'text, reply with the rewritten text on its own, with no preamble and no ' +
   'quotation marks around it.';
 
+/* Small models get stuck. Once one starts saying the same thing again it will keep
+   going until the token budget runs out, which is a minute of watching a sentence
+   repeat. This looks for the tail of what has been written turning up earlier in the
+   same answer, and cuts the model off rather than letting it run on.
+
+   The tail has to be long enough that ordinary repeated phrasing does not trip it,
+   and it has to appear three times over, so a deliberate refrain survives. */
+const LOOP_TAIL = 48;
+const LOOP_TIMES = 3;
+
+function looping(text) {
+  if (text.length < LOOP_TAIL * LOOP_TIMES) return false;
+  const tail = text.slice(-LOOP_TAIL);
+  if (!tail.trim()) return false;
+  let count = 0;
+  let from = 0;
+  let at = text.indexOf(tail, from);
+  while (at !== -1) {
+    count += 1;
+    if (count >= LOOP_TIMES) return true;
+    from = at + 1;
+    at = text.indexOf(tail, from);
+  }
+  return false;
+}
+
+// Everything from the second time round is thrown away, so what is left reads as an
+// answer that stops rather than one that stutters.
+function trimLoop(text) {
+  const tail = text.slice(-LOOP_TAIL);
+  const first = text.indexOf(tail);
+  const second = text.indexOf(tail, first + 1);
+  return second > 0 ? text.slice(0, second).trimEnd() : text;
+}
+
 function extractText(output) {
   const generated = output && output[0] && output[0].generated_text;
   if (typeof generated === 'string') return generated;
@@ -106,6 +141,8 @@ async function generate(message) {
   const isChat = message.kind === 'text-generation';
   const maxNew = message.maxNew || 512;
   let produced = 0;
+  let written = '';
+  let looped = false;
 
   stopper = new InterruptableStoppingCriteria();
 
@@ -116,7 +153,14 @@ async function generate(message) {
     skip_special_tokens: true,
     token_callback_function: (tokens) => { produced += tokens.length; },
     callback_function: (text) => {
-      if (text) self.postMessage({ type: 'delta', id: message.id, text: text });
+      if (!text) return;
+      self.postMessage({ type: 'delta', id: message.id, text: text });
+      if (looped) return;
+      written += text;
+      if (looping(written)) {
+        looped = true;
+        if (stopper) stopper.interrupt();
+      }
     },
   });
 
@@ -131,13 +175,16 @@ async function generate(message) {
     : message.prompt;
 
   const output = await generator(input, options);
-  const stopped = !!(stopper && stopper.interrupted);
+  const stopped = !looped && !!(stopper && stopper.interrupted);
   stopper = null;
+
+  const text = extractText(output);
 
   self.postMessage({
     type: 'done',
     id: message.id,
-    text: extractText(output),
+    text: looped ? trimLoop(text) : text,
+    looped: looped,
     /* Running out of budget rather than finishing is the difference between an
        answer and half an answer, and the page says so rather than leaving someone
        to work out why a sentence stops mid word. */

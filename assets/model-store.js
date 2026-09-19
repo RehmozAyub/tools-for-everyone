@@ -150,15 +150,55 @@ export async function writeFile(url, blob, type) {
     const slice = blob.slice(i * CHUNK_BYTES, Math.min((i + 1) * CHUNK_BYTES, total));
     await run(CHUNKS, 'readwrite', (store) => store.put(slice, chunkKey(url, i)));
   }
-  // The record is written last, so a download cut off half way leaves orphaned
-  // chunks rather than a file that claims to be complete.
+  await finish(url, total, type || blob.type);
+}
+
+// The record is written last, so a download cut off half way leaves orphaned chunks
+// rather than a file that claims to be complete.
+async function finish(url, total, type) {
   await run(FILES, 'readwrite', (store) => store.put({
     url: url,
     size: total,
-    type: type || blob.type || 'application/octet-stream',
-    chunks: chunks,
+    type: type || 'application/octet-stream',
+    chunks: Math.max(1, Math.ceil(total / CHUNK_BYTES)),
     saved: Date.now(),
   }));
+}
+
+/* Writing straight off the response, a chunk at a time.
+
+   The obvious version asks the response for one Blob and slices that up, and for a
+   file of a few hundred megabytes it is fine. The largest model here is a single two
+   gigabyte file, and that version silently failed on it: the model ran, because the
+   library already had the bytes, and then failed to store them, so it came down again
+   on every visit. Reading the stream instead means nothing bigger than one chunk is
+   ever held at once. */
+async function writeStream(url, body, type) {
+  const reader = body.getReader();
+  let index = 0;
+  let total = 0;
+  let pending = [];
+  let pendingBytes = 0;
+
+  const flush = async () => {
+    if (!pendingBytes) return;
+    const chunk = new Blob(pending, { type: 'application/octet-stream' });
+    pending = [];
+    pendingBytes = 0;
+    await run(CHUNKS, 'readwrite', (store) => store.put(chunk, chunkKey(url, index)));
+    index += 1;
+  };
+
+  for (;;) {
+    const step = await reader.read();
+    if (step.done) break;
+    pending.push(step.value);
+    pendingBytes += step.value.byteLength;
+    total += step.value.byteLength;
+    if (pendingBytes >= CHUNK_BYTES) await flush();
+  }
+  await flush();
+  await finish(url, total, type);
 }
 
 export async function removeFile(url) {
@@ -225,6 +265,10 @@ export const cache = {
     const url = keyOf(request);
     if (!/^https?:/.test(url)) return;
     const type = response.headers.get('content-type') || 'application/octet-stream';
+    if (response.body) {
+      await writeStream(url, response.body, type);
+      return;
+    }
     await writeFile(url, await response.blob(), type);
   },
 };

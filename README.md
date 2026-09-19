@@ -38,10 +38,10 @@ Compress and convert JPG, PNG, and WebP images, with resize controls and before/
 ![Image Compressor](assets/screenshots/image-compressor.png)
 
 ### Private AI Chat
-Chat with an AI model that runs entirely inside your browser: ask it things, paraphrase, summarise, fix grammar, make a blunt message polite, simplify jargon, or turn a paragraph into bullet points. Replies stream in as they are written, and you can stop one part way. Browse a library of models from 260MB up to 2GB, each listed with its parameters, context, and how long a reply it can write, and pick the one that suits your machine. A model downloads once and is kept on your device, and you can save it to a file and load it back later so it runs with no download at all, or remove it again when you are done with it.
-[Open in browser](https://rehmozayub.github.io/tools-for-everyone/AI%20Text%20Rewriter/ai_text_rewriter.html) · browser only, built with [transformers.js](https://github.com/huggingface/transformers.js)
+Chat with an AI model that runs entirely inside your browser: ask it things, paraphrase, summarise, fix grammar, make a blunt message polite, simplify jargon, or turn a paragraph into bullet points. Replies stream in as they are written, and you can stop one part way. Browse a library of models from 260MB up to 2.3GB, each listed with its parameters, context, and how long a reply it can write, and pick the one that suits your machine. Every model on the list has been run and read before it was listed. A model downloads once and is kept on your device, and you can save it to a file and load it back later so it runs with no download at all, or remove it again when you are done with it.
+[Open in browser](https://rehmozayub.github.io/tools-for-everyone/Private%20AI%20Chat/private_ai_chat.html) · browser only, built with [transformers.js](https://github.com/huggingface/transformers.js)
 
-![Private AI Chat](assets/screenshots/ai-text-rewriter.png)
+![Private AI Chat](assets/screenshots/private-ai-chat.png)
 
 ### QR Code Studio
 Generate and decode QR codes: text, URLs, WiFi networks, vCard contacts, emails, and batch mode. Customizable colors, error correction, and border. Export as PNG or SVG. Decode from an uploaded image with auto-parsing of WiFi/vCard/URL payloads.
