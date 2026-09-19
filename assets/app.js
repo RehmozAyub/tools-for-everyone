@@ -242,12 +242,35 @@
 
   /* ---------- Service worker ---------- */
 
+  /* Installed as an app, a page can sit open for days, so waiting for someone to
+     reload is not an update strategy. The worker takes over as soon as it installs,
+     and the page reloads itself once when that happens, so a push reaches people
+     without them doing anything. The flag stops the reload looping. */
   function initServiceWorker() {
     if (!('serviceWorker' in navigator)) return;
     var path = document.body.dataset.swPath;
     if (!path) return;
+
+    var reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (reloading) return;
+      /* On the very first visit there was no controller, so this is the worker
+         taking charge rather than a new version replacing an old one. */
+      if (!window.__hadController) return;
+      reloading = true;
+      window.location.reload();
+    });
+
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register(path).catch(function () {});
+      window.__hadController = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.register(path).then(function (reg) {
+        /* Check again when the page is brought back into view, which for an
+           installed app is the moment someone actually looks at it. */
+        document.addEventListener('visibilitychange', function () {
+          if (!document.hidden) reg.update().catch(function () {});
+        });
+        setInterval(function () { reg.update().catch(function () {}); }, 60 * 60 * 1000);
+      }).catch(function () {});
     });
   }
 

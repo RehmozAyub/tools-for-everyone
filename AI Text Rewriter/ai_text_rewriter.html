@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Text Rewriter - Free Offline Paraphraser and Summariser</title>
+<meta name="description" content="Paraphrase, summarise, fix grammar, and simplify text by chatting with a small AI model that runs entirely in your browser. No account, no upload.">
+<link rel="canonical" href="https://rehmozayub.github.io/tools-for-everyone/AI%20Text%20Rewriter/ai_text_rewriter.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="AI Text Rewriter - Free Offline Paraphraser and Summariser">
+<meta property="og:description" content="Paraphrase, summarise, fix grammar, and simplify text by chatting with a small AI model that runs entirely in your browser. No account, no upload.">
+<meta property="og:url" content="https://rehmozayub.github.io/tools-for-everyone/AI%20Text%20Rewriter/ai_text_rewriter.html">
+<meta property="og:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="AI Text Rewriter - Free Offline Paraphraser and Summariser">
+<meta name="twitter:description" content="Paraphrase, summarise, fix grammar, and simplify text by chatting with a small AI model that runs entirely in your browser. No account, no upload.">
+<meta name="twitter:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f3f5">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1114">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="apple-touch-icon" href="../assets/icon-192.png">
+<script>
+  try {
+    var t = localStorage.getItem('theme');
+    if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="../assets/theme.css">
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<style>
+  .chat {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 260px;
+    padding: 4px 0 16px;
+  }
+  .msg { display: flex; }
+  .msg.user { justify-content: flex-end; }
+  .bubble {
+    max-width: 46rem;
+    padding: 12px 16px;
+    border-radius: var(--radius-lg);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .msg.user .bubble {
+    background: var(--accent-tint);
+    border: 1px solid var(--accent-tint);
+    color: var(--text);
+  }
+  .msg.bot .bubble {
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .bubble .applied {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .bubble-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .empty-chat {
+    text-align: center;
+    padding: 40px 16px;
+    color: var(--text-muted);
+  }
+  .empty-chat .ph { font-size: 2rem; color: var(--text-faint); display: block; margin-bottom: 12px; }
+  .empty-chat p { max-width: 44ch; margin: 0 auto; }
+  .composer {
+    position: sticky;
+    bottom: 0;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    padding: 14px 0 20px;
+  }
+  .composer textarea {
+    width: 100%;
+    font-family: inherit;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    min-height: 84px;
+    resize: vertical;
+  }
+  .composer-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .composer-row .hint {
+    font-size: 0.75rem;
+    color: var(--text-faint);
+    margin-right: auto;
+  }
+  .composer .btn-primary { margin-top: 0; }
+  .model-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 10px;
+    padding: 0 0 12px;
+  }
+  .model-row .name { font-size: 0.875rem; font-weight: 500; }
+  .model-row .size {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.75rem;
+    color: var(--text-faint);
+    white-space: nowrap;
+  }
+  .model-state { font-size: 0.75rem; color: var(--text-muted); grid-column: 1 / -1; }
+  .model-state.ready { color: var(--success); }
+  .status-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin: 12px 0;
+    font-size: 0.875rem;
+  }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="tool-header">
+  <a class="back" href="../index.html"><i class="ph ph-arrow-left" aria-hidden="true"></i> <span>All tools</span></a>
+  <h1><i class="ph ph-chat-teardrop-text" aria-hidden="true"></i> AI Text Rewriter</h1>
+  <div class="header-actions">
+    <button class="icon-btn" type="button" id="themeToggle" aria-label="Toggle theme"></button>
+    <a class="icon-btn" href="https://github.com/RehmozAyub/tools-for-everyone" aria-label="Source on GitHub"><i class="ph ph-github-logo" aria-hidden="true"></i></a>
+  </div>
+</header>
+
+<div class="tool-layout has-subtool-nav">
+  <nav class="subtool-nav" id="modeList" aria-label="Starting points"></nav>
+
+  <aside class="tool-controls">
+    <details class="panel" open data-mobile-collapsed>
+      <summary><span>Model</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
+      <div id="modelList"></div>
+      <p class="muted xsmall">Downloads once, then stays in this browser. Coming back is instant and works with the internet off.</p>
+    </details>
+
+    <details class="panel" open data-mobile-collapsed>
+      <summary><span>Keep the model</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
+      <p class="muted xsmall mb-3">Save it as a file you keep, then load it back later, here or on another machine, with no download at all.</p>
+      <button class="btn btn-export" type="button" onclick="exportModel(this)"><i class="ph ph-download-simple" aria-hidden="true"></i> Save model to a file</button>
+      <button class="btn btn-export mt-2" type="button" onclick="document.getElementById('modelFileInput').click()"><i class="ph ph-folder-open" aria-hidden="true"></i> Browse for a saved model</button>
+      <input type="file" id="modelFileInput" accept=".zip" class="hidden">
+      <div id="modelManageResult"></div>
+    </details>
+
+    <details class="panel" open data-mobile-collapsed>
+      <summary><span>Conversation</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
+      <button class="btn btn-export" type="button" onclick="downloadChat()"><i class="ph ph-download-simple" aria-hidden="true"></i> Download conversation</button>
+      <button class="btn btn-export mt-2" type="button" onclick="clearChat()"><i class="ph ph-trash" aria-hidden="true"></i> Start a new one</button>
+    </details>
+  </aside>
+
+  <main class="tool-main">
+    <p class="tool-intro">Ask for a rewrite, then keep going. Say "make it shorter" or "more formal" and it works on the last reply. The model runs inside your browser, so nothing you write is sent anywhere.</p>
+
+    <div class="chat" id="chat" role="log" aria-live="polite"></div>
+
+    <div id="statusArea"></div>
+
+    <div class="composer">
+      <label class="hidden" for="message">Your message</label>
+      <textarea id="message" placeholder="Paste your text, or pick a starting point on the left."></textarea>
+      <div class="composer-row">
+        <span class="hint" id="composerHint">Enter sends, Shift and Enter makes a new line</span>
+        <button class="btn btn-primary" type="button" id="sendBtn" onclick="send(this)"><i class="ph ph-paper-plane-tilt" aria-hidden="true"></i> Send</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<footer class="tool-footer">
+  <span>Made with ❤️ by <a href="https://github.com/RehmozAyub">RehmozAyub</a></span>
+  <a href="https://github.com/RehmozAyub/tools-for-everyone">Source on GitHub</a>
+  <button class="link-btn" type="button" onclick="sharePage()">Share</button>
+</footer>
+
+<script>
+// Each starting point is a message the model is known to answer well. The wording
+// matters more than it looks: "Rewrite this politely" on its own made the model reply
+// to the message instead of rewriting it, while the version below rewrites it.
+const MODES = [
+  {
+    id: 'paraphrase', icon: 'shuffle', name: 'Paraphrase',
+    prefill: 'Rewrite this in your own words: ',
+    options: { do_sample: true, temperature: 0.8, top_p: 0.95, repetition_penalty: 1.2 },
+  },
+  {
+    id: 'summarise', icon: 'text-align-left', name: 'Summarise',
+    prefill: 'Summarize this: ',
+    options: { do_sample: false, repetition_penalty: 1.2 },
+    lengthFactor: 0.6,
+  },
+  {
+    id: 'grammar', icon: 'check-circle', name: 'Fix grammar',
+    prefill: 'Fix the grammar and spelling: ',
+    options: { do_sample: false, repetition_penalty: 1.1 },
+  },
+  {
+    id: 'polite', icon: 'handshake', name: 'Make polite',
+    prefill: 'Rewrite this message to be more polite and professional: ',
+    options: { do_sample: true, temperature: 0.7, top_p: 0.95, repetition_penalty: 1.2 },
+  },
+  {
+    id: 'simplify', icon: 'feather', name: 'Simplify',
+    prefill: 'Rewrite this in simpler words: ',
+    options: { do_sample: true, temperature: 0.7, top_p: 0.95, repetition_penalty: 1.2 },
+  },
+  {
+    id: 'bullets', icon: 'list-bullets', name: 'Bullet points',
+    prefill: 'Write three short bullet points summarising: ',
+    options: { do_sample: false, repetition_penalty: 1.3 },
+    lengthFactor: 0.8,
+  },
+];
+
+const DEFAULT_OPTIONS = { do_sample: true, temperature: 0.7, top_p: 0.95, repetition_penalty: 1.2 };
+
+const MODEL = {
+  id: 'Xenova/LaMini-Flan-T5-248M',
+  name: 'LaMini Flan T5',
+  size: '262 MB',
+};
+
+const MODEL_FILES = [
+  'config.json',
+  'tokenizer.json',
+  'tokenizer_config.json',
+  'generation_config.json',
+  'onnx/encoder_model_quantized.onnx',
+  'onnx/decoder_model_merged_quantized.onnx',
+];
+const MODEL_CACHE = 'transformers-cache';
+const HF_BASE = 'https://huggingface.co/';
+
+// The model reads 512 tokens at a time. Splitting on sentence ends near this many
+// characters keeps each piece inside that without cutting mid sentence.
+const CHUNK_CHARS = 900;
+
+// A short message with no body of its own is treated as an instruction about the
+// previous reply, which is what "make it shorter" has to mean.
+const FOLLOW_UP_WORDS = 12;
+
+let messages = [];
+let busy = false;
+
+function modelUrl(file) {
+  return `${HF_BASE}${MODEL.id}/resolve/main/${file}`;
+}
+
+function initModeList() {
+  document.getElementById('modeList').innerHTML = MODES.map((m) =>
+    `<button class="tool-item" type="button" onclick="useMode('${m.id}', this)"><i class="ph ph-${m.icon}" aria-hidden="true"></i> ${m.name}</button>`
+  ).join('');
+}
+
+function useMode(id, el) {
+  const mode = MODES.find((m) => m.id === id);
+  if (!mode) return;
+  document.querySelectorAll('#modeList .tool-item').forEach((b) => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const box = document.getElementById('message');
+  const existing = box.value.trim();
+  const alreadyPrefilled = MODES.find((m) => existing.startsWith(m.prefill.trim()));
+  const body = alreadyPrefilled ? existing.slice(alreadyPrefilled.prefill.trim().length).replace(/^[:\s]+/, '') : existing;
+  box.value = mode.prefill + body;
+  box.focus();
+  box.setSelectionRange(box.value.length, box.value.length);
+}
+
+function countWords(text) {
+  const t = (text || '').trim();
+  return t ? t.split(/\s+/).length : 0;
+}
+
+function matchMode(text) {
+  const t = text.trim().toLowerCase();
+  return MODES.find((m) => t.startsWith(m.prefill.trim().toLowerCase()));
+}
+
+function lastReply() {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === 'bot' && messages[i].text) return messages[i].text;
+  }
+  return '';
+}
+
+// Whether this message carries its own text, or is an instruction about the last reply.
+function isFollowUp(text) {
+  if (!lastReply()) return false;
+  if (matchMode(text)) {
+    const body = text.trim().slice(matchMode(text).prefill.trim().length).replace(/^[:\s]+/, '');
+    return countWords(body) === 0;
+  }
+  return countWords(text) <= FOLLOW_UP_WORDS && !/\n/.test(text.trim());
+}
+
+// Instruction and body are kept apart so that a long passage can be cut into pieces
+// with the instruction repeated on each one. Splitting the finished prompt instead
+// would leave every piece after the first with no instruction at all.
+function splitRequest(text) {
+  const trimmed = text.trim();
+  if (isFollowUp(trimmed)) {
+    return { instruction: trimmed.replace(/[:：]\s*$/, ''), body: lastReply(), applied: true };
+  }
+  const mode = matchMode(trimmed);
+  if (mode) {
+    const body = trimmed.slice(mode.prefill.trim().length).replace(/^[:：\s]+/, '');
+    return { instruction: mode.prefill.trim().replace(/[:：]$/, ''), body: body, applied: false };
+  }
+  return { instruction: '', body: trimmed, applied: false };
+}
+
+function joinPrompt(instruction, chunk) {
+  return instruction ? `${instruction}: ${chunk}` : chunk;
+}
+
+function splitIntoChunks(text) {
+  const sentences = text.replace(/\s+/g, ' ').trim().match(/[^.!?]+[.!?]*\s*/g) || [];
+  const chunks = [];
+  let current = '';
+  for (const sentence of sentences) {
+    if (current && (current + sentence).length > CHUNK_CHARS) {
+      chunks.push(current.trim());
+      current = '';
+    }
+    current += sentence;
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks.length ? chunks : [text.trim()];
+}
+
+function renderChat() {
+  const chat = document.getElementById('chat');
+  if (!messages.length) {
+    chat.innerHTML = `<div class="empty-chat">
+      <i class="ph ph-chat-teardrop-text" aria-hidden="true"></i>
+      <p>Paste some text and ask for what you want, or pick a starting point from the list to fill in the wording for you.</p>
+    </div>`;
+    return;
+  }
+  chat.innerHTML = messages.map((m, i) => {
+    if (m.role === 'user') {
+      return `<div class="msg user"><div class="bubble">${escapeHTML(m.text)}</div></div>`;
+    }
+    const note = m.applied ? '<span class="applied">Applied to the previous reply</span>' : '';
+    const actions = m.text
+      ? `<div class="bubble-actions">
+           <button class="btn btn-sm" type="button" onclick="copyMessage(${i})"><i class="ph ph-copy" aria-hidden="true"></i> Copy</button>
+         </div>`
+      : '';
+    return `<div class="msg bot"><div class="bubble">${note}${escapeHTML(m.text || '')}${actions}</div></div>`;
+  }).join('');
+  chat.lastElementChild.scrollIntoView({ block: 'end' });
+}
+
+function copyMessage(index) {
+  const m = messages[index];
+  if (!m || !m.text) return;
+  navigator.clipboard.writeText(m.text).then(() => showToast('Copied to clipboard', 'success'));
+}
+
+function clearChat() {
+  messages = [];
+  renderChat();
+  document.querySelectorAll('#modeList .tool-item').forEach((b) => b.classList.remove('active'));
+}
+
+function downloadChat() {
+  if (!messages.length) {
+    showToast('There is no conversation to save yet', 'info');
+    return;
+  }
+  const text = messages.map((m) => (m.role === 'user' ? 'You: ' : 'Rewriter: ') + m.text).join('\n\n');
+  const blob = new Blob([text], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `rewriter_${new Date().toISOString().slice(0, 10)}.txt`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+async function isModelDownloaded() {
+  try {
+    const cache = await caches.open(MODEL_CACHE);
+    for (const file of MODEL_FILES) {
+      if (!(await cache.match(modelUrl(file)))) return false;
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function renderModelList() {
+  const ready = await isModelDownloaded();
+  document.getElementById('modelList').innerHTML = `<div class="model-row">
+      <span class="name">${MODEL.name}</span>
+      <span class="size">${MODEL.size}</span>
+      <span class="model-state${ready ? ' ready' : ''}">${ready ? 'Saved on this device' : 'Downloads on first use'}</span>
+    </div>`;
+}
+
+function startWorker(onDownload) {
+  return new Promise((resolve, reject) => {
+    let worker;
+    try {
+      worker = new Worker('../assets/rewriter-worker.js', { type: 'module' });
+    } catch (e) {
+      reject(e);
+      return;
+    }
+    const fail = (err) => {
+      try { worker.terminate(); } catch (_) {}
+      reject(err instanceof Error ? err : new Error('The model could not start.'));
+    };
+    const onMessage = (ev) => {
+      const m = ev.data || {};
+      if (m.type === 'download') { onDownload(m.progress); return; }
+      if (m.type === 'ready') {
+        worker.removeEventListener('message', onMessage);
+        worker.removeEventListener('error', fail);
+        resolve(worker);
+        return;
+      }
+      if (m.type === 'error') fail(new Error(m.message));
+    };
+    worker.addEventListener('message', onMessage);
+    worker.addEventListener('error', fail);
+    worker.postMessage({ type: 'load', model: MODEL.id });
+  });
+}
+
+function workerRewrite(worker, prompt, options) {
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      worker.removeEventListener('message', onMessage);
+      worker.removeEventListener('error', onError);
+    };
+    const onMessage = (ev) => {
+      const m = ev.data || {};
+      if (m.type === 'result') { cleanup(); resolve(m.text); }
+      else if (m.type === 'error') { cleanup(); reject(new Error(m.message)); }
+    };
+    const onError = () => { cleanup(); reject(new Error('The model stopped part way through.')); };
+    worker.addEventListener('message', onMessage);
+    worker.addEventListener('error', onError);
+    worker.postMessage({ type: 'rewrite', prompt: prompt, options: options });
+  });
+}
+
+// These models like to wrap a rewrite in quote marks, which is noise unless the
+// original was quoted too.
+function tidy(text, source) {
+  let t = (text || '').trim();
+  if (!/^["'“‘]/.test(source.trim())) {
+    t = t.replace(/^["'“‘]+/, '').replace(/["'”’]+$/, '');
+  }
+  return t.trim();
+}
+
+async function send(btn) {
+  if (busy) return;
+  const box = document.getElementById('message');
+  const text = box.value.trim();
+  if (!text) {
+    showInlineError(btn, 'Type or paste something first.');
+    return;
+  }
+
+  const request = splitRequest(text);
+  const mode = matchMode(text);
+
+  messages.push({ role: 'user', text: text });
+  const botIndex = messages.push({ role: 'bot', text: '', applied: request.applied }) - 1;
+  renderChat();
+  box.value = '';
+
+  busy = true;
+  setBusy(btn, true, 'Thinking...');
+  let worker = null;
+
+  try {
+    const here = await isModelDownloaded();
+    setProgress(document.getElementById('statusArea'), 0,
+      here ? 'Starting the model' : 'Downloading the model, this happens once');
+
+    worker = await startWorker((p) => {
+      setProgress(document.getElementById('statusArea'), p, 'Downloading the model, this happens once');
+    });
+
+    const chunks = splitIntoChunks(request.body);
+    const options = Object.assign({}, mode ? mode.options : DEFAULT_OPTIONS);
+    const factor = mode && mode.lengthFactor ? mode.lengthFactor : 1.6;
+    const pieces = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+      setProgress(document.getElementById('statusArea'),
+        (i / chunks.length) * 100,
+        chunks.length > 1 ? `Working on part ${i + 1} of ${chunks.length}` : 'Working on it');
+      const budget = Math.round(countWords(chunks[i]) * factor) + 24;
+      const out = await workerRewrite(worker, joinPrompt(request.instruction, chunks[i]),
+        Object.assign({}, options, { max_new_tokens: Math.max(48, Math.min(512, budget)) }));
+      pieces.push(tidy(out, chunks[i]));
+      messages[botIndex].text = pieces.join('\n\n');
+      renderChat();
+    }
+
+    document.getElementById('statusArea').innerHTML = '';
+    if (!messages[botIndex].text) {
+      messages[botIndex].text = 'Nothing came back for that. A shorter passage, or wording it as an instruction, usually helps.';
+      renderChat();
+    }
+    await renderModelList();
+  } catch (e) {
+    messages.splice(botIndex, 1);
+    renderChat();
+    document.getElementById('statusArea').innerHTML =
+      `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>${escapeHTML(describeFailure(e))}</span></div>`;
+  } finally {
+    if (worker) { try { worker.terminate(); } catch (_) {} }
+    busy = false;
+    setBusy(btn, false);
+  }
+}
+
+function describeFailure(e) {
+  const message = (e && e.message) || String(e);
+  if (/allocat|out of memory|Array buffer/i.test(message)) {
+    return 'This browser ran out of memory loading the model. Closing other tabs usually frees enough.';
+  }
+  if (/fetch|network|Failed to load/i.test(message)) {
+    return 'The model could not be downloaded. Check the connection, or load a saved model from a file.';
+  }
+  return message;
+}
+
+document.getElementById('message').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    send(document.getElementById('sendBtn'));
+  }
+});
+
+// Keeping the model as a file. The browser already stores every piece it downloaded,
+// so saving is reading them back out and zipping them, and loading is writing them
+// into the same place the library reads from.
+async function exportModel(btn) {
+  if (!(await isModelDownloaded())) {
+    showInlineError(btn, 'Send one message first, so there is something to save.');
+    return;
+  }
+  setBusy(btn, true, 'Packing...');
+  try {
+    const cache = await caches.open(MODEL_CACHE);
+    const zip = new JSZip();
+    zip.file('model.txt', MODEL.id);
+    for (const file of MODEL_FILES) {
+      const hit = await cache.match(modelUrl(file));
+      if (!hit) throw new Error('Part of the model is missing from this browser. Send another message, then save.');
+      zip.file(file, await hit.arrayBuffer());
+    }
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = MODEL.id.split('/').pop() + '.zip';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    document.getElementById('modelManageResult').innerHTML =
+      '<div class="success-msg"><i class="ph ph-check-circle" aria-hidden="true"></i> <span>Saved. Keep the file somewhere safe and load it back with Browse whenever you need it.</span></div>';
+  } catch (e) {
+    document.getElementById('modelManageResult').innerHTML =
+      `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>${escapeHTML(e.message)}</span></div>`;
+  } finally {
+    setBusy(btn, false);
+  }
+}
+
+document.getElementById('modelFileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const result = document.getElementById('modelManageResult');
+  result.innerHTML = '<div class="status-bar"><span class="spinner"></span> Reading the file</div>';
+  try {
+    const zip = await JSZip.loadAsync(file);
+    const nameEntry = zip.file('model.txt');
+    if (!nameEntry) throw new Error('That zip was not saved by this tool.');
+    const model = (await nameEntry.async('string')).trim();
+    if (model !== MODEL.id) throw new Error('That file holds a different model to the one this tool uses.');
+
+    const cache = await caches.open(MODEL_CACHE);
+    for (const wanted of MODEL_FILES) {
+      const entry = zip.file(wanted);
+      if (!entry) throw new Error(`The file is missing ${wanted}.`);
+      const body = await entry.async('arraybuffer');
+      const type = wanted.endsWith('.json') ? 'application/json' : 'application/octet-stream';
+      await cache.put(modelUrl(wanted), new Response(body, { headers: { 'Content-Type': type } }));
+    }
+    await renderModelList();
+    result.innerHTML = '<div class="success-msg"><i class="ph ph-check-circle" aria-hidden="true"></i> <span>Loaded from your file. It will run without downloading anything.</span></div>';
+  } catch (err) {
+    result.innerHTML = `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>${escapeHTML(err.message)}</span></div>`;
+  } finally {
+    e.target.value = '';
+  }
+});
+
+function escapeHTML(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+initModeList();
+renderChat();
+renderModelList();
+</script>
+<script src="../assets/app.js" defer></script>
+</body>
+</html>

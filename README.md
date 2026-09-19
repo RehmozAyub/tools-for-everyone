@@ -35,33 +35,49 @@ Merge, split, organize pages, compress, extract text, convert to and from images
 Compress and convert JPG, PNG, and WebP images, with resize controls and before/after file size comparison. Batch processing with a one-click ZIP download.
 [Open in browser](https://rehmozayub.github.io/tools-for-everyone/Image%20Compressor/image_compressor.html) · browser only, built with plain Canvas
 
-### Video Converter
-Turn a video clip into a GIF, or compress a video down to a smaller MP4. Runs on a small WebAssembly build of ffmpeg that downloads once (about 9MB) and works fully offline after that.
-[Open in browser](https://rehmozayub.github.io/tools-for-everyone/Video%20Converter/video_converter.html) · browser only, built with [ffmpeg.wasm](https://github.com/ffmpegwasm/ffmpeg.wasm)
+![Image Compressor](assets/screenshots/image-compressor.png)
+
+### AI Text Rewriter
+Paraphrase, summarise, fix grammar, make a blunt message polite, simplify jargon, or turn a paragraph into bullet points, by chatting with a small AI model that runs inside your browser. Pick a starting point from the list or write your own instruction, then keep the conversation going: say "make it shorter" and it works on the previous reply. The 262MB model downloads once and is kept, and you can save it to a file and load it back later so it runs with no download at all.
+[Open in browser](https://rehmozayub.github.io/tools-for-everyone/AI%20Text%20Rewriter/ai_text_rewriter.html) · browser only, built with [transformers.js](https://github.com/huggingface/transformers.js)
+
+![AI Text Rewriter](assets/screenshots/ai-text-rewriter.png)
 
 ### QR Code Studio
 Generate and decode QR codes: text, URLs, WiFi networks, vCard contacts, emails, and batch mode. Customizable colors, error correction, and border. Export as PNG or SVG. Decode from an uploaded image with auto-parsing of WiFi/vCard/URL payloads.
 [Open in browser](https://rehmozayub.github.io/tools-for-everyone/QR%20Code%20Studio/qr_code_studio.html) · [Streamlit version](QR%20Code%20Studio/)
 
-### Metadata Scrubber
-Inspect and strip metadata from images (JPG, PNG, WebP, TIFF, BMP) and documents (DOCX, PDF, XLSX, PPTX), including GPS location. Per-file privacy risk alerts, strip individually or batch-download all cleaned files as a ZIP.
-[Open in browser](https://rehmozayub.github.io/tools-for-everyone/Metadata%20Scrubber/metadata_scrubber.html) · [Streamlit version](Metadata%20Scrubber/)
-
-### Bulk File Renamer
-Rename many files at once with find and replace, regex patterns, prefix/suffix, sequential numbering, date stamps, case conversion, and extension control. Live preview with duplicate detection, download as a ZIP.
-[Open in browser](https://rehmozayub.github.io/tools-for-everyone/Bulk%20File%20Renamer/bulk_rename.html) · [Streamlit version](Bulk%20File%20Renamer/)
+![QR Code Studio](assets/screenshots/qr-code-studio.png)
 
 ### Audio Transcriber
 Transcribe audio files or live recordings two ways: fully offline with a small Whisper model that runs in your browser and needs no key at all (the default), or with OpenAI's Whisper API using a key you provide. There is no file size or length limit either way: long recordings are decoded once and transcribed in parts, with the transcript building up as it goes.
 [Open in browser](https://rehmozayub.github.io/tools-for-everyone/Audio%20Transcriber/audio_transcriber.html) · [Streamlit version](Audio%20Transcriber/)
 
-### Text Rewriter
-Paraphrase, summarise, fix grammar, make a blunt message polite, simplify jargon, or turn a paragraph into bullet points, using a small language model that runs inside your browser. Pick between a 90MB model and a 262MB one, with the size shown before you commit to the download. The model is kept after the first download, and you can save it as a file and load it back later so it runs with no download at all.
-[Open in browser](https://rehmozayub.github.io/tools-for-everyone/Text%20Rewriter/text_rewriter.html) - browser only, built with [transformers.js](https://github.com/huggingface/transformers.js)
+![Audio Transcriber](assets/screenshots/audio-transcriber.png)
+
+### Video Converter
+Turn a video clip into a GIF, or compress a video down to a smaller MP4. Runs on a small WebAssembly build of ffmpeg that downloads once (about 9MB) and works fully offline after that.
+[Open in browser](https://rehmozayub.github.io/tools-for-everyone/Video%20Converter/video_converter.html) · browser only, built with [ffmpeg.wasm](https://github.com/ffmpegwasm/ffmpeg.wasm)
+
+![Video Converter](assets/screenshots/video-converter.png)
+
+### Metadata Scrubber
+Inspect and strip metadata from images (JPG, PNG, WebP, TIFF, BMP) and documents (DOCX, PDF, XLSX, PPTX), including GPS location. Per-file privacy risk alerts, strip individually or batch-download all cleaned files as a ZIP.
+[Open in browser](https://rehmozayub.github.io/tools-for-everyone/Metadata%20Scrubber/metadata_scrubber.html) · [Streamlit version](Metadata%20Scrubber/)
+
+![Metadata Scrubber](assets/screenshots/metadata-scrubber.png)
+
+### Bulk File Renamer
+Rename many files at once with find and replace, regex patterns, prefix/suffix, sequential numbering, date stamps, case conversion, and extension control. Live preview with duplicate detection, download as a ZIP.
+[Open in browser](https://rehmozayub.github.io/tools-for-everyone/Bulk%20File%20Renamer/bulk_rename.html) · [Streamlit version](Bulk%20File%20Renamer/)
+
+![Bulk File Renamer](assets/screenshots/bulk-file-renamer.png)
 
 ### Virtual Card Manager
 Generate Luhn-valid test card numbers with spending caps and expiry dates, so you never hand real banking details to a site you don't trust yet. Freeze/unfreeze, spending progress bar, CSV export, and links to real virtual-card providers. Zero network calls, everything stays on your machine.
 [Open in browser](https://rehmozayub.github.io/tools-for-everyone/Virtual%20Card%20Manager/virtual_card_manager.html) · [Streamlit version](Virtual%20Card%20Manager/)
+
+![Virtual Card Manager](assets/screenshots/virtual-card-manager.png)
 
 ---
 
