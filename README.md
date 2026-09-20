@@ -26,7 +26,7 @@ LinkedIn: https://www.linkedin.com/in/rehmozayub/
 ## Available Tools
 
 ### PDF Suite
-Merge, split, organize pages, compress, extract text, convert to and from images, rotate, watermark, add page numbers, edit metadata, password-protect, and unlock PDFs.
+Merge PDFs in the order you drag them, split by ranges, organize pages on a thumbnail grid, compress, extract text, convert to and from images, rotate, watermark, add page numbers, edit metadata, protect with AES-256, and unlock PDFs.
 [Open in browser](https://rehmozayub.github.io/tools-for-everyone/PDF%20Suite/pdf_suite.html) · [Streamlit version](PDF%20Suite/)
 
 ![PDF Suite](assets/screenshots/pdf-suite.png)
