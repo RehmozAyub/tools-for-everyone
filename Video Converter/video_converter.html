@@ -4,16 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Video Converter - Free Video to GIF and Video Compressor</title>
-<meta name="description" content="Convert video to GIF or compress video for free, right in your browser. No upload, no watermark, no signup.">
+<meta name="description" content="Convert video to GIF, compress video to fit email, Discord or WhatsApp, or convert to WebM, MP4, MP3 or M4A for free, right in your browser. No upload, no watermark, no signup.">
 <link rel="canonical" href="https://rehmozayub.github.io/tools-for-everyone/Video%20Converter/video_converter.html">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Video Converter - Free Video to GIF and Video Compressor">
-<meta property="og:description" content="Convert video to GIF or compress video for free, right in your browser. No upload, no watermark, no signup.">
+<meta property="og:description" content="Convert video to GIF, compress video to fit email, Discord or WhatsApp, or convert to WebM, MP4, MP3 or M4A for free, right in your browser. No upload, no watermark, no signup.">
 <meta property="og:url" content="https://rehmozayub.github.io/tools-for-everyone/Video%20Converter/video_converter.html">
 <meta property="og:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Video Converter - Free Video to GIF and Video Compressor">
-<meta name="twitter:description" content="Convert video to GIF or compress video for free, right in your browser. No upload, no watermark, no signup.">
+<meta name="twitter:description" content="Convert video to GIF, compress video to fit email, Discord or WhatsApp, or convert to WebM, MP4, MP3 or M4A for free, right in your browser. No upload, no watermark, no signup.">
 <meta name="twitter:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
 <link rel="manifest" href="../manifest.json">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f3f5">
@@ -31,11 +31,13 @@
 <style>
   .result-preview {
     max-width: 100%;
+    max-height: 480px;
     border-radius: var(--radius);
     margin: 12px 0;
     display: block;
     background: var(--surface-2);
   }
+  audio.result-preview { width: 100%; max-width: 480px; background: transparent; }
   .size-compare {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
@@ -46,6 +48,125 @@
   }
   .size-compare .saved { color: var(--success); }
   .size-compare .grew { color: var(--warning); }
+
+  .vc-meta {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center;
+    margin: 6px 0;
+  }
+
+  /* Choice groups built from real radio inputs, drawn as chips */
+  .vc-fieldset { border: 0; padding: 0; margin: 0 0 14px; min-width: 0; }
+  .vc-fieldset > legend {
+    padding: 0;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .vc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  label.vc-chip { position: relative; margin: 0; }
+  .vc-chip input {
+    position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none;
+  }
+  .vc-chip:has(input:checked) {
+    border-color: var(--accent);
+    background: var(--accent-tint);
+    color: var(--accent);
+  }
+  .vc-chip:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .vc-chip:has(input:disabled) { opacity: 0.5; cursor: not-allowed; }
+
+  .field-note { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+  .field-note:empty { display: none; }
+  .field-note.is-warn { color: var(--warning); }
+
+  /* The loaded clip */
+  .vc-clip { margin-bottom: 8px; }
+  .vc-clip .file-row { flex-wrap: wrap; row-gap: 4px; }
+  .vc-clip .file-facts {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.75rem;
+    color: var(--text-faint);
+  }
+  .vc-player {
+    display: block;
+    width: 100%;
+    max-height: 420px;
+    border-radius: var(--radius);
+    background: #000;
+    margin: 10px 0 12px;
+  }
+  .vc-trim { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin: 0 0 12px; background: var(--surface); min-width: 0; }
+  .vc-trim > legend { font-size: 0.8125rem; font-weight: 500; color: var(--text-muted); padding: 0 4px; }
+  .trim-bar {
+    position: relative;
+    height: 10px;
+    border-radius: 5px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    margin: 4px 0 12px;
+    cursor: pointer;
+  }
+  .trim-sel {
+    position: absolute; top: -1px; bottom: -1px;
+    background: var(--accent-tint);
+    border: 1px solid var(--accent);
+    border-radius: 5px;
+  }
+  .trim-head {
+    position: absolute; top: -4px; bottom: -4px; width: 2px;
+    background: var(--text);
+    border-radius: 1px;
+    transform: translateX(-1px);
+  }
+  .trim-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px 14px; }
+  .trim-grid .form-group { margin-bottom: 0; }
+  .trim-pair { display: flex; gap: 8px; align-items: stretch; }
+  .trim-pair input { flex: 1 1 auto; min-width: 0; }
+  .trim-pair .btn { flex-shrink: 0; margin: 0; white-space: nowrap; }
+  .trim-info { margin-top: 10px; font-size: 0.8125rem; font-variant-numeric: tabular-nums; color: var(--text); display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+  .trim-info .link-btn { font-size: 0.8125rem; }
+
+  /* Progress, including an indeterminate state for unknown sizes */
+  .vc-progress { max-width: 520px; }
+  .vc-progress .progress-sub {
+    margin-top: 4px;
+    font-size: 0.75rem;
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .vc-progress.is-indeterminate .progress-fill { width: 35% !important; }
+  @media (prefers-reduced-motion: no-preference) {
+    .vc-progress.is-indeterminate .progress-fill { animation: vc-indet 1.3s ease-in-out infinite; }
+    @keyframes vc-indet { 0% { transform: translateX(-100%); } 100% { transform: translateX(290%); } }
+  }
+
+  .engine-block { font-size: 0.875rem; color: var(--text); }
+  .engine-block p { margin-bottom: 8px; }
+  .engine-block .muted { font-size: 0.8125rem; }
+  .vc-details { margin-top: 8px; font-size: 0.8125rem; }
+  .vc-details summary { cursor: pointer; color: var(--text-muted); }
+  .vc-details pre {
+    margin-top: 6px; padding: 8px 10px; max-height: 220px; overflow: auto;
+    background: var(--surface-2); border-radius: var(--radius);
+    font-family: var(--font-mono); font-size: 0.75rem; white-space: pre-wrap; word-break: break-word;
+  }
+  .action-bar.hidden, .btn.hidden { display: none !important; }
+  /* The main column spans both rows; keep the nav row tight above the settings. */
+  .tool-layout.has-subtool-nav { grid-template-rows: auto 1fr; }
+  @media (min-width: 901px) {
+    .tool-controls { max-height: calc(100vh - 88px); overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
+  }
+  #cancelBtn { margin-top: 0; }
+  #resetBtn { margin-top: 0; }
+  @media (pointer: coarse) {
+    .trim-bar { height: 16px; }
+    .trim-info .link-btn { min-height: 44px; display: inline-flex; align-items: center; }
+  }
 </style>
 </head>
 <body data-sw-path="../sw.js">
@@ -63,15 +184,85 @@
   <nav class="subtool-nav" id="toolList" aria-label="Video tools"></nav>
 
   <aside class="tool-controls">
-    <details class="panel" open data-mobile-collapsed>
-      <summary><span>About the engine</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
-      <div class="info-msg"><i class="ph ph-info" aria-hidden="true"></i> <span>This page uses a small video engine that downloads once, about 9MB, and then runs entirely in your browser. Short clips work best.</span></div>
+    <details class="panel" id="settingsPanel" open data-mobile-collapsed>
+      <summary><span>Settings</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
+      <div id="settingsBody"></div>
+    </details>
+    <details class="panel" id="enginePanel" open data-mobile-collapsed>
+      <summary><span>Engines</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
+      <div class="engine-block">
+        <p><strong>Compatibility engine</strong> (ffmpeg): 31 MB engine, about 9 MB download, once. After that it starts from your browser's storage, also offline.</p>
+        <p class="muted" id="engineStatus">Checking whether it is saved on this device.</p>
+        <p><strong>Fast engine</strong>: your device's own video encoder, used for MP4 and WebM when it supports the settings.</p>
+        <p class="muted" id="fastStatus"></p>
+        <label class="checkbox-label"><input type="checkbox" id="forceCompat"> Always use the compatibility engine</label>
+        <button class="btn btn-sm hidden" type="button" id="engineRemove"><i class="ph ph-trash" aria-hidden="true"></i> Remove the saved engine</button>
+      </div>
     </details>
   </aside>
 
-  <main class="tool-main">
-    <p class="tool-intro">Turn video into a GIF, or compress it down. Nothing is uploaded.</p>
-    <div id="toolContent"></div>
+  <main class="tool-main" id="main">
+    <p class="tool-intro">Turn a video into a GIF, shrink it to fit email or chat, or convert it to WebM, MP4 or audio.</p>
+    <h2 id="toolTitle">Video to GIF</h2>
+    <p class="tool-info"><i class="ph ph-info" aria-hidden="true"></i> <span id="toolInfo"></span></p>
+
+    <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="Choose a video">
+      <i class="ph ph-upload-simple" aria-hidden="true"></i>
+      <p class="dz-title">Drop a video here or browse</p>
+      <p class="dz-hint">MP4 MOV WebM MKV AVI, one file</p>
+      <input type="file" id="fileInput" accept="video/*,.mkv,.avi,.mov,.m4v,.3gp,.flv,.wmv,.mts,.m2ts,.ts,.ogv" data-no-remember>
+    </div>
+    <div id="fileNote" aria-live="polite"></div>
+
+    <section class="vc-clip hidden" id="clip" aria-label="Your video">
+      <div class="file-list">
+        <div class="file-row">
+          <i class="ph ph-film-slate" aria-hidden="true"></i>
+          <span class="file-name" id="clipName"></span>
+          <span class="file-facts" id="clipFacts"></span>
+          <span class="file-size" id="clipSize"></span>
+          <button class="btn btn-sm" type="button" id="changeBtn"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i> Choose another</button>
+        </div>
+      </div>
+      <p class="muted small hidden" id="multiNote"></p>
+      <video class="vc-player" id="player" controls playsinline preload="metadata"></video>
+      <p class="info-msg hidden" id="noPreview"><i class="ph ph-info" aria-hidden="true"></i> <span>This browser cannot preview this file. It can still be converted. The whole clip is used unless you type start and end times.</span></p>
+      <fieldset class="vc-trim" id="trimBox">
+        <legend>Part to use</legend>
+        <div class="trim-bar" id="trimBar" aria-hidden="true"><div class="trim-sel" id="trimSel"></div><div class="trim-head" id="trimHead"></div></div>
+        <div class="trim-grid">
+          <div class="form-group">
+            <label for="trimStart">Start (seconds)</label>
+            <div class="trim-pair">
+              <input type="number" id="trimStart" min="0" step="0.1" value="0" inputmode="decimal" data-no-remember>
+              <button class="btn btn-sm" type="button" id="setStartBtn">Set start here</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="trimEnd">End (seconds)</label>
+            <div class="trim-pair">
+              <input type="number" id="trimEnd" min="0" step="0.1" inputmode="decimal" data-no-remember>
+              <button class="btn btn-sm" type="button" id="setEndBtn">Set end here</button>
+            </div>
+          </div>
+        </div>
+        <div class="trim-info"><span id="trimInfo"></span><button class="link-btn hidden" type="button" id="trimReset">Use the whole clip</button></div>
+        <p class="field-note" id="trimNote" aria-live="polite"></p>
+      </fieldset>
+    </section>
+
+    <div class="action-bar hidden" id="actionBar">
+      <button class="btn btn-primary" type="button" id="runBtn"></button>
+      <button class="btn hidden" type="button" id="cancelBtn"><i class="ph ph-x" aria-hidden="true"></i> Cancel</button>
+      <button class="btn" type="button" id="resetBtn"><i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i> Start over</button>
+    </div>
+    <div id="progress"></div>
+    <div id="results" aria-live="polite">
+      <div data-result="to_gif"></div>
+      <div data-result="compress" class="hidden"></div>
+      <div data-result="convert" class="hidden"></div>
+    </div>
+    <p class="sr-only" id="srStatus" aria-live="polite"></p>
   </main>
 </div>
 
@@ -82,271 +273,1501 @@
 </footer>
 
 <script>
+'use strict';
+
+/* ======================================================================
+   Sub-tools
+   ====================================================================== */
+
 const TOOLS = [
-  { id: 'to_gif', icon: 'film-strip', name: 'Video to GIF' },
-  { id: 'compress', icon: 'gauge', name: 'Compress video' },
+  { id: 'to_gif', icon: 'film-strip', name: 'Video to GIF', action: 'Convert to GIF',
+    info: 'Turn a clip into an animated GIF. Short clips of a few seconds work best.' },
+  { id: 'compress', icon: 'gauge', name: 'Compress video', action: 'Compress video',
+    info: 'Shrink a video to fit email or chat, or to a size you choose. The output is MP4.' },
+  { id: 'convert', icon: 'swap', name: 'Convert format', action: 'Convert',
+    info: 'Save the video as WebM or MP4, or take the sound out as MP3 or M4A.' },
 ];
-let currentTool = 'to_gif';
+const TOOL_IDS = TOOLS.map(t => t.id);
+const toolById = id => TOOLS.find(t => t.id === id);
+let currentTool = (() => { const h = location.hash.slice(1); return TOOL_IDS.includes(h) ? h : 'to_gif'; })();
 
-function initToolList() {
-  document.getElementById('toolList').innerHTML = TOOLS.map(t =>
-    `<button class="tool-item${t.id === currentTool ? ' active' : ''}" type="button" onclick="selectTool('${t.id}',this)"><i class="ph ph-${t.icon}" aria-hidden="true"></i> ${t.name}</button>`
-  ).join('');
-}
-function selectTool(id, el) {
-  currentTool = id;
-  document.querySelectorAll('.tool-item').forEach(e => e.classList.remove('active'));
-  if (el) el.classList.add('active');
-  renderTool();
-}
-
-function dropZoneHTML(id, label, hint) {
-  return `<div class="drop-zone" id="dz-${id}" role="button" tabindex="0" aria-label="${label}" onclick="document.getElementById('fi-${id}').click()">
-    <i class="ph ph-upload-simple" aria-hidden="true"></i>
-    <p class="dz-title">Drop a video here or browse</p>
-    <p class="dz-hint">${hint}</p>
-    <input type="file" id="fi-${id}" accept="video/*">
-  </div><div id="info-${id}"></div>`;
+const $ = id => document.getElementById(id);
+const hasTFE = () => typeof window.TFE === 'object' && window.TFE !== null;
+function tfe(path, ...args) {
+  // Calls window.TFE.<path>(...args) when it exists; returns undefined otherwise.
+  try {
+    if (!hasTFE()) return undefined;
+    const parts = path.split('.');
+    let ctx = window.TFE, fn = window.TFE;
+    for (const p of parts) { ctx = fn; fn = fn && fn[p]; }
+    return typeof fn === 'function' ? fn.apply(ctx, args) : undefined;
+  } catch (e) { return undefined; }
 }
 
-function renderTool() {
-  const c = document.getElementById('toolContent');
-  if (currentTool === 'to_gif') {
-    c.innerHTML = `<h2>Video to GIF</h2>
-      <p class="tool-info"><i class="ph ph-info" aria-hidden="true"></i> <span>Convert a video clip into an animated GIF.</span></p>
-      ${dropZoneHTML('gif', 'Choose a video to convert', 'MP4 MOV WebM AVI MKV, one file')}
-      <div class="form-row">
-        <div class="form-group"><label for="gifFps">Frame rate (fps)</label><input type="range" id="gifFps" min="5" max="15" value="10"><div class="slider-value" id="gifFpsVal">10 fps</div></div>
-        <div class="form-group"><label for="gifWidth">Max width (px)</label><input type="number" id="gifWidth" value="480" min="64" max="1280"></div>
-      </div>
-      <div class="form-group"><label for="gifDuration">Seconds to convert, counted from the start</label><input type="number" id="gifDuration" value="5" min="1" max="60"></div>
-      <p class="muted xsmall">GIFs get large fast. Shorter, smaller clips work best.</p>
-      <button class="btn btn-primary" type="button" onclick="doVideoToGif(this)"><i class="ph ph-film-strip" aria-hidden="true"></i> Convert to GIF</button>
-      <div id="gifProgress"></div>
-      <div id="gifResult"></div>`;
-  } else {
-    c.innerHTML = `<h2>Compress video</h2>
-      <p class="tool-info"><i class="ph ph-info" aria-hidden="true"></i> <span>Shrink a video's file size. The output is always MP4.</span></p>
-      ${dropZoneHTML('cmp', 'Choose a video to compress', 'MP4 MOV WebM AVI MKV, one file')}
-      <div class="form-group"><label>Compression</label>
-        <div class="radio-group">
-          <label><input type="radio" name="cmpLevel" value="23"><span>Light</span></label>
-          <label><input type="radio" name="cmpLevel" value="28" checked><span>Medium</span></label>
-          <label><input type="radio" name="cmpLevel" value="35"><span>Strong</span></label>
-        </div>
-      </div>
-      <div class="form-group"><label for="cmpRes">Max resolution</label>
-        <select id="cmpRes">
-          <option value="0">Original</option>
-          <option value="1080">1080p</option>
-          <option value="720" selected>720p</option>
-          <option value="480">480p</option>
-        </select>
-      </div>
-      <button class="btn btn-primary" type="button" onclick="doCompressVideo(this)"><i class="ph ph-gauge" aria-hidden="true"></i> Compress video</button>
-      <div id="cmpProgress"></div>
-      <div id="cmpResult"></div>`;
-  }
-  setupDropZones();
-}
+/* ======================================================================
+   State
+   ====================================================================== */
 
-let storedFiles = {};
-function setupDropZones() {
-  document.querySelectorAll('.drop-zone').forEach(dz => {
-    const id = dz.id.replace('dz-', '');
-    const fi = document.getElementById('fi-' + id);
-    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
-    dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
-    dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('dragover'); fi.files = e.dataTransfer.files; fi.dispatchEvent(new Event('change')); });
-    fi.addEventListener('change', () => {
-      const file = fi.files[0];
-      if (!file) return;
-      storedFiles[id] = file;
-      document.getElementById('info-' + id).innerHTML =
-        `<div class="file-list"><div class="file-row"><span class="file-name">${escapeHTML(file.name)}</span><span class="file-size">${fmtSize(file.size)}</span></div></div>`;
-    });
-  });
-  const fps = document.getElementById('gifFps');
-  if (fps) fps.addEventListener('input', function () { document.getElementById('gifFpsVal').textContent = this.value + ' fps'; });
-}
+const S = {
+  file: null,
+  fileURL: null,
+  meta: { duration: null, width: 0, height: 0, playable: false },
+  trim: { start: 0, end: null },
+  running: null,
+  results: { to_gif: null, compress: null, convert: null },
+};
+
+/* ======================================================================
+   Formatting
+   ====================================================================== */
 
 function fmtSize(bytes) {
+  const shared = tfe('formatBytes', bytes);
+  if (typeof shared === 'string') return shared;
   if (bytes < 1024) return bytes + ' B';
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
 }
-function escapeHTML(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+function fmtTime(sec) {
+  if (sec == null || !isFinite(sec)) return '?';
+  sec = Math.max(0, sec);
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  const ss = s.toFixed(1).padStart(4, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
+}
+function fmtClock(ms) {
+  const s = Math.round(ms / 1000), m = Math.floor(s / 60);
+  return `${m}:${String(s % 60).padStart(2, '0')}`;
+}
+function fmtLeft(ms) {
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${Math.max(1, s)} s`;
+  const m = Math.round(s / 60);
+  return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`;
+}
+const round1 = v => Math.round(v * 10) / 10;
+const clampNum = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const even = v => Math.max(2, Math.round(v / 2) * 2);
+const evenDown = v => Math.max(2, Math.floor(v / 2) * 2);
 
-// FFmpeg engine loading (single-threaded core, no COOP/COEP needed, works on plain static hosting)
-let ffmpegPromise = null;
-let currentProgressHandler = null;
-
-async function fetchWithProgress(url, mimeType, onFraction) {
-  const res = await fetch(url);
-  const total = parseInt(res.headers.get('content-length') || '0');
-  const reader = res.body.getReader();
-  const chunks = [];
-  let received = 0;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    received += value.length;
-    if (total && onFraction) onFraction(received / total);
+function el(tag, attrs, children) {
+  const n = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === 'class') n.className = v;
+    else if (k === 'text') n.textContent = v;
+    else n.setAttribute(k, v === true ? '' : v);
   }
-  return URL.createObjectURL(new Blob(chunks, { type: mimeType }));
+  for (const c of [].concat(children || [])) if (c != null) n.append(c);
+  return n;
+}
+const icon = name => el('i', { class: 'ph ph-' + name, 'aria-hidden': 'true' });
+function msgBox(kind, iconName, text) {
+  return el('div', { class: kind + '-msg' }, [icon(iconName), ' ', el('span', { text })]);
+}
+function announce(text) {
+  if (hasTFE() && typeof TFE.announce === 'function') tfe('announce', text);
+  else $('srStatus').textContent = text;
 }
 
-function getFFmpeg(onStatus) {
+/* ======================================================================
+   Sub-tool navigation and settings
+   ====================================================================== */
+
+function initToolList() {
+  const nav = $('toolList');
+  nav.textContent = '';
+  for (const t of TOOLS) {
+    const b = el('button', { class: 'tool-item', type: 'button', 'data-tool': t.id }, [icon(t.icon), ' ' + t.name]);
+    b.addEventListener('click', () => selectTool(t.id));
+    nav.append(b);
+  }
+}
+
+function selectTool(id, opts = {}) {
+  if (!TOOL_IDS.includes(id)) return;
+  currentTool = id;
+  const t = toolById(id);
+  document.querySelectorAll('#toolList .tool-item').forEach(b => {
+    const on = b.dataset.tool === id;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
+  $('toolTitle').textContent = t.name;
+  $('toolInfo').textContent = t.info;
+  renderSettings();
+  document.querySelectorAll('#results > [data-result]').forEach(r => r.classList.toggle('hidden', r.dataset.result !== id));
+  updateRunButton();
+  updateTrimUI();
+  if (!opts.fromHash) {
+    if (hasTFE() && TFE.subtool && TFE.subtool.set) tfe('subtool.set', id, t.name);
+    else {
+      try { history.replaceState(null, '', '#' + id); } catch (e) {}
+      document.title = `${t.name} - Video Converter | Tools for Everyone`;
+    }
+  }
+}
+
+function chips(name, items, checked) {
+  return items.map(([v, label]) =>
+    `<label class="chip vc-chip"><input type="radio" name="${name}" value="${v}"${v === checked ? ' checked' : ''}><span>${label}</span></label>`).join('');
+}
+const LEVELS = [['light', 'Light'], ['medium', 'Medium'], ['strong', 'Strong']];
+const PRESETS = [
+  ['email', 'Email (under 25 MB)', 25],
+  ['discord', 'Discord or chat (under 10 MB)', 10],
+  ['whatsapp', 'WhatsApp (under 16 MB)', 16],
+  ['web720', 'Web 720p', null],
+  ['custom', 'Custom size', null],
+];
+const FORMATS = [['mp4', 'MP4 (H.264)'], ['webm', 'WebM'], ['mp3', 'MP3 audio'], ['m4a', 'M4A audio (AAC)']];
+const RES_OPTS = (auto) => (auto ? '<option value="auto" selected>Automatic</option>' : '') +
+  `<option value="0"${auto ? '' : ' selected'}>Original</option><option value="1080">1080p</option><option value="720">720p</option><option value="480">480p</option><option value="360">360p</option>`;
+
+function renderSettings() {
+  const body = $('settingsBody');
+  if (currentTool === 'to_gif') {
+    body.innerHTML = `
+      <div class="form-group"><label for="gifFps">Frame rate</label><input type="range" id="gifFps" min="5" max="25" value="10"><div class="slider-value" id="gifFpsVal">10 fps</div></div>
+      <div class="form-group"><label for="gifWidth">Width (px)</label><input type="number" id="gifWidth" value="480" min="64" max="1280" step="1" inputmode="numeric"><p class="field-note" id="gifWidthNote"></p></div>
+      <fieldset class="vc-fieldset"><legend>Look</legend><div class="vc-chips">${chips('gifLook', [['quality', 'Quality'], ['small', 'Smaller file']], 'quality')}</div>
+        <p class="field-note" id="gifLookNote"></p></fieldset>
+      <p class="muted xsmall">GIFs get large fast. Pick a short part of the video and a small width.</p>`;
+  } else if (currentTool === 'compress') {
+    body.innerHTML = `
+      <fieldset class="vc-fieldset"><legend>Made for</legend><div class="vc-chips">${chips('cmpPreset', PRESETS.map(p => [p[0], p[1]]), 'web720')}</div></fieldset>
+      <div class="form-group hidden" id="cmpCustomRow"><label for="cmpTargetMB">Target size (MB)</label><input type="number" id="cmpTargetMB" min="1" max="4000" step="0.5" value="8" inputmode="decimal"><p class="field-note" id="cmpTargetNote"></p></div>
+      <fieldset class="vc-fieldset hidden" id="cmpLevelRow"><legend>Compression</legend><div class="vc-chips">${chips('cmpLevel', LEVELS, 'medium')}</div></fieldset>
+      <div class="form-group"><label for="cmpRes">Resolution (short side)</label><select id="cmpRes">${RES_OPTS(true)}</select><p class="field-note" id="cmpResNote"></p></div>
+      <label class="checkbox-label"><input type="checkbox" id="cmpNoAudio"> Remove audio</label>
+      <p class="field-note" id="cmpPlanNote"></p>`;
+  } else {
+    body.innerHTML = `
+      <fieldset class="vc-fieldset"><legend>Output</legend><div class="vc-chips">${chips('cvtFormat', FORMATS, 'mp4')}</div><p class="field-note" id="cvtFormatNote"></p></fieldset>
+      <div id="cvtVideoOpts">
+        <fieldset class="vc-fieldset"><legend>Quality</legend><div class="vc-chips">${chips('cvtLevel', [['high', 'High'], ['medium', 'Balanced'], ['low', 'Small file']], 'medium')}</div></fieldset>
+        <div class="form-group"><label for="cvtRes">Resolution (short side)</label><select id="cvtRes">${RES_OPTS(false)}</select></div>
+        <label class="checkbox-label"><input type="checkbox" id="cvtNoAudio"> Remove audio</label>
+      </div>
+      <div id="cvtAudioOpts" class="hidden">
+        <div class="form-group"><label for="cvtAbr">Audio quality</label><select id="cvtAbr"><option value="128">128 kbps</option><option value="192" selected>192 kbps</option><option value="256">256 kbps</option><option value="320">320 kbps</option></select></div>
+      </div>`;
+  }
+  const p = prefs();
+  if (p && typeof p.bindForm === 'function') {
+    try { p.bindForm(body, { onRestore: refreshSettings }); } catch (e) {}
+  }
+  refreshSettings();
+}
+
+function prefs() {
+  try { return hasTFE() && typeof TFE.prefs === 'function' ? TFE.prefs('video') : null; } catch (e) { return null; }
+}
+function radioVal(name, fallback) {
+  const r = document.querySelector(`input[name="${name}"]:checked`);
+  return r ? r.value : fallback;
+}
+
+function onSettingsInput(e) {
+  if (e.target.id === 'gifFps') $('gifFpsVal').textContent = e.target.value + ' fps';
+  if (e.target.type === 'radio' || e.target.tagName === 'SELECT' || e.target.type === 'checkbox') refreshSettings();
+}
+function onSettingsChange(e) {
+  if (e.target.id === 'gifWidth') clampGifWidth(true);
+  if (e.target.id === 'cmpTargetMB') clampTarget(true);
+  refreshSettings();
+}
+
+function clampGifWidth(feedback) {
+  const inp = $('gifWidth'); if (!inp) return 480;
+  let v = parseInt(inp.value, 10), note = '';
+  if (!isFinite(v)) { v = 480; note = 'Width reset to 480 px.'; }
+  if (v < 64) { v = 64; note = 'Clamped to 64 px, the smallest GIF width.'; }
+  if (v > 1280) { v = 1280; note = 'Clamped to 1280 px, the largest GIF width.'; }
+  if (String(v) !== inp.value) inp.value = v;
+  if (!note && S.meta.width && v > S.meta.width) note = `Your video is ${S.meta.width} px wide, so the GIF stays ${S.meta.width} px wide.`;
+  const n = $('gifWidthNote');
+  if (n && (feedback || !/^(Clamped|Width reset)/.test(n.textContent) || !note)) { n.textContent = note; n.classList.toggle('is-warn', !!note && !/stays/.test(note)); }
+  return v;
+}
+function clampTarget(feedback) {
+  const inp = $('cmpTargetMB'); if (!inp) return 8;
+  let v = parseFloat(inp.value), note = '';
+  if (!isFinite(v)) { v = 8; note = 'Target reset to 8 MB.'; }
+  if (v < 1) { v = 1; note = 'Clamped to 1 MB, the smallest target.'; }
+  if (v > 4000) { v = 4000; note = 'Clamped to 4000 MB.'; }
+  if (String(v) !== inp.value) inp.value = v;
+  if (!note && S.file && v * 1e6 >= S.file.size) note = 'Your video is already smaller than this. It is re-encoded anyway, which rarely makes it smaller.';
+  const n = $('cmpTargetNote');
+  if (n && (feedback || !/^(Clamped|Target reset)/.test(n.textContent) || !note)) { n.textContent = note; n.classList.toggle('is-warn', !!note); }
+  return v;
+}
+
+function refreshSettings() {
+  if (currentTool === 'to_gif') {
+    const fps = $('gifFps'); if (fps) $('gifFpsVal').textContent = fps.value + ' fps';
+    clampGifWidth(false);
+    const look = radioVal('gifLook', 'quality');
+    $('gifLookNote').textContent = look === 'small'
+      ? 'Fewer colours (128) and a pattern dither that compresses well.'
+      : 'Full 256 colours with smooth dithering. Larger files.';
+  } else if (currentTool === 'compress') {
+    const preset = radioVal('cmpPreset', 'web720');
+    $('cmpCustomRow').classList.toggle('hidden', preset !== 'custom');
+    $('cmpLevelRow').classList.toggle('hidden', preset !== 'web720');
+    const res = $('cmpRes').value;
+    $('cmpResNote').textContent = res === 'auto'
+      ? (preset === 'web720' ? 'Automatic uses 720p, never larger than your video.' : 'Automatic picks the sharpest size that fits the target.')
+      : 'Sets the short side, so portrait videos keep their shape. Never enlarges.';
+    if (preset === 'custom') clampTarget(false);
+    updatePlanNote();
+  } else if (currentTool === 'convert') {
+    const f = radioVal('cvtFormat', 'mp4');
+    const audio = f === 'mp3' || f === 'm4a';
+    $('cvtVideoOpts').classList.toggle('hidden', audio);
+    $('cvtAudioOpts').classList.toggle('hidden', !audio);
+    const note = $('cvtFormatNote');
+    note.classList.remove('is-warn');
+    note.textContent = f === 'webm' ? (fastWebmKnown && !fastDisabled() ? 'VP9 video and Opus sound from your device’s encoder. Plays in browsers, Android and most editors.' : 'VP8 video and Vorbis sound. Plays in browsers, Android and most editors.')
+      : f === 'mp4' ? 'H.264 video and AAC sound, set up to start playing before it has fully loaded.'
+      : f === 'mp3' ? 'Only the sound, as MP3.' : 'Only the sound, as AAC in an M4A file.';
+    if (encoderInfo) {
+      const missing = (f === 'webm' && !encoderInfo.vp8 && !fastWebmKnown) || (f === 'mp3' && !encoderInfo.mp3);
+      if (missing) { note.textContent = (f === 'webm' ? 'WebM' : 'MP3') + ' is not available in this browser. Choose another output.'; note.classList.add('is-warn'); }
+    }
+  }
+  updateRunButton();
+  if (summaryHandle && summaryHandle.update) { try { summaryHandle.update(); } catch (e) {} }
+}
+
+function settingsSummary() {
+  if (currentTool === 'to_gif') {
+    const fps = $('gifFps'), w = $('gifWidth');
+    return `GIF, ${fps ? fps.value : 10} fps, ${w ? w.value : 480} px, ${radioVal('gifLook', 'quality') === 'small' ? 'smaller file' : 'quality'}`;
+  }
+  if (currentTool === 'compress') {
+    const p = PRESETS.find(x => x[0] === radioVal('cmpPreset', 'web720'));
+    let s = p ? p[1] : '';
+    if (p && p[0] === 'custom') s = `Under ${$('cmpTargetMB') ? $('cmpTargetMB').value : 8} MB`;
+    const r = $('cmpRes') ? $('cmpRes').value : 'auto';
+    if (r !== 'auto') s += ', ' + (r === '0' ? 'original size' : r + 'p');
+    if ($('cmpNoAudio') && $('cmpNoAudio').checked) s += ', no audio';
+    return s;
+  }
+  const f = FORMATS.find(x => x[0] === radioVal('cvtFormat', 'mp4'));
+  let s = f ? f[1] : '';
+  if (f && (f[0] === 'mp4' || f[0] === 'webm')) {
+    const r = $('cvtRes') ? $('cvtRes').value : '0';
+    if (r !== '0') s += ', ' + r + 'p';
+    if ($('cvtNoAudio') && $('cvtNoAudio').checked) s += ', no audio';
+  } else if ($('cvtAbr')) s += ', ' + $('cvtAbr').value + ' kbps';
+  return s;
+}
+let summaryHandle = null;
+
+/* ======================================================================
+   File intake, preview and trim
+   ====================================================================== */
+
+const VIDEO_EXT = /\.(mp4|m4v|mov|qt|webm|mkv|avi|wmv|flv|mpg|mpeg|3gp|3g2|ts|mts|m2ts|ogv|f4v)$/i;
+const isVideoish = f => f && ((f.type || '').startsWith('video/') || VIDEO_EXT.test(f.name || ''));
+
+function setFileNote(kind, text) {
+  const n = $('fileNote');
+  n.textContent = '';
+  if (text) n.append(msgBox(kind, kind === 'error' ? 'warning-circle' : 'info', text));
+}
+
+function intake(fileList) {
+  const all = Array.from(fileList || []);
+  if (!all.length) return;
+  if (S.running) { setFileNote('warning', 'Wait for the current job to finish, or cancel it, before choosing another video.'); return; }
+  const vids = all.filter(isVideoish);
+  if (!vids.length) {
+    setFileNote('error', all.length > 1 ? 'None of those files is a video. Choose an MP4, MOV, WebM, MKV or AVI file.' : 'That is not a video file. Choose an MP4, MOV, WebM, MKV or AVI file.');
+    return;
+  }
+  setFileNote(null, '');
+  const f = vids[0];
+  let multi = '';
+  if (all.length > 1) multi = vids[0] === all[0] ? `Using the first of ${all.length} files.` : `Using ${f.name}, the first video of ${all.length} files.`;
+  setFile(f, multi);
+}
+
+function setFile(file, multiNote) {
+  clearAllResults();
+  if (S.fileURL) { URL.revokeObjectURL(S.fileURL); S.fileURL = null; }
+  S.file = file;
+  S.meta = { duration: null, width: 0, height: 0, playable: false };
+  S.trim = { start: 0, end: null };
+  $('clipName').textContent = file.name;
+  $('clipName').title = file.name;
+  $('clipSize').textContent = fmtSize(file.size);
+  $('clipFacts').textContent = 'Reading…';
+  const mn = $('multiNote');
+  mn.textContent = multiNote || '';
+  mn.classList.toggle('hidden', !multiNote);
+  $('noPreview').classList.add('hidden');
+  $('trimStart').value = '0';
+  $('trimEnd').value = '';
+  $('trimNote').textContent = '';
+  $('dropZone').classList.add('hidden');
+  $('clip').classList.remove('hidden');
+  $('actionBar').classList.remove('hidden');
+  $('actionBar').classList.add('is-sticky');
+  const player = $('player');
+  player.classList.remove('hidden');
+  S.fileURL = URL.createObjectURL(file);
+  player.src = S.fileURL;
+  readMetadata(player, file);
+  tfe('setDirty', true);
+  announce(`Added ${file.name}.`);
+  refreshSettings();
+  updateTrimUI();
+}
+
+function readMetadata(player, file) {
+  let settled = false;
+  const fail = () => {
+    if (settled || S.file !== file) return; settled = true;
+    S.meta.playable = false;
+    player.classList.add('hidden');
+    $('noPreview').classList.remove('hidden');
+    updateFacts();
+    updateTrimUI();
+  };
+  player.onerror = fail;
+  player.onloadedmetadata = async () => {
+    if (settled || S.file !== file) return;
+    const d = await resolveDuration(player);
+    if (S.file !== file) return;
+    settled = true;
+    S.meta.width = player.videoWidth || 0;
+    S.meta.height = player.videoHeight || 0;
+    S.meta.duration = d;
+    S.meta.playable = !!(player.videoWidth && player.videoHeight);
+    if (!S.meta.playable) { settled = false; fail(); return; }
+    S.trim = { start: 0, end: d };
+    if (d) { $('trimEnd').value = round1(d).toString(); $('trimEnd').max = d; $('trimStart').max = d; }
+    updateFacts();
+    refreshSettings();
+    updateTrimUI();
+  };
+  setTimeout(() => { if (!settled && !S.meta.duration && S.file === file && !player.videoWidth) fail(); }, 8000);
+}
+
+// Browser-recorded WebM files often report an infinite duration until the end is read.
+function resolveDuration(v) {
+  if (isFinite(v.duration) && v.duration > 0) return Promise.resolve(v.duration);
+  return new Promise(res => {
+    let finished = false;
+    const finish = d => {
+      if (finished) return; finished = true;
+      v.removeEventListener('durationchange', onChange);
+      v.removeEventListener('timeupdate', onChange);
+      try { v.currentTime = 0; } catch (e) {}
+      res(d && isFinite(d) ? d : null);
+    };
+    const onChange = () => { if (isFinite(v.duration) && v.duration > 0) finish(v.duration); };
+    v.addEventListener('durationchange', onChange);
+    v.addEventListener('timeupdate', onChange);
+    try { v.currentTime = 1e7; } catch (e) { finish(null); }
+    setTimeout(() => finish(isFinite(v.duration) ? v.duration : null), 6000);
+  });
+}
+
+function updateFacts() {
+  const m = S.meta, bits = [];
+  if (m.duration) bits.push(fmtTime(m.duration));
+  if (m.width && m.height) bits.push(`${m.width} × ${m.height}`);
+  $('clipFacts').textContent = bits.join(' · ') || (m.playable ? '' : 'No preview');
+}
+
+function selection() {
+  const d = S.meta.duration;
+  let start = Math.max(0, S.trim.start || 0);
+  let end = S.trim.end;
+  if (d) end = end == null ? d : Math.min(end, d);
+  const dur = end != null ? Math.max(0, end - start) : null;
+  const full = start < 0.05 && (end == null || (d != null && end > d - 0.05));
+  return { start, end, dur, full };
+}
+
+function setTrim(start, end, note) {
+  const d = S.meta.duration;
+  let msg = note || '';
+  if (!isFinite(start) || start < 0) { start = 0; }
+  if (d && start > d - 0.1) { start = Math.max(0, d - 0.1); msg = msg || `Start moved to ${round1(start)} s, just before the end of the clip.`; }
+  if (end != null) {
+    if (!isFinite(end)) end = d;
+    if (d && end > d) { end = d; msg = msg || `End moved to ${round1(d)} s, the end of the clip.`; }
+    if (end != null && end < start + 0.1) { end = d ? Math.min(d, start + 0.1) : start + 0.1; msg = msg || 'The end must come after the start, so it was moved.'; }
+  }
+  S.trim.start = Math.round(start * 1000) / 1000;
+  S.trim.end = end == null ? null : Math.round(end * 1000) / 1000;
+  $('trimStart').value = round1(S.trim.start);
+  $('trimEnd').value = S.trim.end == null ? '' : round1(S.trim.end);
+  $('trimNote').textContent = msg;
+  $('trimNote').classList.toggle('is-warn', !!msg);
+  updateTrimUI();
+  updatePlanNote();
+}
+
+function updateTrimUI() {
+  if (!S.file) return;
+  const d = S.meta.duration, sel = selection();
+  const info = $('trimInfo');
+  if (sel.end != null) {
+    info.textContent = `Using ${fmtTime(sel.start)} to ${fmtTime(sel.end)}, ${round1(sel.dur)} s` + (d ? ` of ${round1(d)} s` : '');
+  } else {
+    info.textContent = sel.start > 0 ? `Using ${fmtTime(sel.start)} to the end` : 'Using the whole clip';
+  }
+  $('trimReset').classList.toggle('hidden', sel.full);
+  const bar = $('trimBar');
+  bar.classList.toggle('hidden', !d);
+  if (d) {
+    $('trimSel').style.left = (sel.start / d * 100) + '%';
+    $('trimSel').style.width = ((sel.end - sel.start) / d * 100) + '%';
+  }
+  $('setStartBtn').disabled = $('setEndBtn').disabled = !S.meta.playable;
+  const n = $('trimNote');
+  if (currentTool === 'to_gif' && sel.dur != null && sel.dur > GIF_MAX_SECONDS) {
+    n.textContent = `GIFs are limited to ${GIF_MAX_SECONDS} seconds. The first ${GIF_MAX_SECONDS} seconds of this part are used.`;
+    n.classList.add('is-warn');
+    n.dataset.gifcap = '1';
+  } else if (n.dataset.gifcap) { n.textContent = ''; delete n.dataset.gifcap; }
+}
+const GIF_MAX_SECONDS = 60;
+
+function updateHead() {
+  const d = S.meta.duration, v = $('player');
+  if (d) $('trimHead').style.left = (Math.min(v.currentTime, d) / d * 100) + '%';
+}
+
+function initClipControls() {
+  const player = $('player');
+  player.addEventListener('timeupdate', updateHead);
+  player.addEventListener('seeked', updateHead);
+  $('trimStart').addEventListener('change', e => {
+    const v = parseFloat(e.target.value);
+    setTrim(isFinite(v) ? v : 0, S.trim.end, isFinite(v) ? '' : 'Start reset to 0 s.');
+  });
+  $('trimEnd').addEventListener('change', e => {
+    const v = parseFloat(e.target.value);
+    setTrim(S.trim.start, isFinite(v) ? v : S.meta.duration, isFinite(v) ? '' : (S.meta.duration ? 'End reset to the end of the clip.' : ''));
+  });
+  $('setStartBtn').addEventListener('click', () => {
+    const t = player.currentTime;
+    let end = S.trim.end, note = '';
+    if (end != null && t >= end - 0.1) { end = S.meta.duration; note = 'The start is now after the old end, so the end moved to the end of the clip.'; }
+    setTrim(t, end, note);
+  });
+  $('setEndBtn').addEventListener('click', () => {
+    const t = player.currentTime;
+    if (t <= S.trim.start + 0.1) { $('trimNote').textContent = 'The end must come after the start. Move the video past the start first.'; $('trimNote').classList.add('is-warn'); return; }
+    setTrim(S.trim.start, t);
+  });
+  $('trimReset').addEventListener('click', () => setTrim(0, S.meta.duration));
+  $('trimBar').addEventListener('click', e => {
+    const d = S.meta.duration; if (!d || !S.meta.playable) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    player.currentTime = clampNum((e.clientX - r.left) / r.width, 0, 1) * d;
+  });
+
+  const dz = $('dropZone'), fi = $('fileInput');
+  dz.addEventListener('click', e => { if (e.target !== fi) fi.click(); });
+  fi.addEventListener('change', () => { const files = fi.files; if (files && files.length) intake(files); fi.value = ''; });
+  $('changeBtn').addEventListener('click', () => fi.click());
+  for (const target of [dz, $('clip')]) {
+    target.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+    target.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+    target.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('dragover'); intake(e.dataTransfer.files); });
+  }
+  $('runBtn').addEventListener('click', () => runCurrent());
+  $('cancelBtn').addEventListener('click', () => cancelJob());
+  $('resetBtn').addEventListener('click', startOver);
+}
+
+function startOver() {
+  if (S.running) return;
+  clearAllResults();
+  if (S.fileURL) URL.revokeObjectURL(S.fileURL);
+  S.file = null; S.fileURL = null;
+  S.meta = { duration: null, width: 0, height: 0, playable: false };
+  S.trim = { start: 0, end: null };
+  const player = $('player');
+  player.removeAttribute('src'); player.load();
+  $('clip').classList.add('hidden');
+  $('dropZone').classList.remove('hidden');
+  $('actionBar').classList.add('hidden');
+  $('actionBar').classList.remove('is-sticky');
+  $('progress').textContent = '';
+  setFileNote(null, '');
+  tfe('setDirty', false);
+  refreshSettings();
+  try { $('dropZone').focus(); } catch (e) {}
+}
+
+function updateRunButton() {
+  const btn = $('runBtn');
+  if (!btn || btn.getAttribute('aria-busy') === 'true') return;
+  const t = toolById(currentTool);
+  let label = t.action, ic = t.icon;
+  if (currentTool === 'convert') {
+    const f = radioVal('cvtFormat', 'mp4');
+    label = f === 'mp3' ? 'Extract MP3' : f === 'm4a' ? 'Extract M4A' : f === 'webm' ? 'Convert to WebM' : 'Convert to MP4';
+    ic = f === 'mp3' || f === 'm4a' ? 'music-notes' : 'swap';
+  }
+  btn.textContent = '';
+  btn.append(icon(ic), ' ' + label);
+  btn.disabled = !S.file || !!S.running;
+}
+
+/* ======================================================================
+   Engines: ffmpeg.wasm (compatibility) from the Cache API, Mediabunny (fast)
+   ====================================================================== */
+
+const V = { ff: '0.12.15', core: '0.12.10', mb: '1.59.1' };
+const CDN = 'https://cdn.jsdelivr.net/npm/';
+const FF_BASE = `${CDN}@ffmpeg/ffmpeg@${V.ff}/dist/esm/`;
+const CORE_BASE = `${CDN}@ffmpeg/core@${V.core}/dist/esm/`;
+const MB_URL = `${CDN}mediabunny@${V.mb}/dist/bundles/mediabunny.min.mjs`;
+const ENGINE_CACHE = `tfe-ffmpeg-${V.core}-${V.ff}`;
+const MB_CACHE = `tfe-mediabunny-${V.mb}`;
+// Decoded sizes. jsDelivr serves these brotli-compressed, so Content-Length (about 9.3 MB
+// for the wasm) says nothing about how many bytes the reader will count.
+const CORE_JS = { url: CORE_BASE + 'ffmpeg-core.js', type: 'text/javascript', size: 111804 };
+const CORE_WASM = { url: CORE_BASE + 'ffmpeg-core.wasm', type: 'application/wasm', size: 32232419 };
+const FF_PARTS = [['const', 1016], ['errors', 332], ['utils', 138], ['classes', 9747], ['worker', 5085]]
+  .map(([n, size]) => ({ name: n, url: FF_BASE + n + '.js', type: 'text/javascript', size }));
+const ENGINE_TOTAL = CORE_JS.size + CORE_WASM.size + FF_PARTS.reduce((a, p) => a + p.size, 0);
+
+async function openCache(name) {
+  try { return 'caches' in window ? await caches.open(name) : null; } catch (e) { return null; }
+}
+
+async function cachedBlob(cache, item, { signal, onBytes } = {}) {
+  if (cache) {
+    try {
+      const hit = await cache.match(item.url);
+      if (hit) { const b = await hit.blob(); if (b.size) { onBytes && onBytes(item.size || b.size, true); return b; } }
+    } catch (e) {}
+  }
+  const res = await fetch(item.url, { signal });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  let blob;
+  if (res.body && res.body.getReader) {
+    const reader = res.body.getReader(), chunks = [];
+    let got = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value); got += value.length;
+      onBytes && onBytes(got, false);
+    }
+    blob = new Blob(chunks, { type: item.type });
+  } else {
+    blob = new Blob([await res.arrayBuffer()], { type: item.type });
+  }
+  onBytes && onBytes(item.size ? Math.max(item.size, blob.size) : blob.size, false);
+  if (cache) { try { await cache.put(item.url, new Response(blob, { headers: { 'Content-Type': item.type } })); } catch (e) {} }
+  return blob;
+}
+
+let engineURLs = null;       // blob URLs built from the cached files, reused for the page lifetime
+let ffmpegPromise = null;
+let ffmpegInst = null;
+let ffLoading = null;
+let ffLogSink = null, ffProgressSink = null;
+let encoderInfo = null;
+let fastWebmKnown = false;
+
+async function buildEngineURLs(onStatus, signal) {
+  if (engineURLs) return engineURLs;
+  const cache = await openCache(ENGINE_CACHE);
+  const items = [CORE_JS, CORE_WASM, ...FF_PARTS];
+  const got = new Array(items.length).fill(0);
+  let fromNetwork = false;
+  const report = () => onStatus && onStatus({ phase: 'download', received: got.reduce((a, b) => a + b, 0), total: ENGINE_TOTAL, fromNetwork });
+  const blobs = await Promise.all(items.map((it, i) => cachedBlob(cache, it, {
+    signal,
+    onBytes: (n, cached) => { if (!cached) fromNetwork = true; got[i] = n; report(); },
+  })));
+  const txt = {};
+  for (let i = 0; i < FF_PARTS.length; i++) txt[FF_PARTS[i].name] = await blobs[i + 2].text();
+  // worker.js and classes.js import their siblings by relative path, which cannot resolve
+  // from a blob: URL. The files are small and dependency-free, so they are joined into one.
+  const strip = src => src.replace(/^export\s+/gm, '').replace(/^import[^\n]*\n/gm, '');
+  const classesSrc = [txt.const, txt.utils, txt.errors, txt.classes].map(strip).join('\n') + '\nexport { FFmpeg };\n';
+  const workerSrc = [txt.const, txt.errors, txt.worker].map(strip).join('\n');
+  const js = s => URL.createObjectURL(new Blob([s], { type: 'text/javascript' }));
+  engineURLs = {
+    core: URL.createObjectURL(new Blob([blobs[0]], { type: 'text/javascript' })),
+    wasm: URL.createObjectURL(blobs[1]),
+    classes: js(classesSrc),
+    worker: js(workerSrc),
+    fromNetwork,
+  };
+  refreshEngineStatus();
+  return engineURLs;
+}
+
+function getFFmpeg(onStatus, signal) {
   if (!ffmpegPromise) {
-    ffmpegPromise = (async () => {
-      const { FFmpeg } = await import('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js');
-      const { toBlobURL } = await import('https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js');
-
-      const coreBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm';
-      const ffBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/esm';
-
-      onStatus && onStatus('Downloading the video engine', 0);
-      const [coreURL, constSrc, errorsSrc, workerSrc] = await Promise.all([
-        toBlobURL(`${coreBase}/ffmpeg-core.js`, 'text/javascript'),
-        fetch(`${ffBase}/const.js`).then(r => r.text()),
-        fetch(`${ffBase}/errors.js`).then(r => r.text()),
-        fetch(`${ffBase}/worker.js`).then(r => r.text()),
-      ]);
-      const wasmURL = await fetchWithProgress(`${coreBase}/ffmpeg-core.wasm`, 'application/wasm', (f) => {
-        onStatus && onStatus('Downloading the video engine', Math.round(f * 90));
-      });
-
-      // worker.js statically imports ./const.js and ./errors.js by relative path, which
-      // breaks once worker.js is loaded from a blob: URL (no real sibling files exist there).
-      // Inlining their (tiny, dependency-free) contents into one script sidesteps that.
-      const strip = (src) => src.replace(/^export\s+/gm, '').replace(/^import[^\n]*\n/gm, '');
-      const merged = strip(constSrc) + '\n' + strip(errorsSrc) + '\n' + strip(workerSrc);
-      const classWorkerURL = URL.createObjectURL(new Blob([merged], { type: 'text/javascript' }));
-
-      onStatus && onStatus('Starting the video engine', 95);
-      const ffmpeg = new FFmpeg();
-      ffmpeg.on('progress', (data) => { if (currentProgressHandler) currentProgressHandler(data); });
-      await ffmpeg.load({ coreURL, wasmURL, classWorkerURL });
-      onStatus && onStatus('Ready', 100);
-      return ffmpeg;
+    const p = (async () => {
+      const urls = await buildEngineURLs(onStatus, signal);
+      onStatus && onStatus({ phase: 'start' });
+      const { FFmpeg } = await import(urls.classes);
+      const ff = new FFmpeg();
+      ffLoading = ff;
+      ff.on('log', ({ message }) => { if (ffLogSink) ffLogSink(message); });
+      ff.on('progress', data => { if (ffProgressSink) ffProgressSink(data); });
+      try {
+        await ff.load({ coreURL: urls.core, wasmURL: urls.wasm, classWorkerURL: urls.worker });
+      } finally { if (ffLoading === ff) ffLoading = null; }
+      ffmpegInst = ff;
+      return ff;
     })();
+    ffmpegPromise = p;
+    p.catch(() => { if (ffmpegPromise === p) ffmpegPromise = null; });
   }
   return ffmpegPromise;
 }
 
-function showProgress(elId, label, pct) {
-  setProgress(document.getElementById(elId), pct == null ? 0 : pct, label);
+// Stops the worker. The next job re-initialises from the blob URLs (or the cache).
+function terminateFFmpeg() {
+  for (const ff of [ffmpegInst, ffLoading]) { if (ff) { try { ff.terminate(); } catch (e) {} } }
+  ffmpegInst = null; ffLoading = null; ffmpegPromise = null;
 }
 
-async function doVideoToGif(btn) {
-  const file = storedFiles['gif'];
-  if (!file) { showInlineError(btn, 'Choose a video first.'); return; }
-  const fps = document.getElementById('gifFps').value;
-  const width = parseInt(document.getElementById('gifWidth').value) || 480;
-  const duration = Math.min(parseInt(document.getElementById('gifDuration').value) || 5, 60);
+async function ffEncoders(ff) {
+  if (encoderInfo) return encoderInfo;
+  const lines = [];
+  ffLogSink = m => lines.push(m);
+  try { await ff.exec(['-hide_banner', '-encoders']); } catch (e) {} finally { ffLogSink = null; }
+  const t = lines.join('\n');
+  encoderInfo = {
+    // libvpx-vp9 is listed but crashes with "memory access out of bounds" in this wasm
+    // build at every size tried, and so does libopus, so WebM from this engine is VP8 + Vorbis.
+    x264: /libx264/.test(t), vp8: /^\s*V\S*\s+libvpx\s/m.test(t), opus: /libopus/.test(t),
+    mp3: /libmp3lame/.test(t), aac: /\baac\b/.test(t), vorbis: /libvorbis/.test(t),
+  };
+  return encoderInfo;
+}
 
-  document.getElementById('gifResult').innerHTML = '';
-  setBusy(btn, true, 'Converting...');
-  showProgress('gifProgress', 'Loading the video engine', 0);
+let mbPromise = null;
+function getMediabunny(signal) {
+  if (!mbPromise) {
+    const p = (async () => {
+      const cache = await openCache(MB_CACHE);
+      const blob = await cachedBlob(cache, { url: MB_URL, type: 'text/javascript' }, { signal });
+      return await import(URL.createObjectURL(blob));
+    })();
+    mbPromise = p;
+    p.catch(() => { if (mbPromise === p) mbPromise = null; });
+  }
+  return mbPromise;
+}
 
+async function refreshEngineStatus() {
+  const st = $('engineStatus'), rm = $('engineRemove');
+  let saved = false;
   try {
-    const ffmpeg = await getFFmpeg((label, pct) => setSafe('gifProgress', () => showProgress('gifProgress', label, pct)));
-    currentProgressHandler = ({ progress }) => setSafe('gifProgress', () => showProgress('gifProgress', 'Converting to GIF', Math.min(100, Math.round(progress * 100))));
+    if ('caches' in window && await caches.has(ENGINE_CACHE)) {
+      const c = await caches.open(ENGINE_CACHE);
+      saved = !!(await c.match(CORE_WASM.url));
+    }
+  } catch (e) {}
+  if (!('caches' in window)) st.textContent = 'This browser cannot save it, so it downloads again on each visit.';
+  else st.textContent = saved ? 'Saved on this device. It starts right away.' : (engineURLs ? 'Loaded for this visit.' : 'Not downloaded yet. It downloads the first time you convert.');
+  rm.classList.toggle('hidden', !saved);
+  engineSummary && engineSummary.update && engineSummary.update();
+}
+let engineSummary = null;
 
-    const { fetchFile } = await import('https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js');
-    await ffmpeg.writeFile('in.mp4', await fetchFile(file));
-    await ffmpeg.exec(['-i', 'in.mp4', '-t', String(duration), '-vf', `fps=${fps},scale=${width}:-1:flags=lanczos`, 'out.gif']);
-    const data = await ffmpeg.readFile('out.gif');
-    await ffmpeg.deleteFile('in.mp4');
-    await ffmpeg.deleteFile('out.gif');
+async function refreshFastStatus() {
+  const n = $('fastStatus');
+  if (typeof VideoEncoder !== 'function') { n.textContent = 'Not available in this browser. The compatibility engine is used.'; return; }
+  const test = async codec => { try { return (await VideoEncoder.isConfigSupported({ codec, width: 1280, height: 720, bitrate: 2e6, framerate: 30 })).supported; } catch (e) { return false; } };
+  const [avc, vp9] = await Promise.all([test('avc1.640028'), test('vp09.00.40.08')]);
+  fastWebmKnown = vp9;
+  const list = [avc && 'MP4', vp9 && 'WebM'].filter(Boolean);
+  n.textContent = list.length ? `Available here for ${list.join(' and ')}.` : 'Your device has no suitable encoder, so the compatibility engine is used.';
+}
 
-    const blob = new Blob([data.buffer], { type: 'image/gif' });
-    const url = URL.createObjectURL(blob);
-    setSafe('gifProgress', () => clearProgress(document.getElementById('gifProgress')));
-    setSafe('gifResult', () => { document.getElementById('gifResult').innerHTML = `
-      <div class="result">
-        <div class="result-head">
-          <h2>Your GIF</h2>
-          <button class="btn btn-sm btn-download" type="button" onclick="downloadBlobUrl('${url}','${file.name.replace(/\.[^.]+$/, '')}.gif')"><i class="ph ph-download-simple" aria-hidden="true"></i> Download GIF</button>
-        </div>
-        <div class="result-body">
-          <div class="size-compare">${fmtSize(file.size)} <i class="ph ph-arrow-right" aria-hidden="true"></i> ${fmtSize(blob.size)}</div>
-          <img class="result-preview" src="${url}" alt="Preview of the converted GIF">
-        </div>
-      </div>`; });
+async function removeSavedEngine(btn) {
+  const ok = hasTFE() && typeof TFE.confirmInline === 'function'
+    ? await TFE.confirmInline(btn, { message: 'Remove the 31 MB engine? It downloads again next time.', confirmLabel: 'Remove', danger: true })
+    : true;
+  if (!ok) return;
+  try { await caches.delete(ENGINE_CACHE); await caches.delete(MB_CACHE); } catch (e) {}
+  if (typeof window.showToast === 'function') showToast('The saved engine was removed.', 'success');
+  refreshEngineStatus();
+}
+
+// Older engine versions left behind by an update.
+async function pruneOldCaches() {
+  try {
+    if (!('caches' in window)) return;
+    for (const k of await caches.keys()) {
+      if ((k.startsWith('tfe-ffmpeg-') && k !== ENGINE_CACHE) || (k.startsWith('tfe-mediabunny-') && k !== MB_CACHE)) await caches.delete(k);
+    }
+  } catch (e) {}
+}
+
+/* ======================================================================
+   Jobs: progress, time left, cancel, leave guard
+   ====================================================================== */
+
+// setBusy comes from app.js; keep working if it failed to load.
+function busy(btn, on, label) {
+  if (typeof window.setBusy === 'function') return setBusy(btn, on, label);
+  btn.disabled = on;
+  if (on) btn.setAttribute('aria-busy', 'true'); else btn.removeAttribute('aria-busy');
+}
+
+class UserError extends Error { constructor(msg, detail) { super(msg); this.detail = detail || ''; } }
+class Cancelled extends Error { constructor() { super('Cancelled'); } }
+class FastUnsupported extends Error {}
+
+let ownGuards = 0;
+function onBeforeUnload(e) { e.preventDefault(); e.returnValue = ''; return ''; }
+function openJobGuard(label) {
+  let done = null;
+  if (hasTFE() && typeof TFE.job === 'function') { try { done = TFE.job(label); } catch (e) { done = null; } }
+  if (typeof done !== 'function') {
+    ownGuards++;
+    if (ownGuards === 1) window.addEventListener('beforeunload', onBeforeUnload);
+    done = () => { ownGuards--; if (ownGuards === 0) window.removeEventListener('beforeunload', onBeforeUnload); };
+  }
+  let called = false;
+  return () => { if (!called) { called = true; try { done(); } catch (e) {} } };
+}
+
+function setPhase(job, label, p, detail) {
+  if (job.phase.label !== label) job.phase = { label, start: performance.now(), p: null };
+  job.phase.p = p == null ? null : clampNum(p, 0, 1);
+  if (detail !== undefined) job.phase.detail = detail;
+  renderProgress(job);
+}
+
+function renderProgress(job) {
+  if (S.running !== job) return;
+  const box = $('progress');
+  let wrap = box.querySelector('.vc-progress');
+  if (!wrap) {
+    box.textContent = '';
+    wrap = el('div', { class: 'progress vc-progress' }, [
+      el('div', { class: 'progress-track', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100' }, el('div', { class: 'progress-fill' })),
+      el('div', { class: 'progress-label' }, [el('span', { class: 'text' }), el('span', { class: 'pct' })]),
+      el('div', { class: 'progress-sub' }),
+    ]);
+    box.append(wrap);
+  }
+  const ph = job.phase, now = performance.now();
+  const indet = ph.p == null;
+  wrap.classList.toggle('is-indeterminate', indet);
+  const track = wrap.querySelector('.progress-track');
+  track.setAttribute('aria-label', ph.label);
+  if (indet) track.removeAttribute('aria-valuenow'); else track.setAttribute('aria-valuenow', String(Math.round(ph.p * 100)));
+  wrap.querySelector('.progress-fill').style.width = indet ? '' : (ph.p * 100).toFixed(1) + '%';
+  wrap.querySelector('.text').textContent = ph.label + (ph.detail ? ' · ' + ph.detail : '');
+  wrap.querySelector('.pct').textContent = indet ? '' : Math.floor(ph.p * 100) + '%';
+  let sub = fmtClock(now - job.started) + ' elapsed';
+  const spent = now - ph.start;
+  if (!indet && ph.p > 0.03 && ph.p < 1 && spent > 1500) sub += ` · about ${fmtLeft(spent * (1 - ph.p) / ph.p)} left`;
+  wrap.querySelector('.progress-sub').textContent = sub;
+}
+
+async function runJob(tool, label, fn) {
+  const job = { tool, cancelled: false, cancelFns: [], started: performance.now(), phase: { label: 'Starting', start: performance.now(), p: null }, notes: [] };
+  S.running = job;
+  const done = openJobGuard(label);
+  const btn = $('runBtn');
+  busy(btn, true, label + '…');
+  $('cancelBtn').classList.remove('hidden');
+  $('cancelBtn').disabled = false;
+  $('resetBtn').disabled = true;
+  $('changeBtn').disabled = true;
+  clearResult(tool);
+  renderProgress(job);
+  job.ticker = setInterval(() => renderProgress(job), 500);
+  try {
+    try {
+      await fn(job);
+    } catch (e) {
+      if (!e || !e.crash || job.cancelled) throw e;
+      // One more try on a new engine instance before giving up.
+      job.freshFF = true;
+      job.notes.push(['info', 'The engine stopped once and was restarted.']);
+      await fn(job);
+    }
   } catch (e) {
-    setSafe('gifProgress', () => clearProgress(document.getElementById('gifProgress')));
-    setSafe('gifResult', () => { document.getElementById('gifResult').innerHTML = `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>${escapeHTML(e.message)}</span></div>`; });
+    if (job.cancelled || e instanceof Cancelled) showCancelled(tool);
+    else showError(tool, e);
   } finally {
-    currentProgressHandler = null;
-    setBusy(btn, false);
+    clearInterval(job.ticker);
+    S.running = null;
+    done();
+    $('progress').textContent = '';
+    busy(btn, false);
+    $('cancelBtn').classList.add('hidden');
+    $('resetBtn').disabled = false;
+    $('changeBtn').disabled = false;
+    updateRunButton();
   }
 }
 
-function setSafe(elId, fn) {
-  if (document.getElementById(elId)) fn();
+async function cancelJob() {
+  const job = S.running;
+  if (!job || job.cancelled) return;
+  job.cancelled = true;
+  const b = $('cancelBtn');
+  b.disabled = true;
+  setPhase(job, 'Cancelling', null);
+  for (const fn of job.cancelFns.slice().reverse()) { try { await fn(); } catch (e) {} }
+}
+function checkCancel(job) { if (job.cancelled) throw new Cancelled(); }
+
+async function loadFF(job) {
+  // A fresh core per job: ffmpeg.wasm can be left in a bad state by an earlier run, and
+  // starting again from the in-memory blob URLs costs about 150 ms.
+  if (job.freshFF !== false) { terminateFFmpeg(); job.freshFF = false; }
+  const ac = new AbortController();
+  const stop = () => { ac.abort(); terminateFFmpeg(); };
+  job.cancelFns.push(stop);
+  const ff = await getFFmpeg(st => {
+    if (st.phase === 'download') {
+      if (!st.fromNetwork) setPhase(job, 'Opening the saved video engine', null);
+      else setPhase(job, 'Downloading the video engine (once)', Math.min(0.99, st.received / st.total),
+        `${(st.received / 1048576).toFixed(1)} of ${(st.total / 1048576).toFixed(1)} MB`);
+    } else if (st.phase === 'start') setPhase(job, 'Starting the video engine', null, '');
+  }, ac.signal);
+  checkCancel(job);
+  await ffEncoders(ff);
+  checkCancel(job);
+  return ff;
 }
 
-async function doCompressVideo(btn) {
-  const file = storedFiles['cmp'];
-  if (!file) { showInlineError(btn, 'Choose a video first.'); return; }
-  const crf = document.querySelector('input[name="cmpLevel"]:checked').value;
-  const maxRes = parseInt(document.getElementById('cmpRes').value) || 0;
+/* ======================================================================
+   ffmpeg helpers
+   ====================================================================== */
 
-  document.getElementById('cmpResult').innerHTML = '';
-  setBusy(btn, true, 'Compressing...');
-  showProgress('cmpProgress', 'Loading the video engine', 0);
-
+async function ffInput(ff, file) {
+  const m = /\.([a-z0-9]{1,5})$/i.exec(file.name || '');
+  const ext = m ? m[1].toLowerCase() : 'mp4';
+  const name = 'input.' + ext;
+  // The name the person gave the file never reaches ffmpeg's command line.
+  const safe = new File([file], name, { type: file.type });
   try {
-    const ffmpeg = await getFFmpeg((label, pct) => setSafe('cmpProgress', () => showProgress('cmpProgress', label, pct)));
-    currentProgressHandler = ({ progress }) => setSafe('cmpProgress', () => showProgress('cmpProgress', 'Compressing', Math.min(100, Math.round(progress * 100))));
-
-    const { fetchFile } = await import('https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js');
-    await ffmpeg.writeFile('in.mp4', await fetchFile(file));
-
-    const args = ['-i', 'in.mp4', '-c:v', 'libx264', '-crf', crf, '-preset', 'veryfast'];
-    if (maxRes > 0) args.push('-vf', `scale='min(iw,${Math.round(maxRes * 16 / 9)})':'min(ih,${maxRes})':force_original_aspect_ratio=decrease`);
-    args.push('-c:a', 'aac', '-b:a', '128k', 'out.mp4');
-
-    await ffmpeg.exec(args);
-    const data = await ffmpeg.readFile('out.mp4');
-    await ffmpeg.deleteFile('in.mp4');
-    await ffmpeg.deleteFile('out.mp4');
-
-    const blob = new Blob([data.buffer], { type: 'video/mp4' });
-    const url = URL.createObjectURL(blob);
-    const delta = Math.round((1 - blob.size / file.size) * 100);
-    setSafe('cmpProgress', () => clearProgress(document.getElementById('cmpProgress')));
-    setSafe('cmpResult', () => { document.getElementById('cmpResult').innerHTML = `
-      <div class="result">
-        <div class="result-head">
-          <h2>Your compressed video</h2>
-          <button class="btn btn-sm btn-download" type="button" onclick="downloadBlobUrl('${url}','${file.name.replace(/\.[^.]+$/, '')}_compressed.mp4')"><i class="ph ph-download-simple" aria-hidden="true"></i> Download MP4</button>
-        </div>
-        <div class="result-body">
-          <div class="size-compare">${fmtSize(file.size)} <i class="ph ph-arrow-right" aria-hidden="true"></i> ${fmtSize(blob.size)} <span class="${delta >= 0 ? 'saved' : 'grew'}">${delta >= 0 ? '-' : '+'}${Math.abs(delta)}%</span></div>
-          <video class="result-preview" src="${url}" controls></video>
-        </div>
-      </div>`; });
+    try { await ff.createDir('/vcin'); } catch (e) {}
+    await ff.mount('WORKERFS', { files: [safe] }, '/vcin');
+    return { path: '/vcin/' + name, cleanup: async () => { try { await ff.unmount('/vcin'); } catch (e) {} try { await ff.deleteDir('/vcin'); } catch (e) {} } };
   } catch (e) {
-    setSafe('cmpProgress', () => clearProgress(document.getElementById('cmpProgress')));
-    setSafe('cmpResult', () => { document.getElementById('cmpResult').innerHTML = `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>${escapeHTML(e.message)}</span></div>`; });
-  } finally {
-    currentProgressHandler = null;
-    setBusy(btn, false);
+    await ff.writeFile(name, new Uint8Array(await file.arrayBuffer()));
+    return { path: name, cleanup: async () => { try { await ff.deleteFile(name); } catch (e2) {} } };
   }
 }
+
+function seekArgs(sel, capDur) {
+  // Input options: -ss before -i seeks fast, and because the video is re-encoded ffmpeg
+  // still decodes forward to the exact frame (accurate_seek is on by default).
+  const a = [];
+  if (sel.start > 0.001) a.push('-ss', sel.start.toFixed(3));
+  let dur = !sel.full && sel.dur != null ? sel.dur : null;
+  if (capDur != null) dur = dur == null ? capDur : Math.min(dur, capDur);
+  if (dur != null) a.push('-t', dur.toFixed(3));
+  return a;
+}
+
+function parseTime(line) {
+  const m = /time=\s*(\d+):(\d+):(\d+(?:\.\d+)?)/.exec(line);
+  return m ? (+m[1]) * 3600 + (+m[2]) * 60 + (+m[3]) : null;
+}
+
+async function ffRun(ff, args, job, { label, dur, from = 0, to = 1, ctx }) {
+  const lines = [];
+  job.log = lines;
+  setPhase(job, label, from);
+  ffLogSink = msg => {
+    lines.push(msg);
+    if (lines.length > 500) lines.shift();
+    const t = parseTime(msg);
+    if (t != null && dur) setPhase(job, label, from + (to - from) * clampNum(t / dur, 0, 1));
+  };
+  ffProgressSink = ({ progress }) => {
+    if (!dur && progress > 0 && progress <= 1) setPhase(job, label, from + (to - from) * progress);
+  };
+  let code;
+  try {
+    code = await ff.exec(args);
+  } catch (e) {
+    if (job.cancelled) throw new Cancelled();
+    terminateFFmpeg(); // a crash can leave the core unusable
+    const err = mapFFError(lines, e, ctx);
+    err.crash = true;
+    throw err;
+  } finally { ffLogSink = null; ffProgressSink = null; }
+  if (job.cancelled) throw new Cancelled();
+  if (code !== 0) throw mapFFError(lines, null, ctx, code);
+  return lines;
+}
+
+function mapFFError(lines, exc, ctx, code) {
+  const log = lines.join('\n') + '\n' + (exc && exc.message ? exc.message : '');
+  const detail = lines.slice(-30).join('\n') + (exc && exc.message ? '\n' + exc.message : '') + (code != null ? `\nexit code ${code}` : '');
+  const E = msg => new UserError(msg, detail);
+  if (ctx === 'audio' && /matches no streams|does not contain any stream|Output file is empty|no audio/i.test(log)) return E('This video has no sound track to extract.');
+  if (/Invalid data found when processing input|moov atom not found|EBML header parsing failed|could not find codec parameters|Invalid NAL/i.test(log)) return E('This file could not be read as a video. It may be damaged, still downloading, or in a format the engine does not know.');
+  if (/Unknown encoder|Encoder not found|Unrecognized option/i.test(log)) return E('This engine cannot write that format in your browser. Choose another output.');
+  if (/Cannot allocate memory|out of memory|OOM|memory access out of bounds|Array buffer allocation failed|RangeError/i.test(log)) return E('Your browser ran out of memory for this video. Try a shorter part or a lower resolution.');
+  if (/Decoder .* not found|decoder not found|Unsupported codec|no decoder/i.test(log)) return E('The engine cannot decode the video inside this file.');
+  if (/does not contain any stream|matches no streams/i.test(log)) return E('The file has no video the engine can use.');
+  if (/Conversion failed/i.test(log)) return E('The conversion failed part way. The details below show the last messages from the engine.');
+  return E(code != null ? `The engine stopped with an error (code ${code}).` : 'The video engine stopped unexpectedly. Try again, or try a shorter part.');
+}
+
+async function ffProbe(ff, inPath, job) {
+  const lines = [];
+  ffLogSink = m => lines.push(m);
+  try { await ff.exec(['-hide_banner', '-i', inPath]); } catch (e) {} finally { ffLogSink = null; }
+  checkCancel(job);
+  const t = lines.join('\n');
+  const d = /Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/.exec(t);
+  const v = /Video:.*?,\s*(\d{2,5})x(\d{2,5})/.exec(t);
+  if (d && !S.meta.duration) {
+    S.meta.duration = (+d[1]) * 3600 + (+d[2]) * 60 + (+d[3]);
+    if (S.trim.end == null) S.trim.end = S.meta.duration;
+  }
+  if (v && !S.meta.width) {
+    let w = +v[1], h = +v[2];
+    if (/rotat\w* of -?90|rotate\s*:\s*-?(90|270)/i.test(t)) [w, h] = [h, w];
+    S.meta.width = w; S.meta.height = h;
+  }
+  if (/Invalid data found|moov atom not found|EBML header parsing failed/i.test(t)) throw mapFFError(lines, null, null, 1);
+  updateFacts(); updateTrimUI();
+}
+
+async function ffRead(ff, path) {
+  const data = await ff.readFile(path);
+  return data instanceof Uint8Array ? data : new TextEncoder().encode(String(data));
+}
+async function ffDelete(ff, ...paths) { for (const p of paths) { try { await ff.deleteFile(p); } catch (e) {} } }
+
+// Short-side scaling that never enlarges and always gives even dimensions.
+function ffScale(short) {
+  if (!short) return 'scale=trunc(iw/2)*2:trunc(ih/2)*2';
+  return `scale=w='if(lte(iw,ih),trunc(min(iw,${short})/2)*2,-2)':h='if(lte(iw,ih),-2,trunc(min(ih,${short})/2)*2)'`;
+}
+function outDims(w, h, short) {
+  if (!w || !h) return null;
+  if (w <= h) {
+    const W = evenDown(short ? Math.min(w, short) : w);
+    return { w: W, h: short ? even(h * W / w) : evenDown(h) };
+  }
+  const H = evenDown(short ? Math.min(h, short) : h);
+  return { w: short ? even(w * H / h) : evenDown(w), h: H };
+}
+
+/* ======================================================================
+   Fast engine (WebCodecs through Mediabunny)
+   ====================================================================== */
+
+function fastDisabled() { return ($('forceCompat') && $('forceCompat').checked) || window.__vcForceCompat === true; }
+
+async function fastEngineFor(fmt, dims, withAudio, bitrate) {
+  if (fastDisabled() || !dims || !S.meta.playable) return null;
+  if (typeof VideoEncoder !== 'function' || typeof VideoDecoder !== 'function') return null;
+  const big = dims.w * dims.h > 1920 * 1088;
+  const codecStr = fmt === 'mp4' ? (big ? 'avc1.640033' : 'avc1.640028') : 'vp09.00.40.08';
+  try {
+    const r = await VideoEncoder.isConfigSupported({ codec: codecStr, width: dims.w, height: dims.h, bitrate: bitrate || 2e6, framerate: 30 });
+    if (!r || !r.supported) return null;
+  } catch (e) { return null; }
+  let mb;
+  try { mb = await getMediabunny(); } catch (e) { return null; }
+  try {
+    if (!(await mb.canEncodeVideo(fmt === 'mp4' ? 'avc' : 'vp9', { width: dims.w, height: dims.h }))) return null;
+    if (withAudio && !(await mb.canEncodeAudio(fmt === 'mp4' ? 'aac' : 'opus'))) return null;
+  } catch (e) { return null; }
+  return mb;
+}
+
+async function runFast(mb, job, o) {
+  const input = new mb.Input({ source: new mb.BlobSource(S.file), formats: mb.ALL_FORMATS });
+  const target = new mb.BufferTarget();
+  const output = new mb.Output({
+    format: o.fmt === 'mp4' ? new mb.Mp4OutputFormat({ fastStart: 'in-memory' }) : new mb.WebMOutputFormat(),
+    target,
+  });
+  let conv;
+  try {
+    const vq = o.vbr ? new mb.Quality({ bitrate: Math.round(o.vbr), bitrateMode: o.cbr ? 'constant' : 'variable' }) : new mb.Quality(o.qualityLevel || 'medium');
+    const sel = o.sel;
+    conv = await mb.Conversion.init({
+      input, output, tracks: 'primary', showWarnings: false,
+      video: { codec: o.fmt === 'mp4' ? 'avc' : 'vp9', width: o.dims.w, height: o.dims.h, fit: 'fill', quality: vq, forceTranscode: true },
+      audio: o.noAudio ? { discard: true } : { codec: o.fmt === 'mp4' ? 'aac' : 'opus', quality: new mb.Quality({ bitrate: o.abr || 128000 }) },
+      trim: sel.full ? undefined : (sel.end != null ? { start: sel.start, end: sel.end } : { start: sel.start }),
+    });
+  } catch (e) {
+    try { input.dispose && input.dispose(); } catch (e2) {}
+    throw new FastUnsupported(e && e.message);
+  }
+  const bad = (conv.discardedTracks || []).filter(d => d.reason !== 'discarded_by_user');
+  if (!conv.isValid || bad.some(d => d.track && (d.track.type === 'video' || (d.track.type === 'audio' && !o.noAudio)))) {
+    try { input.dispose && input.dispose(); } catch (e) {}
+    throw new FastUnsupported(bad.map(d => d.reason).join(', ') || 'invalid');
+  }
+  const cancelFn = () => conv.cancel();
+  job.cancelFns.push(cancelFn);
+  conv.onProgress = p => setPhase(job, o.label, (o.from || 0) + ((o.to || 1) - (o.from || 0)) * p);
+  setPhase(job, o.label, o.from || 0);
+  try {
+    await conv.execute();
+  } catch (e) {
+    if (job.cancelled) throw new Cancelled();
+    throw new FastUnsupported(e && e.message);
+  } finally {
+    job.cancelFns = job.cancelFns.filter(f => f !== cancelFn);
+    try { input.dispose && input.dispose(); } catch (e) {}
+  }
+  checkCancel(job);
+  return new Uint8Array(target.buffer);
+}
+
+/* ======================================================================
+   The three jobs
+   ====================================================================== */
+
+const baseName = () => (S.file.name || 'video').replace(/\.[^.]+$/, '') || 'video';
+const levelToCrf = { light: 23, medium: 28, strong: 35 };
+const cvtCrf = { high: 20, medium: 24, low: 30 };
+const cvtVp8Crf = { high: 6, medium: 10, low: 20 };
+const cvtMbLevel = { high: 'high', medium: 'medium', low: 'low' };
+
+function runCurrent() {
+  if (!S.file || S.running) return;
+  const tool = currentTool;
+  if (tool === 'to_gif') return runJob(tool, 'Converting', job => doGif(job));
+  if (tool === 'compress') return runJob(tool, 'Compressing', job => doCompress(job));
+  return runJob(tool, 'Converting', job => doConvert(job));
+}
+
+async function ensureDuration(ff, inPath, job) {
+  if (!S.meta.duration || !S.meta.width) await ffProbe(ff, inPath, job);
+}
+
+async function doGif(job) {
+  const fps = clampNum(parseInt($('gifFps').value, 10) || 10, 5, 25);
+  const width = clampGifWidth(true);
+  const small = radioVal('gifLook', 'quality') === 'small';
+  const ff = await loadFF(job);
+  const inp = await ffInput(ff, S.file);
+  try {
+    await ensureDuration(ff, inp.path, job);
+    const sel = selection();
+    const cap = sel.dur != null && sel.dur > GIF_MAX_SECONDS ? GIF_MAX_SECONDS : (S.meta.duration ? null : GIF_MAX_SECONDS);
+    const dur = cap || sel.dur;
+    const palette = small
+      ? `palettegen=stats_mode=diff:max_colors=128[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle`
+      : `palettegen=stats_mode=diff:max_colors=256[p];[b][p]paletteuse=dither=sierra2_4a:diff_mode=rectangle`;
+    // -ss before -i is fast, and ffmpeg still decodes up to the exact frame because it re-encodes.
+    const args = ['-hide_banner', ...seekArgs(sel, cap), '-i', inp.path,
+      '-vf', `fps=${fps},scale=w='min(iw,${width})':h=-2:flags=lanczos,split[a][b];[a]${palette}`,
+      '-loop', '0', '-f', 'gif', 'out.gif'];
+    await ffRun(ff, args, job, { label: 'Making the GIF', dur, ctx: 'gif' });
+    const data = await ffRead(ff, 'out.gif');
+    if (!data.length) throw new UserError('The GIF came out empty. Try a longer part of the video.');
+    const blob = new Blob([data], { type: 'image/gif' });
+    const dims = data.length > 10 ? { w: data[6] | (data[7] << 8), h: data[8] | (data[9] << 8) } : null;
+    showResult({
+      tool: 'to_gif', blob, name: baseName() + '.gif', type: 'image/gif', kind: 'image',
+      title: 'Your GIF', dlLabel: 'Download GIF', engine: 'compat', dims, duration: dur,
+      notes: cap && sel.dur > GIF_MAX_SECONDS ? [['info', `Only the first ${GIF_MAX_SECONDS} seconds of your selection were used.`]] : [],
+    });
+  } finally {
+    await ffDelete(ff, 'out.gif');
+    await inp.cleanup();
+  }
+}
+
+// Plan for compress: resolution, bitrates, and whether a size target is involved.
+function compressPlan() {
+  const preset = radioVal('cmpPreset', 'web720');
+  const p = PRESETS.find(x => x[0] === preset);
+  const noAudio = !!($('cmpNoAudio') && $('cmpNoAudio').checked);
+  const resSel = $('cmpRes') ? $('cmpRes').value : 'auto';
+  let targetMB = p && p[2];
+  if (preset === 'custom') targetMB = clampTarget(false);
+  const sel = selection();
+  const plan = { preset, noAudio, targetMB: targetMB || null, sel };
+  if (!targetMB) {
+    plan.short = resSel === 'auto' ? 720 : +resSel;
+    plan.level = radioVal('cmpLevel', 'medium');
+    plan.crf = levelToCrf[plan.level] || 28;
+    plan.abr = 128000;
+    return plan;
+  }
+  const aim = targetMB * 1e6 * 0.95;           // under the limit in both MB and MiB terms
+  plan.aimBytes = aim;
+  if (!sel.dur) return plan;                   // duration needed first
+  const total = aim * 8 / sel.dur * 0.98;       // leave room for the container
+  plan.abr = noAudio ? 0 : total > 1.6e6 ? 128000 : total > 700e3 ? 96000 : 64000;
+  let vbr = total - plan.abr;
+  const FLOOR = 150e3;
+  plan.floorHit = vbr < FLOOR;
+  plan.vbr = Math.max(FLOOR, vbr);
+  plan.short = resSel !== 'auto' ? +resSel
+    : plan.vbr >= 3.5e6 ? 1080 : plan.vbr >= 1.6e6 ? 720 : plan.vbr >= 700e3 ? 480 : 360;
+  return plan;
+}
+
+function updatePlanNote() {
+  const n = $('cmpPlanNote');
+  if (!n || currentTool !== 'compress') return;
+  const plan = compressPlan();
+  if (plan.targetMB && plan.floorHit) {
+    n.textContent = `This part is too long to fit in ${plan.targetMB} MB at a watchable quality, so the result will probably be larger. Pick a shorter part or a bigger target.`;
+    n.classList.add('is-warn');
+  } else { n.textContent = ''; n.classList.remove('is-warn'); }
+}
+
+async function doCompress(job) {
+  let plan = compressPlan();
+  let ff = null, inp = null;
+  try {
+    if (plan.targetMB && !plan.sel.dur) {
+      ff = await loadFF(job); inp = await ffInput(ff, S.file);
+      await ensureDuration(ff, inp.path, job);
+      plan = compressPlan();
+      if (!plan.sel.dur) throw new UserError('The length of this video could not be read, so a size target cannot be worked out. Choose Web 720p instead.');
+    }
+    const dims = outDims(S.meta.width, S.meta.height, plan.short);
+    const tries = plan.targetMB && !plan.floorHit ? 2 : 1;
+    let vbr = plan.vbr, result = null, engine = null, fellBack = false, attempt = 0, overshootNote = '';
+    for (attempt = 1; attempt <= tries; attempt++) {
+      const span = [0, 1];
+      const label = attempt === 1 ? 'Compressing' : 'Compressing again to fit the target';
+      let mb = null;
+      if (!fellBack) mb = await fastEngineFor('mp4', dims, !plan.noAudio, vbr);
+      checkCancel(job);
+      if (mb) {
+        try {
+          result = await runFast(mb, job, { fmt: 'mp4', dims, vbr, cbr: !!plan.targetMB, qualityLevel: { light: 'high', medium: 'medium', strong: 'low' }[plan.level], noAudio: plan.noAudio, abr: plan.abr, sel: plan.sel, label, from: span[0], to: span[1] });
+          engine = 'fast';
+        } catch (e) {
+          if (!(e instanceof FastUnsupported)) throw e;
+          fellBack = true; mb = null;
+          job.notes.push(['info', 'The fast engine could not handle this file, so the compatibility engine was used.']);
+        }
+      }
+      if (!mb) {
+        if (!ff) { ff = await loadFF(job); inp = await ffInput(ff, S.file); }
+        result = await ffCompress(ff, inp.path, job, plan, vbr, label, span);
+        engine = 'compat';
+      }
+      if (!plan.targetMB || result.length <= plan.targetMB * 1e6 || attempt === tries) break;
+      if (engine === 'fast') {
+        // Device encoders often treat the bitrate as a loose hint. Two-pass x264 is exact.
+        fellBack = true;
+        overshootNote = `Your device's encoder came out ${fmtSize(result.length)}, over the target, so the compatibility engine made this one to fit.`;
+      } else {
+        vbr = Math.max(150e3, vbr * (plan.aimBytes / result.length) * 0.92);
+      }
+    }
+    const blob = new Blob([result], { type: 'video/mp4' });
+    const notes = job.notes.slice();
+    let target = null;
+    if (plan.targetMB) {
+      const limit = plan.targetMB * 1e6;
+      target = { mb: plan.targetMB, ok: blob.size <= limit, pct: Math.round((blob.size / limit - 1) * 100) };
+      if (overshootNote) notes.push(['info', overshootNote]);
+      else if (attempt > 1 && target.ok) notes.push(['info', 'The first try came out too big, so it was compressed again with a lower bitrate.']);
+    }
+    showResult({
+      tool: 'compress', blob, name: baseName() + '-compressed.mp4', type: 'video/mp4', kind: 'video',
+      title: 'Your compressed video', dlLabel: 'Download MP4', engine, target, notes, compare: true,
+    });
+  } finally {
+    if (ff) { await ffDelete(ff, 'out.mp4', '/tmp/vc2pass-0.log', '/tmp/vc2pass-0.log.mbtree', '/tmp/vc2pass-0.log.temp', '/tmp/vc2pass-0.log.mbtree.temp'); }
+    if (inp) await inp.cleanup();
+  }
+}
+
+async function ffCompress(ff, inPath, job, plan, vbr, label, span) {
+  const sel = plan.sel;
+  const pre = ['-hide_banner', ...seekArgs(sel), '-i', inPath, '-map', '0:v:0'];
+  // Browser recordings are variable frame rate; constant-rate MP4 output would duplicate
+  // frames by the thousand, so timestamps are passed through as they are.
+  const vf = ['-vf', ffScale(plan.short) + ',format=yuv420p', '-fps_mode', 'vfr', '-c:v', 'libx264', '-preset', 'veryfast'];
+  const audio = plan.noAudio ? ['-an'] : ['-map', '0:a:0?', '-c:a', 'aac', '-b:a', String(plan.abr || 128000)];
+  const tail = ['-movflags', '+faststart', 'out.mp4'];
+  const dur = sel.dur || S.meta.duration;
+  const [a, b] = span;
+  if (!plan.targetMB) {
+    await ffRun(ff, [...pre, ...vf, '-crf', String(plan.crf), ...audio, ...tail], job, { label, dur, from: a, to: b });
+  } else if (dur && dur <= 120) {
+    // Two passes land closest to the target. The first pass is quick (x264 fast first pass).
+    const mid = a + (b - a) * 0.35;
+    const rate = ['-b:v', String(Math.round(vbr)), '-passlogfile', '/tmp/vc2pass'];
+    await ffRun(ff, [...pre, ...vf, ...rate, '-pass', '1', '-an', '-f', 'null', '/dev/null'], job, { label: label + ' (pass 1 of 2)', dur, from: a, to: mid });
+    await ffRun(ff, [...pre, ...vf, ...rate, '-pass', '2', ...audio, ...tail], job, { label: label + ' (pass 2 of 2)', dur, from: mid, to: b });
+  } else {
+    const r = Math.round(vbr);
+    await ffRun(ff, [...pre, ...vf, '-b:v', String(r), '-maxrate', String(r), '-bufsize', String(r * 2), ...audio, ...tail], job, { label, dur, from: a, to: b });
+  }
+  const data = await ffRead(ff, 'out.mp4');
+  await ffDelete(ff, 'out.mp4');
+  if (!data.length) throw new UserError('The compressed file came out empty.');
+  return data;
+}
+
+async function doConvert(job) {
+  const fmt = radioVal('cvtFormat', 'mp4');
+  const sel = selection();
+  const base = baseName();
+  const inExt = (/\.([a-z0-9]+)$/i.exec(S.file.name || '') || [, ''])[1].toLowerCase();
+  const outName = ext => base + (inExt === ext ? '-converted' : '') + '.' + ext;
+  if (fmt === 'mp3' || fmt === 'm4a') {
+    const abr = (parseInt($('cvtAbr').value, 10) || 192) * 1000;
+    const ff = await loadFF(job);
+    if (fmt === 'mp3' && !encoderInfo.mp3) throw new UserError('MP3 is not available in this engine. Choose M4A instead.');
+    const out = fmt === 'mp3' ? 'out.mp3' : 'out.m4a';
+    const inp = await ffInput(ff, S.file);
+    try {
+      await ensureDuration(ff, inp.path, job);
+      const s2 = selection();
+      const codec = fmt === 'mp3' ? ['-c:a', 'libmp3lame', '-b:a', String(abr)] : ['-c:a', 'aac', '-b:a', String(abr), '-movflags', '+faststart'];
+      await ffRun(ff, ['-hide_banner', ...seekArgs(s2), '-i', inp.path, '-map', '0:a:0', '-vn', ...codec, out], job, { label: 'Extracting the sound', dur: s2.dur, ctx: 'audio' });
+      const data = await ffRead(ff, out);
+      if (!data.length) throw new UserError('This video has no sound track to extract.');
+      const type = fmt === 'mp3' ? 'audio/mpeg' : 'audio/mp4';
+      showResult({
+        tool: 'convert', blob: new Blob([data], { type }), name: outName(fmt), type, kind: 'audio',
+        title: fmt === 'mp3' ? 'Your MP3' : 'Your M4A', dlLabel: 'Download ' + fmt.toUpperCase(), engine: 'compat', notes: job.notes, compare: true,
+      });
+    } finally { await ffDelete(ff, out); await inp.cleanup(); }
+    return;
+  }
+
+  const level = radioVal('cvtLevel', 'medium');
+  const short = +($('cvtRes').value || 0);
+  const noAudio = !!$('cvtNoAudio').checked;
+  const dims = outDims(S.meta.width, S.meta.height, short);
+  let data = null, engine = null;
+  const mb = await fastEngineFor(fmt, dims, !noAudio, null);
+  checkCancel(job);
+  if (mb) {
+    try {
+      data = await runFast(mb, job, { fmt, dims, qualityLevel: cvtMbLevel[level], noAudio, abr: fmt === 'mp4' ? 128000 : 96000, sel, label: fmt === 'mp4' ? 'Converting to MP4' : 'Converting to WebM' });
+      engine = 'fast';
+    } catch (e) {
+      if (!(e instanceof FastUnsupported)) throw e;
+      job.notes.push(['info', 'The fast engine could not handle this file, so the compatibility engine was used.']);
+    }
+  }
+  if (!data) {
+    const ff = await loadFF(job);
+    if (fmt === 'webm' && !encoderInfo.vp8) throw new UserError('WebM is not available in this browser: neither engine can write it here. Choose MP4 instead.');
+    const out = fmt === 'mp4' ? 'out.mp4' : 'out.webm';
+    const inp = await ffInput(ff, S.file);
+    try {
+      await ensureDuration(ff, inp.path, job);
+      const s2 = selection();
+      const px = dims ? dims.w * dims.h : 1280 * 720;
+      const vp8Rate = Math.round({ high: 4e6, medium: 2.2e6, low: 1.1e6 }[level] * clampNum(px / (1280 * 720), 0.25, 4));
+      const v = fmt === 'mp4'
+        ? ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', String(cvtCrf[level])]
+        : ['-c:v', 'libvpx', '-crf', String(cvtVp8Crf[level]), '-b:v', String(vp8Rate), '-deadline', 'realtime', '-cpu-used', '8', '-auto-alt-ref', '0'];
+      const aCodec = fmt === 'mp4' ? ['-c:a', 'aac', '-b:a', '128000'] : ['-c:a', 'libvorbis', '-q:a', '4'];
+      const audio = noAudio ? ['-an'] : ['-map', '0:a:0?', ...aCodec];
+      const tail = fmt === 'mp4' ? ['-movflags', '+faststart', out] : [out];
+      await ffRun(ff, ['-hide_banner', ...seekArgs(s2), '-i', inp.path, '-map', '0:v:0', '-vf', ffScale(short) + ',format=yuv420p', '-fps_mode', 'vfr', ...v, ...audio, ...tail], job,
+        { label: fmt === 'mp4' ? 'Converting to MP4' : 'Converting to WebM', dur: s2.dur || S.meta.duration });
+      data = await ffRead(ff, out);
+      engine = 'compat';
+    } finally { await ffDelete(ff, out); await inp.cleanup(); }
+  }
+  if (!data || !data.length) throw new UserError('The converted file came out empty.');
+  const type = fmt === 'mp4' ? 'video/mp4' : 'video/webm';
+  showResult({
+    tool: 'convert', blob: new Blob([data], { type }), name: outName(fmt), type, kind: 'video',
+    title: fmt === 'mp4' ? 'Your MP4' : 'Your WebM', dlLabel: 'Download ' + (fmt === 'mp4' ? 'MP4' : 'WebM'), engine, notes: job.notes, compare: true,
+  });
+}
+
+/* ======================================================================
+   Results
+   ====================================================================== */
+
+function slot(tool) { return document.querySelector(`#results > [data-result="${tool}"]`); }
+function clearResult(tool) {
+  const r = S.results[tool];
+  if (r && r.url) URL.revokeObjectURL(r.url);
+  S.results[tool] = null;
+  const s = slot(tool); if (s) s.textContent = '';
+}
+function clearAllResults() { for (const t of TOOL_IDS) clearResult(t); }
 
 function downloadBlobUrl(url, name) {
   const a = document.createElement('a');
   a.href = url;
   a.download = name;
+  document.body.append(a);
   a.click();
+  a.remove();
 }
 
+function showResult(r) {
+  const tool = r.tool;
+  clearResult(tool);
+  const url = URL.createObjectURL(r.blob);
+  const file = new File([r.blob], r.name, { type: r.type });
+  S.results[tool] = { url, file, name: r.name };
+
+  const dl = el('button', { class: 'btn btn-sm btn-download', type: 'button' }, [icon('download-simple'), ' ' + r.dlLabel]);
+  dl.addEventListener('click', () => downloadBlobUrl(url, r.name));
+  const head = el('div', { class: 'result-head' }, [el('h2', { text: r.title }), dl]);
+  const body = el('div', { class: 'result-body' });
+
+  const src = S.file ? S.file.size : 0;
+  const cmp = el('div', { class: 'size-compare' }, [fmtSize(src), ' ', icon('arrow-right'), ' ', fmtSize(r.blob.size)]);
+  if (src && r.kind !== 'audio') {
+    const delta = Math.round((1 - r.blob.size / src) * 100);
+    cmp.append(' ', el('span', { class: delta >= 0 ? 'saved' : 'grew', text: (delta >= 0 ? '-' : '+') + Math.abs(delta) + '%' }));
+  }
+  body.append(cmp);
+
+  const meta = el('div', { class: 'vc-meta' });
+  const nameSpan = el('span', { class: 'vc-outname', text: r.name });
+  meta.append(nameSpan);
+  const dimSpan = el('span', { class: 'vc-outdims' });
+  if (r.dims) dimSpan.textContent = `${r.dims.w} × ${r.dims.h}`;
+  meta.append(dimSpan);
+  const durSpan = el('span', { class: 'vc-outdur' });
+  meta.append(durSpan);
+  if (r.engine) {
+    meta.append(r.engine === 'fast'
+      ? el('span', { class: 'pill pill-accent vc-engine', 'data-engine': 'fast' }, [icon('lightning'), ' Fast engine (your device\'s video encoder)'])
+      : el('span', { class: 'pill vc-engine', 'data-engine': 'compat' }, [icon('wrench'), ' Compatibility engine']));
+  }
+  body.append(meta);
+
+  if (r.target) {
+    const t = r.target;
+    const text = t.ok
+      ? `${fmtSize(r.blob.size)}, under the ${t.mb} MB target (${Math.abs(t.pct)}% below).`
+      : `${fmtSize(r.blob.size)}, ${t.pct}% over the ${t.mb} MB target. Try a lower resolution, a shorter part, or Remove audio.`;
+    body.append(msgBox(t.ok ? 'success' : 'warning', t.ok ? 'check-circle' : 'warning', text));
+    body.lastChild.classList.add('vc-target');
+    body.lastChild.dataset.ok = t.ok ? '1' : '0';
+  }
+  for (const [k, text] of r.notes || []) body.append(msgBox(k, 'info', text));
+
+  let preview;
+  if (r.kind === 'image') preview = el('img', { class: 'result-preview', src: url, alt: 'Preview of the GIF' });
+  else if (r.kind === 'audio') preview = el('audio', { class: 'result-preview', src: url, controls: true, preload: 'metadata' });
+  else preview = el('video', { class: 'result-preview', src: url, controls: true, playsinline: true, preload: 'metadata' });
+  if (r.kind !== 'image') {
+    preview.addEventListener('loadedmetadata', async () => {
+      if (r.kind === 'video' && preview.videoWidth) dimSpan.textContent = `${preview.videoWidth} × ${preview.videoHeight}`;
+      const d = await resolveDuration(preview);
+      if (d) durSpan.textContent = fmtTime(d);
+    }, { once: true });
+  } else if (r.duration) durSpan.textContent = fmtTime(r.duration);
+  body.append(preview);
+
+  const box = el('div', { class: 'result' }, [head, body]);
+  const s = slot(tool);
+  s.textContent = '';
+  s.append(box);
+  tfe('continueWith', body, file);
+  tfe('setDirty', true);
+  if (hasTFE() && typeof TFE.revealResult === 'function') tfe('revealResult', box);
+  else { try { box.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
+  announce(`${r.title} is ready, ${fmtSize(r.blob.size)}.`);
+}
+
+function showError(tool, e) {
+  const s = slot(tool);
+  s.textContent = '';
+  const msg = e instanceof UserError ? e.message : ('Something went wrong: ' + (e && e.message ? e.message : String(e)));
+  const box = msgBox('error', 'warning-circle', msg);
+  s.append(box);
+  const detail = e instanceof UserError ? e.detail : (e && e.stack ? String(e.stack).split('\n').slice(0, 6).join('\n') : '');
+  if (detail) {
+    const d = el('details', { class: 'vc-details' }, [el('summary', { text: 'Technical details' }), el('pre', { text: detail })]);
+    s.append(d);
+  }
+  announce(msg);
+}
+function showCancelled(tool) {
+  const s = slot(tool);
+  s.textContent = '';
+  s.append(msgBox('info', 'info', 'Cancelled. Your settings and video are still here.'));
+  announce('Cancelled.');
+}
+
+/* ======================================================================
+   Start-up
+   ====================================================================== */
+
 initToolList();
-renderTool();
+initClipControls();
+$('settingsBody').addEventListener('input', onSettingsInput);
+$('settingsBody').addEventListener('change', onSettingsChange);
+selectTool(currentTool, { fromHash: true });
+refreshEngineStatus();
+refreshFastStatus().then(refreshSettings).catch(() => {});
+pruneOldCaches();
+$('engineRemove').addEventListener('click', e => removeSavedEngine(e.currentTarget));
+$('forceCompat').addEventListener('change', () => { refreshSettings(); engineSummary && engineSummary.update && engineSummary.update(); });
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!hasTFE()) {
+    window.addEventListener('hashchange', () => {
+      const h = location.hash.slice(1);
+      if (TOOL_IDS.includes(h) && h !== currentTool) selectTool(h, { fromHash: true });
+    });
+    document.title = `${toolById(currentTool).name} - Video Converter | Tools for Everyone`;
+    return;
+  }
+  // Settings restore and summaries need the shell.
+  const p = prefs();
+  if (p && typeof p.bindForm === 'function') {
+    try { p.bindForm($('settingsBody'), { onRestore: refreshSettings }); } catch (e) {}
+    try { p.bindForm($('enginePanel')); } catch (e) {}
+  }
+  try { summaryHandle = TFE.panelSummary ? TFE.panelSummary($('settingsPanel'), settingsSummary) : null; } catch (e) {}
+  try {
+    engineSummary = TFE.panelSummary ? TFE.panelSummary($('enginePanel'), () =>
+      ($('forceCompat').checked ? 'Compatibility only' : 'Automatic') + ($('engineRemove').classList.contains('hidden') ? '' : ', saved')) : null;
+  } catch (e) {}
+  if (TFE.subtool) {
+    tfe('subtool.set', currentTool, toolById(currentTool).name);
+    tfe('subtool.onChange', id => { if (TOOL_IDS.includes(id) && id !== currentTool) selectTool(id, { fromHash: true }); });
+  }
+  try {
+    const files = TFE.handoff && TFE.handoff.take ? await TFE.handoff.take() : null;
+    if (files && files.length) intake(files);
+  } catch (e) {}
+});
+
+// Hooks for the automated tests; harmless for people.
+window.__vc = {
+  state: S,
+  selection,
+  resetEngine({ dropMemory } = {}) { terminateFFmpeg(); if (dropMemory) { engineURLs = null; encoderInfo = null; } },
+  engineCacheName: ENGINE_CACHE,
+  wasmURL: CORE_WASM.url,
+  intake,
+  outDims,
+  getFFmpeg: () => getFFmpeg(),
+  setLogSink: fn => { ffLogSink = fn; },
+};
 </script>
 <script src="../assets/app.js" defer></script>
 </body>
