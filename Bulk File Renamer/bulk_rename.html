@@ -28,8 +28,123 @@
 </script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <link rel="stylesheet" href="../assets/theme.css">
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
+  .tool-layout.renamer-layout { grid-template-columns: 320px 1fr; }
+  @media (min-width: 901px) {
+    .renamer-layout .tool-controls {
+      max-height: calc(100vh - 88px);
+      overflow-y: auto;
+      padding: 2px 6px 16px 2px;
+      margin: -2px -6px 0 -2px;
+      scrollbar-width: thin;
+    }
+  }
+  @media (max-width: 900px) {
+    .tool-layout.renamer-layout { grid-template-columns: 1fr; }
+  }
+
+  /* Steps */
+  .steps-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+  .steps-head h2 { margin: 0; font-size: 1rem; }
+  .steps-sum-text { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .steps-sum-text #stepsSummary { font-weight: 400; color: var(--text-muted); font-size: 0.8125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .step-list { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .step-card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  .step-card.is-focused { border-color: var(--border-strong); }
+  .step-card.dragging { opacity: 0.5; }
+  .step-card.drop-before { box-shadow: 0 -3px 0 var(--accent); }
+  .step-card.drop-after { box-shadow: 0 3px 0 var(--accent); }
+  .step-head { display: flex; align-items: center; gap: 2px; padding: 2px 6px 2px 0; }
+  .drag-handle { cursor: grab; color: var(--text-faint); display: flex; align-items: center; justify-content: center; width: 24px; align-self: stretch; }
+  .drag-handle:active { cursor: grabbing; }
+  .step-toggle {
+    flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px;
+    background: none; border: 0; padding: 8px 4px; margin: 0;
+    font: inherit; color: var(--text); text-align: left; cursor: pointer; border-radius: 6px;
+  }
+  .step-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .step-num {
+    width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+    display: grid; place-items: center;
+    background: var(--surface-2); color: var(--text-muted);
+    font-size: 0.75rem; font-weight: 500; font-variant-numeric: tabular-nums;
+  }
+  .step-card.is-focused .step-num { background: var(--accent-tint); color: var(--accent); }
+  .step-text { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .step-name { font-size: 0.875rem; font-weight: 500; display: flex; gap: 6px; align-items: center; }
+  .step-name .ph { color: var(--text-muted); }
+  .step-sum { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .step-toggle .caret { margin-left: auto; color: var(--text-muted); flex-shrink: 0; }
+  .step-card.is-open .step-toggle .caret { transform: rotate(180deg); }
+  .step-card.is-off .step-name, .step-card.is-off .step-num { color: var(--text-faint); }
+  .step-card.is-off .step-sum::before { content: 'Off \00b7  '; }
+  .step-body { padding: 2px 12px 10px; border-top: 1px solid var(--border); }
+  .step-body > .step-desc { margin: 10px 0 12px; }
+  .step-status { margin: -4px 0 12px; color: var(--text-muted); font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+  .step-status:empty { display: none; }
+  .step-status .bad { color: var(--danger); display: flex; gap: 6px; align-items: flex-start; }
+  .step-status .bad .ph { margin-top: 2px; }
+  .step-tools { display: flex; gap: 2px; justify-content: flex-end; border-top: 1px solid var(--border); padding-top: 8px; margin-top: 4px; }
+  .step-btn, .row-rm {
+    width: 32px; height: 32px; display: inline-grid; place-items: center;
+    border: 0; background: none; color: var(--text-muted);
+    border-radius: 6px; cursor: pointer; font-size: 1rem; padding: 0;
+  }
+  .step-btn:hover, .row-rm:hover { background: var(--surface-2); color: var(--text); }
+  .step-btn.danger:hover, .row-rm:hover { color: var(--danger); background: var(--danger-tint); }
+  .step-btn:disabled { opacity: 0.35; cursor: default; background: none; color: var(--text-muted); }
+  .step-btn:focus-visible, .row-rm:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .step-fields .form-group:last-child { margin-bottom: 14px; }
+  .step-fields .checkbox-label { margin-bottom: 12px; }
+  .step-fields .field-hint { margin-top: 4px; }
+  .regex-input { font-family: var(--font-mono); }
+  .field-label { display: block; font-size: 0.8125rem; font-weight: 500; color: var(--text-muted); margin-bottom: 5px; }
+  input[aria-invalid="true"] { border-color: var(--danger); }
+
+  .switch { position: relative; display: inline-flex; align-items: center; justify-content: center; margin: 0; cursor: pointer; padding: 6px 4px; flex-shrink: 0; }
+  .switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+  .switch-track { width: 32px; height: 18px; border-radius: 9px; background: var(--border-strong); position: relative; }
+  .switch-track::after {
+    content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
+    border-radius: 50%; background: var(--surface);
+  }
+  .switch input:checked + .switch-track { background: var(--accent); }
+  .switch input:checked + .switch-track::after { transform: translateX(14px); background: var(--on-accent); }
+  .switch input:focus-visible + .switch-track { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: no-preference) {
+    .switch-track, .switch-track::after, .step-toggle .caret { transition: transform 160ms var(--ease), background-color 160ms var(--ease); }
+  }
+
+  .add-step-menu {
+    margin-top: 6px; padding: 4px;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); box-shadow: var(--shadow);
+  }
+  .add-step-menu button {
+    display: flex; gap: 10px; width: 100%; align-items: center;
+    padding: 8px 10px; border: 0; background: none;
+    font: inherit; font-size: 0.875rem; color: var(--text);
+    border-radius: 6px; cursor: pointer; text-align: left;
+  }
+  .add-step-menu button .ph { color: var(--text-muted); font-size: 1.0625rem; }
+  .add-step-menu button:hover, .add-step-menu button:focus-visible { background: var(--surface-2); outline: none; }
+  .add-step-menu .menu-label { font-size: 0.75rem; color: var(--text-muted); padding: 8px 10px 2px; margin: 4px 0 0; border-top: 1px solid var(--border); }
+
+  /* Sources */
+  .folder-row { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; margin: 12px 0 0; }
+  .folder-row .checkbox-label { margin: 0; }
+  .list-bar { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; margin: 16px 0; }
+  .list-bar #listInfo { font-variant-numeric: tabular-nums; }
+  .list-bar.hidden, .folder-row.hidden, .method-note.hidden, .example-tag.hidden { display: none; }
+
+  /* Preview */
+  #previewSection { margin-top: 20px; }
+  #previewSection .result-head { gap: 10px; flex-wrap: wrap; }
+  #previewStats { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .example-tag {
+    font-size: 0.75rem; font-weight: 500; padding: 2px 8px; border-radius: 999px;
+    background: var(--accent-tint); color: var(--accent);
+  }
   .preview-wrap { overflow-x: auto; }
   .preview-table { width: 100%; border-collapse: collapse; }
   .preview-table th {
@@ -38,16 +153,46 @@
     font-size: 0.75rem; font-weight: 500; color: var(--text-muted);
   }
   .preview-table td {
-    padding: 8px 10px; border-bottom: 1px solid var(--border);
+    padding: 7px 10px; border-bottom: 1px solid var(--border);
     font-family: var(--font-mono); font-size: 0.8125rem;
-    white-space: nowrap;
+    white-space: nowrap; vertical-align: top;
   }
   .preview-table tr:last-child td { border-bottom: none; }
-  .preview-table .icon-cell { width: 1.5rem; color: var(--text-faint); }
-  .changed { color: var(--text); }
-  .unchanged { color: var(--text-muted); }
-  .dup-warn { color: var(--danger); font-size: 0.75rem; }
-  .regex-input { font-family: var(--font-mono); }
+  .preview-table .num-col { width: 2.5rem; text-align: right; color: var(--text-faint); font-family: var(--font-sans); font-variant-numeric: tabular-nums; padding-right: 4px; }
+  .preview-table .icon-cell { width: 1.25rem; color: var(--text-faint); padding-left: 0; padding-right: 0; }
+  .preview-table .rm-col { width: 36px; padding: 2px 0; text-align: right; }
+  .preview-table .old { color: var(--text-muted); }
+  .preview-table tr.same .new { color: var(--text-muted); }
+  .preview-table del { text-decoration: line-through; color: var(--danger); background: var(--danger-tint); border-radius: 2px; }
+  .preview-table ins { text-decoration: none; color: var(--success); background: var(--success-tint); border-radius: 2px; }
+  .preview-table .dir-part { color: var(--text-faint); }
+  .preview-table tr.has-problem td { background: var(--danger-tint); }
+  .row-problem { font-family: var(--font-sans); font-size: 0.75rem; color: var(--danger); white-space: normal; margin-top: 3px; display: flex; gap: 5px; align-items: flex-start; }
+  .row-problem .ph { margin-top: 2px; }
+  .problem-box .error-msg { align-items: flex-start; }
+  .problem-box .fix-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .problem-box .only-problems { margin: 10px 0 0; }
+  #previewMore:empty, #exampleNote.hidden { display: none; }
+
+  /* Output */
+  .output { margin-top: 24px; }
+  .output h2 { font-size: 1rem; margin-bottom: 10px; }
+  .method-note { margin: 12px 0 14px; }
+  .method-note p { margin: 0 0 8px; }
+  .method-note .form-group { max-width: 360px; margin-bottom: 0; }
+  #actionReason { font-size: 0.8125rem; }
+  #packProgress:not(:empty) { margin-top: 14px; }
+  #outputResult:not(:empty) { margin-top: 14px; }
+  #outputResult .notes { margin: 8px 0 0; padding-left: 18px; font-size: 0.8125rem; }
+  #outputResult .result-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+  @media (pointer: coarse) {
+    .step-btn, .row-rm { width: 44px; height: 44px; }
+    .drag-handle { width: 32px; min-height: 44px; }
+    .switch { min-width: 44px; min-height: 44px; }
+    .step-toggle { min-height: 44px; }
+    .add-step-menu button { min-height: 44px; }
+  }
 </style>
 </head>
 <body data-sw-path="../sw.js">
@@ -61,172 +206,97 @@
   </div>
 </header>
 
-<div class="tool-layout has-subtool-nav">
-  <nav class="subtool-nav" id="toolList" aria-label="Renaming rules">
-    <button class="tool-item active" type="button" onclick="selectTool('find_replace')"><i class="ph ph-magnifying-glass" aria-hidden="true"></i> Find and replace</button>
-    <button class="tool-item" type="button" onclick="selectTool('regex')"><i class="ph ph-brackets-curly" aria-hidden="true"></i> Regex pattern</button>
-    <button class="tool-item" type="button" onclick="selectTool('prefix_suffix')"><i class="ph ph-text-indent" aria-hidden="true"></i> Prefix or suffix</button>
-    <button class="tool-item" type="button" onclick="selectTool('numbering')"><i class="ph ph-list-numbers" aria-hidden="true"></i> Numbering</button>
-    <button class="tool-item" type="button" onclick="selectTool('date_stamp')"><i class="ph ph-calendar-blank" aria-hidden="true"></i> Date stamp</button>
-    <button class="tool-item" type="button" onclick="selectTool('case')"><i class="ph ph-text-aa" aria-hidden="true"></i> Letter case</button>
-    <button class="tool-item" type="button" onclick="selectTool('extension')"><i class="ph ph-wrench" aria-hidden="true"></i> Extension</button>
-    <button class="tool-item" type="button" onclick="selectTool('trim')"><i class="ph ph-scissors" aria-hidden="true"></i> Trim and clean</button>
-  </nav>
+<div class="tool-layout renamer-layout">
+  <aside class="tool-controls" aria-label="Renaming steps">
+    <details class="panel steps-panel" id="stepsPanel" data-mobile-collapsed open>
+      <summary>
+        <span class="steps-sum-text"><i class="ph ph-list-checks" aria-hidden="true"></i> <span>Steps</span> <span id="stepsSummary"></span></span>
+        <i class="ph ph-caret-down caret" aria-hidden="true"></i>
+      </summary>
+      <div class="steps-body">
+        <div class="steps-head">
+          <h2 id="stepsTitle">Steps</h2>
+          <span class="muted xsmall">Run from top to bottom</span>
+        </div>
+        <ol class="step-list" id="stepList" aria-labelledby="stepsTitle"></ol>
+        <div class="add-step">
+          <button class="btn full-width" type="button" id="addStepBtn" aria-haspopup="true" aria-expanded="false" aria-controls="addStepMenu"><i class="ph ph-plus" aria-hidden="true"></i> Add a step</button>
+          <div class="add-step-menu hidden" id="addStepMenu" role="menu" aria-label="Choose what the step does"></div>
+        </div>
+      </div>
+    </details>
+  </aside>
 
-  <main class="tool-main">
-    <p class="tool-intro">Rename many files at once with patterns, numbering, dates, and regex. Nothing is uploaded.</p>
+  <main class="tool-main" id="main">
+    <p class="tool-intro">Rename many files at once with patterns, numbering, dates, and regex. Stack as many steps as you need and check every new name before anything happens.</p>
 
-    <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="Choose files to rename" onclick="document.getElementById('fileInput').click()">
+    <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="Choose files to rename">
       <i class="ph ph-upload-simple" aria-hidden="true"></i>
-      <p class="dz-title">Drop files here or browse</p>
-      <p class="dz-hint">Any file type, any number of files</p>
-      <input type="file" id="fileInput" multiple>
+      <p class="dz-title" id="dzTitle">Drop files here or browse</p>
+      <p class="dz-hint" id="dzHint">Any file type, any number of files</p>
+      <input type="file" id="fileInput" multiple data-no-remember>
     </div>
 
-    <div id="fileCount"></div>
-
-    <div id="rulePanel">
-      <div class="rule-section" id="rule-find_replace">
-        <h2>Find and replace</h2>
-        <p class="muted small mb-3">Swap one piece of text for another in every filename.</p>
-        <div class="form-row">
-          <div class="form-group"><label for="findText">Find</label><input type="text" id="findText" oninput="updatePreview()"></div>
-          <div class="form-group"><label for="replaceText">Replace with</label><input type="text" id="replaceText" oninput="updatePreview()"></div>
-        </div>
-        <label class="checkbox-label"><input type="checkbox" id="findCase" checked onchange="updatePreview()"><span>Match upper and lower case exactly</span></label>
-      </div>
-
-      <div class="rule-section" id="rule-regex" style="display:none;">
-        <h2>Regex pattern</h2>
-        <p class="muted small mb-3">Apply a regular expression to the part of the name before the extension.</p>
-        <div class="form-row">
-          <div class="form-group"><label for="regexPattern">Pattern</label><input type="text" class="regex-input" id="regexPattern" placeholder="(\d+)" oninput="updatePreview()"></div>
-          <div class="form-group"><label for="regexReplace">Replacement</label><input type="text" class="regex-input" id="regexReplace" placeholder="NUM_$1" oninput="updatePreview()"></div>
-        </div>
-        <label class="checkbox-label"><input type="checkbox" id="regexIgnoreCase" onchange="updatePreview()"><span>Ignore case</span></label>
-      </div>
-
-      <div class="rule-section" id="rule-prefix_suffix" style="display:none;">
-        <h2>Prefix or suffix</h2>
-        <p class="muted small mb-3">Add text before or after the name, leaving the extension alone.</p>
-        <div class="form-row">
-          <div class="form-group"><label for="prefixText">Prefix</label><input type="text" id="prefixText" oninput="updatePreview()"></div>
-          <div class="form-group"><label for="suffixText">Suffix, before the extension</label><input type="text" id="suffixText" oninput="updatePreview()"></div>
-        </div>
-      </div>
-
-      <div class="rule-section" id="rule-numbering" style="display:none;">
-        <h2>Numbering</h2>
-        <p class="muted small mb-3">Number the files in the order you chose them.</p>
-        <div class="form-row">
-          <div class="form-group"><label for="seqStart">Start at</label><input type="number" id="seqStart" value="1" oninput="updatePreview()"></div>
-          <div class="form-group"><label for="seqStep">Step</label><input type="number" id="seqStep" value="1" min="1" oninput="updatePreview()"></div>
-          <div class="form-group"><label for="seqPad">Zero-pad width</label><input type="number" id="seqPad" value="3" min="1" max="10" oninput="updatePreview()"></div>
-        </div>
-        <div class="form-group">
-          <label>Position</label>
-          <div class="radio-group">
-            <label><input type="radio" name="seqPos" value="Prefix" checked onchange="updatePreview()"><span>Before the name</span></label>
-            <label><input type="radio" name="seqPos" value="Suffix" onchange="updatePreview()"><span>After the name</span></label>
-          </div>
-        </div>
-        <div class="form-group"><label for="seqSep">Separator</label><input type="text" id="seqSep" value="_" oninput="updatePreview()"></div>
-        <label class="checkbox-label"><input type="checkbox" id="seqReplace" onchange="updatePreview()"><span>Replace the whole name with the number</span></label>
-      </div>
-
-      <div class="rule-section" id="rule-date_stamp" style="display:none;">
-        <h2>Date stamp</h2>
-        <p class="muted small mb-3">Add a date or a timestamp to every filename.</p>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="dateFormat">Date format</label>
-            <select id="dateFormat" onchange="updatePreview()">
-              <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-              <option value="YYYYMMDD">YYYYMMDD</option>
-              <option value="DD-MM-YYYY">DD-MM-YYYY</option>
-              <option value="MM-DD-YYYY">MM-DD-YYYY</option>
-              <option value="YYYY-MM-DD_HH-mm-ss">YYYY-MM-DD_HH-mm-ss</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Position</label>
-            <div class="radio-group">
-              <label><input type="radio" name="datePos" value="Prefix" checked onchange="updatePreview()"><span>Before the name</span></label>
-              <label><input type="radio" name="datePos" value="Suffix" onchange="updatePreview()"><span>After the name</span></label>
-            </div>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label for="dateSep">Separator</label><input type="text" id="dateSep" value="_" oninput="updatePreview()"></div>
-          <div class="form-group"><label for="dateValue">Date</label><input type="date" id="dateValue" oninput="updatePreview()"></div>
-        </div>
-      </div>
-
-      <div class="rule-section" id="rule-case" style="display:none;">
-        <h2>Letter case</h2>
-        <p class="muted small mb-3">Change how the letters in each filename are capitalised.</p>
-        <div class="form-group">
-          <label for="caseMode">Convert to</label>
-          <select id="caseMode" onchange="updatePreview()">
-            <option value="lowercase">lowercase</option>
-            <option value="UPPERCASE">UPPERCASE</option>
-            <option value="Title Case">Title Case</option>
-            <option value="snake_case">snake_case</option>
-            <option value="camelCase">camelCase</option>
-            <option value="kebab-case">kebab-case</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="rule-section" id="rule-extension" style="display:none;">
-        <h2>Extension</h2>
-        <p class="muted small mb-3">Change, remove, or add a file extension.</p>
-        <div class="form-group">
-          <label>Action</label>
-          <div class="radio-group">
-            <label><input type="radio" name="extMode" value="change" checked onchange="updatePreview()"><span>Change</span></label>
-            <label><input type="radio" name="extMode" value="remove" onchange="updatePreview()"><span>Remove</span></label>
-            <label><input type="radio" name="extMode" value="add" onchange="updatePreview()"><span>Add another</span></label>
-          </div>
-        </div>
-        <div class="form-group"><label for="newExt">New or extra extension</label><input type="text" id="newExt" placeholder=".txt" oninput="updatePreview()"></div>
-      </div>
-
-      <div class="rule-section" id="rule-trim" style="display:none;">
-        <h2>Trim and clean</h2>
-        <p class="muted small mb-3">Cut characters, replace spaces, and tidy up messy filenames.</p>
-        <div class="form-row">
-          <div class="form-group"><label for="trimStart">Remove first characters</label><input type="number" id="trimStart" value="0" min="0" oninput="updatePreview()"></div>
-          <div class="form-group"><label for="trimEnd">Remove last characters</label><input type="number" id="trimEnd" value="0" min="0" oninput="updatePreview()"></div>
-        </div>
-        <div class="form-group">
-          <label for="spaceReplace">Replace spaces with</label>
-          <select id="spaceReplace" onchange="updatePreview()">
-            <option value="">Leave spaces alone</option>
-            <option value="_">Underscore</option>
-            <option value="-">Hyphen</option>
-            <option value=".">Full stop</option>
-            <option value="remove">Nothing, just remove them</option>
-          </select>
-        </div>
-        <label class="checkbox-label"><input type="checkbox" id="stripSpecial" onchange="updatePreview()"><span>Strip special characters, keeping letters, numbers, underscore, hyphen and full stop</span></label>
-      </div>
+    <div class="folder-row hidden" id="folderRow">
+      <button class="btn btn-sm" type="button" id="openFolderBtn"><i class="ph ph-folder-open" aria-hidden="true"></i> Open a folder</button>
+      <label class="checkbox-label"><input type="checkbox" id="includeSub" data-no-remember><span>Include subfolders</span></label>
+      <span class="muted small">Renames the files where they are, without copies.</span>
     </div>
 
-    <div id="downloadRow">
-      <button class="btn btn-primary" type="button" onclick="downloadZip(this)"><i class="ph ph-package" aria-hidden="true"></i> Download renamed files as ZIP</button>
+    <div class="list-bar hidden" id="listBar">
+      <span id="listInfo"></span>
+      <button class="btn btn-sm" type="button" id="startOverBtn"><i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i> Start over</button>
     </div>
 
-    <div id="previewSection" class="result" style="display:none;">
+    <section class="result" id="previewSection" aria-labelledby="previewTitle">
       <div class="result-head">
-        <h2>Preview</h2>
+        <h2 id="previewTitle">Preview</h2>
+        <span class="example-tag" id="exampleTag">Example</span>
         <span id="previewStats" class="muted small"></span>
       </div>
       <div class="result-body">
-        <div id="previewWarning"></div>
+        <p id="exampleNote" class="muted small">These are made-up example names, so you can see what the steps do. Add your files to see their new names.</p>
+        <div id="problemBox" class="problem-box"></div>
         <div class="preview-wrap" id="previewContent"></div>
+        <p id="previewMore" class="muted small mt-3 mb-0"></p>
       </div>
-    </div>
+    </section>
+
+    <section class="output hidden" id="outputSection" aria-labelledby="outTitle">
+      <h2 id="outTitle">Apply the new names</h2>
+      <div class="radio-group" role="radiogroup" aria-labelledby="outTitle" id="methodGroup">
+        <label><input type="radio" name="outMethod" value="zip" checked data-no-remember><span>ZIP of copies</span></label>
+        <label><input type="radio" name="outMethod" value="script" data-no-remember><span>Rename script</span></label>
+        <label id="inplaceChoice" class="hidden"><input type="radio" name="outMethod" value="inplace" data-no-remember><span>Rename in place</span></label>
+      </div>
+
+      <div class="method-note" id="noteZip">
+        <p>Your original files are not changed. You get a ZIP of renamed copies, and each copy keeps its file date.</p>
+      </div>
+      <div class="method-note hidden" id="noteScript">
+        <p>Nothing is copied, so this works for 50 GB of video as well as for ten photos. Save the script in the folder that holds the files and run it there. It skips missing files, never renames over another file, and comes with an undo script.</p>
+        <div class="form-group">
+          <label for="scriptKind">Script for</label>
+          <select id="scriptKind" data-no-remember>
+            <option value="ps1">Windows PowerShell (.ps1)</option>
+            <option value="bat">Windows Command Prompt (.bat)</option>
+            <option value="sh">macOS and Linux (.sh)</option>
+          </select>
+        </div>
+      </div>
+      <div class="method-note hidden" id="noteInplace">
+        <p id="inplaceText">Renames the files directly in the folder you open. Nothing is copied, and you can undo it straight after.</p>
+      </div>
+      <p class="muted small hidden" id="inplaceUnsupported">Renaming the files in place works in Chrome and Edge on a computer. In this browser, use the ZIP or a rename script.</p>
+
+      <div class="action-bar" id="actionBar">
+        <button class="btn btn-primary" type="button" id="primaryBtn"></button>
+        <button class="btn hidden" type="button" id="undoScriptBtn"><i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i> Download undo script</button>
+        <span class="muted" id="actionReason"></span>
+      </div>
+      <div id="packProgress"></div>
+      <div id="outputResult" aria-live="polite"></div>
+    </section>
   </main>
 </div>
 
@@ -236,290 +306,1108 @@
   <button class="link-btn" type="button" onclick="sharePage()">Share</button>
 </footer>
 
+<script src="renamer-core.js"></script>
 <script>
-let uploadedFiles = [];
-let currentTool = 'find_replace';
+(function () {
+'use strict';
 
-// File handling
-const dropZone = document.getElementById('dropZone');
-const fileInput = document.getElementById('fileInput');
+const C = window.RenamerCore;
+const $ = id => document.getElementById(id);
+const JSZIP_URL = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
+const MAX_ROWS = 500;
+const RULE_IDS = C.RULE_IDS;
 
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
-fileInput.addEventListener('change', e => handleFiles(e.target.files));
+/* ---------- State ---------- */
 
-function fmtSize(bytes) {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+let items = [];           // { id, file, name, dir, size, lastModified, handle?, dirHandle? }
+let itemSeq = 0;
+let steps = [];           // { id, type, enabled, open, opts }
+let stepSeq = 0;
+let focusedId = null;
+let method = 'zip';
+let scriptKind = /Win/i.test(navigator.platform || navigator.userAgent) ? 'ps1' : 'sh';
+let stampClock = new Date();
+let folder = null;        // { handle, name }
+let undoLog = null;
+let onlyProblems = false;
+let lastRun = null;
+let busy = false;
+let dragId = null, dropTarget = null;
+let previewTimer = 0;
+const scriptToken = C.makeToken();
+
+const canRenameInPlace = typeof window.showDirectoryPicker === 'function'
+  && typeof window.FileSystemFileHandle === 'function'
+  && 'move' in FileSystemFileHandle.prototype;
+
+const EX_TIME = new Date(2024, 6, 14, 9, 30, 12).getTime();
+const EXAMPLE = ['IMG_0001.JPG', 'IMG_0002.JPG', 'Holiday photo.jpeg', 'myHolidayPhoto.png', 'Scan 2024-03-01.pdf']
+  .map((name, i) => ({ id: 'ex' + i, name, dir: '', size: 0, lastModified: EX_TIME + i * 3600000 }));
+
+/* ---------- Small helpers ---------- */
+
+function esc(str) {
+  return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
+function fmtBytes(n) {
+  if (window.TFE && TFE.formatBytes) return TFE.formatBytes(n);
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+  if (n < 1024 * 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + ' MB';
+  return (n / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+}
+function toast(msg, kind, opts) { if (window.showToast) window.showToast(msg, kind, opts); }
+function announce(text) { if (window.TFE && TFE.announce) TFE.announce(text); }
+function setDirty(v) { if (window.TFE && TFE.setDirty) TFE.setDirty(v); }
+function startJob(label) {
+  const done = window.TFE && TFE.job ? TFE.job(label) : null;
+  let closed = false;
+  return () => { if (!closed && typeof done === 'function') { closed = true; done(); } };
+}
+function prefs() {
+  try { return window.TFE && TFE.prefs ? TFE.prefs('renamer') : null; } catch (e) { return null; }
+}
+function reveal(el) {
+  if (window.TFE && TFE.revealResult) TFE.revealResult(el);
+  else if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
 }
 
-function handleFiles(files) {
-  uploadedFiles = Array.from(files);
-  let html = '<div class="file-list">';
-  for (const f of uploadedFiles.slice(0, 8)) {
-    html += `<div class="file-row"><span class="file-name">${escapeHTML(f.name)}</span><span class="file-size">${fmtSize(f.size)}</span></div>`;
+/* ---------- Steps: model ---------- */
+
+function newStep(type, opts, enabled) {
+  const R = C.RULES[type];
+  const base = R.defaults();
+  if (type === 'date_stamp') { base.date = ''; base.time = ''; }
+  return { id: 's' + (++stepSeq), type, enabled: enabled !== false, open: true, opts: Object.assign(base, opts || {}) };
+}
+function stepIndex(id) { return steps.findIndex(s => s.id === id); }
+function stepById(id) { return steps.find(s => s.id === id); }
+
+function saveSteps() {
+  const P = prefs();
+  if (!P) return;
+  try { P.set('steps', JSON.stringify(steps.map(s => ({ type: s.type, enabled: s.enabled, opts: s.opts })))); } catch (e) {}
+}
+function restoreSteps(raw) {
+  let list;
+  try { list = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { return false; }
+  if (!Array.isArray(list)) return false;
+  const restored = list.filter(s => s && C.RULES[s.type]).map(s => {
+    const st = newStep(s.type, s.opts && typeof s.opts === 'object' ? s.opts : {}, s.enabled !== false);
+    st.open = false;
+    return st;
+  });
+  if (!restored.length && list.length) return false;
+  steps = restored;
+  return true;
+}
+
+/* ---------- Steps: fields ---------- */
+
+const POS = [['Prefix', 'Before the name'], ['Suffix', 'After the name']];
+const FIELDS = {
+  find_replace: [
+    [{ k: 'find', t: 'text', l: 'Find' }, { k: 'replace', t: 'text', l: 'Replace with' }],
+    { k: 'matchCase', t: 'check', l: 'Match upper and lower case exactly' }
+  ],
+  regex: [
+    [{ k: 'pattern', t: 'text', l: 'Pattern', mono: true, ph: '(\\d+)', status: true }, { k: 'replacement', t: 'text', l: 'Replacement', mono: true, ph: 'NUM_$1' }],
+    { k: 'ignoreCase', t: 'check', l: 'Ignore case' }
+  ],
+  prefix_suffix: [
+    [{ k: 'prefix', t: 'text', l: 'Prefix' }, { k: 'suffix', t: 'text', l: 'Suffix, before the extension' }]
+  ],
+  numbering: [
+    [{ k: 'start', t: 'number', l: 'Start at' }, { k: 'step', t: 'number', l: 'Step', min: 1 }],
+    { k: 'pad', t: 'number', l: 'Zero-pad width', min: 0, max: 10, hint: '3 gives 001, 0 gives 1.' },
+    { k: 'position', t: 'radio', l: 'Position', opts: POS, show: o => !o.replaceAll },
+    { k: 'sep', t: 'text', l: 'Separator', show: o => !o.replaceAll },
+    { k: 'replaceAll', t: 'check', l: 'Replace the whole name with the number' }
+  ],
+  date_stamp: [
+    { k: 'source', t: 'select', l: 'Which date', opts: [['today', 'Today, right now'], ['file', "Each file's last modified date"], ['custom', 'A date I choose']] },
+    [{ k: 'date', t: 'date', l: 'Date', show: o => o.source === 'custom' }, { k: 'time', t: 'time', l: 'Time', show: o => o.source === 'custom' && C.formatHasTime(o.format) }],
+    { k: 'format', t: 'select', l: 'Date format', opts: C.DATE_FORMATS.map(f => [f, f]) },
+    { k: 'position', t: 'radio', l: 'Position', opts: POS },
+    { k: 'sep', t: 'text', l: 'Separator' }
+  ],
+  'case': [
+    { k: 'mode', t: 'select', l: 'Convert to', opts: ['lowercase', 'UPPERCASE', 'Title Case', 'snake_case', 'camelCase', 'kebab-case'].map(v => [v, v]) }
+  ],
+  extension: [
+    { k: 'mode', t: 'radio', l: 'Action', opts: [['change', 'Change'], ['remove', 'Remove'], ['add', 'Add another']] },
+    { k: 'ext', t: 'text', l: 'New or extra extension', ph: '.txt', show: o => o.mode !== 'remove' }
+  ],
+  trim: [
+    [{ k: 'start', t: 'number', l: 'Remove first characters', min: 0 }, { k: 'end', t: 'number', l: 'Remove last characters', min: 0 }],
+    { k: 'spaces', t: 'select', l: 'Replace spaces with', opts: [['', 'Leave spaces alone'], ['_', 'Underscore'], ['-', 'Hyphen'], ['.', 'Full stop'], ['remove', 'Nothing, just remove them']] },
+    { k: 'stripSpecial', t: 'check', l: 'Strip special characters, keeping letters, numbers, underscore, hyphen and full stop' }
+  ],
+  fix_illegal: [],
+  fix_dupes: []
+};
+
+function fieldValue(s, f) {
+  const v = s.opts[f.k];
+  if (f.t === 'date') return v || C.localDateString(new Date());
+  if (f.t === 'time') return v || '00:00:00';
+  return v == null ? '' : v;
+}
+
+function fieldHtml(s, f) {
+  const id = s.id + '-' + f.k;
+  const show = f.show ? ' data-show="1"' : '';
+  const hidden = f.show && !f.show(s.opts) ? ' hidden' : '';
+  if (f.t === 'check') {
+    return `<label class="checkbox-label" data-k="${f.k}"${show}${hidden}><input type="checkbox" id="${id}" data-k="${f.k}" data-no-remember${s.opts[f.k] ? ' checked' : ''}><span>${esc(f.l)}</span></label>`;
   }
-  if (uploadedFiles.length > 8) {
-    html += `<p class="muted xsmall">and ${uploadedFiles.length - 8} more, all listed in the preview below.</p>`;
+  if (f.t === 'radio') {
+    const opts = f.opts.map(([v, l]) => `<label><input type="radio" name="${id}" value="${esc(v)}" data-k="${f.k}" data-no-remember${s.opts[f.k] === v ? ' checked' : ''}><span>${esc(l)}</span></label>`).join('');
+    return `<div class="form-group" data-k="${f.k}"${show}${hidden}><span class="field-label" id="${id}-l">${esc(f.l)}</span><div class="radio-group" role="radiogroup" aria-labelledby="${id}-l">${opts}</div></div>`;
   }
-  html += '</div>';
-  document.getElementById('fileCount').innerHTML = html;
-  document.getElementById('previewSection').style.display = 'block';
+  let control;
+  const val = esc(fieldValue(s, f));
+  if (f.t === 'select') {
+    control = `<select id="${id}" data-k="${f.k}" data-no-remember>${f.opts.map(([v, l]) => `<option value="${esc(v)}"${String(s.opts[f.k]) === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+  } else {
+    const type = f.t === 'number' ? 'number' : f.t === 'date' ? 'date' : f.t === 'time' ? 'time' : 'text';
+    const extra = (f.min != null ? ` min="${f.min}"` : '') + (f.max != null ? ` max="${f.max}"` : '') + (f.t === 'time' ? ' step="1"' : '')
+      + (f.ph ? ` placeholder="${esc(f.ph)}"` : '') + (f.mono ? ' class="regex-input" spellcheck="false" autocomplete="off"' : ' autocomplete="off"')
+      + (f.status ? ` aria-describedby="${s.id}-status"` : '') + (f.hint ? ` aria-describedby="${id}-h"` : '');
+    control = `<input type="${type}" id="${id}" data-k="${f.k}" data-no-remember value="${val}"${extra}>`;
+  }
+  const hint = f.hint ? `<p class="muted xsmall field-hint" id="${id}-h">${esc(f.hint)}</p>` : '';
+  return `<div class="form-group" data-k="${f.k}"${show}${hidden}><label for="${id}">${esc(f.l)}</label>${control}${hint}</div>`;
+}
+
+function fieldsHtml(s) {
+  return (FIELDS[s.type] || []).map(row => Array.isArray(row)
+    ? `<div class="form-row">${row.map(f => fieldHtml(s, f)).join('')}</div>`
+    : fieldHtml(s, row)).join('');
+}
+
+function flatFields(type) {
+  const out = [];
+  (FIELDS[type] || []).forEach(r => Array.isArray(r) ? out.push(...r) : out.push(r));
+  return out;
+}
+
+function syncShown(li, s) {
+  flatFields(s.type).forEach(f => {
+    if (!f.show) return;
+    const el = li.querySelector(`.step-fields [data-k="${f.k}"][data-show]`);
+    if (el) el.hidden = !f.show(s.opts);
+  });
+}
+
+/* ---------- Steps: rendering ---------- */
+
+function stepCard(s, idx) {
+  const R = C.RULES[s.type];
+  const li = document.createElement('li');
+  li.className = 'step-card' + (s.enabled ? '' : ' is-off') + (s.open ? ' is-open' : '') + (s.id === focusedId ? ' is-focused' : '');
+  li.dataset.id = s.id;
+  const last = idx === steps.length - 1;
+  li.innerHTML = `
+    <div class="step-head">
+      <span class="drag-handle" title="Drag to reorder" aria-hidden="true"><i class="ph ph-dots-six-vertical"></i></span>
+      <button type="button" class="step-toggle" data-act="toggle" aria-expanded="${s.open}" aria-controls="${s.id}-body"${s.id === focusedId ? ' aria-current="true"' : ''} aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown">
+        <span class="step-num" aria-hidden="true">${idx + 1}</span>
+        <span class="step-text">
+          <span class="step-name"><i class="ph ph-${R.icon}" aria-hidden="true"></i> <span><span class="sr-only">Step ${idx + 1}: </span>${esc(R.label)}</span></span>
+          <span class="step-sum" id="${s.id}-sum">${esc(C.describeStep(s))}</span>
+        </span>
+        <i class="ph ph-caret-down caret" aria-hidden="true"></i>
+      </button>
+      <label class="switch" title="${s.enabled ? 'Step is on' : 'Step is off'}"><input type="checkbox" data-act="enable" data-no-remember${s.enabled ? ' checked' : ''} aria-label="Use step ${idx + 1}, ${esc(R.label)}"><span class="switch-track" aria-hidden="true"></span></label>
+    </div>
+    <div class="step-body" id="${s.id}-body"${s.open ? '' : ' hidden'}>
+      <p class="muted small step-desc">${esc(R.desc)}</p>
+      <div class="step-fields">${fieldsHtml(s)}</div>
+      <div class="step-status" id="${s.id}-status" aria-live="polite"></div>
+      <div class="step-tools">
+        <button type="button" class="step-btn" data-act="up" aria-label="Move step ${idx + 1} up" title="Move up (Alt+Up)"${idx === 0 ? ' disabled' : ''}><i class="ph ph-arrow-up" aria-hidden="true"></i></button>
+        <button type="button" class="step-btn" data-act="down" aria-label="Move step ${idx + 1} down" title="Move down (Alt+Down)"${last ? ' disabled' : ''}><i class="ph ph-arrow-down" aria-hidden="true"></i></button>
+        <button type="button" class="step-btn" data-act="dup" aria-label="Duplicate step ${idx + 1}" title="Duplicate"><i class="ph ph-copy" aria-hidden="true"></i></button>
+        <button type="button" class="step-btn danger" data-act="remove" aria-label="Remove step ${idx + 1}" title="Remove"><i class="ph ph-trash" aria-hidden="true"></i></button>
+      </div>
+    </div>`;
+  return li;
+}
+
+function renderSteps(focusSel) {
+  const list = $('stepList');
+  list.innerHTML = '';
+  if (!steps.length) {
+    list.innerHTML = '<li class="muted small" style="padding:4px 2px">No steps yet. Add one to start renaming.</li>';
+  }
+  steps.forEach((s, i) => list.appendChild(stepCard(s, i)));
+  if (focusSel) {
+    const el = list.querySelector(focusSel);
+    if (el) el.focus();
+  }
+  updateStepsSummary();
+}
+
+function stepsSummaryText() {
+  if (!steps.length) return 'No steps yet';
+  const on = steps.filter(s => s.enabled);
+  const names = on.map(s => C.RULES[s.type].label).join(', ');
+  const off = steps.length - on.length;
+  return plural(steps.length, 'step') + (names ? ' · ' + names : '') + (off ? ' (' + off + ' off)' : '');
+}
+let panelSummaryHandle = null;
+function updateStepsSummary() {
+  if (panelSummaryHandle && typeof panelSummaryHandle.update === 'function') { panelSummaryHandle.update(); return; }
+  if (!panelSummaryHandle) $('stepsSummary').textContent = '· ' + stepsSummaryText();
+}
+
+function setFocused(id, fromHash) {
+  focusedId = id;
+  document.querySelectorAll('#stepList .step-card').forEach(li => {
+    const on = li.dataset.id === id;
+    li.classList.toggle('is-focused', on);
+    const t = li.querySelector('.step-toggle');
+    if (on) t.setAttribute('aria-current', 'true'); else t.removeAttribute('aria-current');
+  });
+  const s = stepById(id);
+  if (s && !fromHash && RULE_IDS.includes(s.type) && window.TFE && TFE.subtool && TFE.subtool.set) {
+    try { TFE.subtool.set(s.type, C.RULES[s.type].label); } catch (e) {}
+  }
+}
+
+function setOpen(s, open) {
+  s.open = open;
+  const li = document.querySelector(`#stepList .step-card[data-id="${s.id}"]`);
+  if (!li) return;
+  li.classList.toggle('is-open', open);
+  li.querySelector('.step-toggle').setAttribute('aria-expanded', String(open));
+  li.querySelector('.step-body').hidden = !open;
+}
+
+function structureChanged(focusSel) {
+  renderSteps(focusSel);
+  saveSteps();
   updatePreview();
 }
 
-// Set today's date
-document.getElementById('dateValue').value = new Date().toISOString().slice(0, 10);
-
-// Tool selection
-function selectTool(tool) {
-  currentTool = tool;
-  document.querySelectorAll('.tool-item').forEach(el => el.classList.remove('active'));
-  event.target.closest('.tool-item').classList.add('active');
-  document.querySelectorAll('.rule-section').forEach(el => el.style.display = 'none');
-  document.getElementById('rule-' + tool).style.display = 'block';
-  updatePreview();
+function addStep(type, opts) {
+  steps.forEach(s => { s.open = false; });
+  const s = newStep(type, opts);
+  if (type === 'date_stamp' && !s.opts.time) s.opts.time = C.localTimeString(new Date());
+  // Fix-up steps run last, and names are made safe before duplicates are numbered.
+  const fixDupes = steps.findIndex(x => x.type === 'fix_dupes');
+  if (type !== 'fix_dupes' && C.RULES[type].fix && fixDupes >= 0) steps.splice(fixDupes, 0, s);
+  else if (!C.RULES[type].fix && steps.some(x => C.RULES[x.type].fix)) steps.splice(steps.findIndex(x => C.RULES[x.type].fix), 0, s);
+  else steps.push(s);
+  focusedId = s.id;
+  structureChanged(`.step-card[data-id="${s.id}"] .step-fields input, .step-card[data-id="${s.id}"] .step-fields select, .step-card[data-id="${s.id}"] .step-toggle`);
+  setFocused(s.id);
+  return s;
 }
 
-// Helpers
-function splitName(name) {
-  const lastDot = name.lastIndexOf('.');
-  if (lastDot <= 0) return [name, ''];
-  return [name.slice(0, lastDot), name.slice(lastDot)];
+function moveStep(id, delta) {
+  const i = stepIndex(id), j = i + delta;
+  if (i < 0 || j < 0 || j >= steps.length) return;
+  const [s] = steps.splice(i, 1);
+  steps.splice(j, 0, s);
+  structureChanged(`.step-card[data-id="${id}"] .step-toggle`);
+  announce(`${C.RULES[s.type].label} is now step ${j + 1} of ${steps.length}.`);
 }
 
-// Apply rules
-function applyRule(names) {
-  switch (currentTool) {
-    case 'find_replace': return applyFindReplace(names);
-    case 'regex': return applyRegex(names);
-    case 'prefix_suffix': return applyPrefixSuffix(names);
-    case 'numbering': return applyNumbering(names);
-    case 'date_stamp': return applyDateStamp(names);
-    case 'case': return applyCaseConversion(names);
-    case 'extension': return applyExtension(names);
-    case 'trim': return applyTrim(names);
-    default: return names;
-  }
+function moveStepTo(id, targetId, after) {
+  if (id === targetId) return;
+  const i = stepIndex(id);
+  if (i < 0) return;
+  const [s] = steps.splice(i, 1);
+  let t = stepIndex(targetId);
+  if (t < 0) { steps.splice(i, 0, s); return; }
+  steps.splice(after ? t + 1 : t, 0, s);
+  structureChanged(`.step-card[data-id="${id}"] .step-toggle`);
+  announce(`${C.RULES[s.type].label} is now step ${stepIndex(id) + 1} of ${steps.length}.`);
 }
 
-function applyFindReplace(names) {
-  const find = document.getElementById('findText').value;
-  const replace = document.getElementById('replaceText').value;
-  const caseSensitive = document.getElementById('findCase').checked;
-  return names.map(name => {
-    const [stem, ext] = splitName(name);
-    if (!find) return stem + ext;
-    let newStem;
-    if (caseSensitive) {
-      newStem = stem.split(find).join(replace);
-    } else {
-      newStem = stem.replace(new RegExp(find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), replace);
-    }
-    return newStem + ext;
+function removeStep(id) {
+  const i = stepIndex(id);
+  if (i < 0) return;
+  const [s] = steps.splice(i, 1);
+  if (focusedId === id) focusedId = steps[Math.min(i, steps.length - 1)] ? steps[Math.min(i, steps.length - 1)].id : null;
+  const next = steps[Math.min(i, steps.length - 1)];
+  structureChanged(next ? `.step-card[data-id="${next.id}"] .step-toggle` : '#addStepBtn');
+  if (!next) $('addStepBtn').focus();
+  if (focusedId) setFocused(focusedId);
+  toast(`Removed step ${i + 1}, ${C.RULES[s.type].label}.`, 'info', {
+    duration: 6000,
+    action: { label: 'Undo', onClick: () => { steps.splice(Math.min(i, steps.length), 0, s); focusedId = s.id; structureChanged(`.step-card[data-id="${s.id}"] .step-toggle`); setFocused(s.id); } }
   });
 }
 
-function applyRegex(names) {
-  const pattern = document.getElementById('regexPattern').value;
-  const replacement = document.getElementById('regexReplace').value;
-  const ignoreCase = document.getElementById('regexIgnoreCase').checked;
-  return names.map(name => {
-    const [stem, ext] = splitName(name);
-    if (!pattern) return stem + ext;
-    try {
-      const flags = 'g' + (ignoreCase ? 'i' : '');
-      const newStem = stem.replace(new RegExp(pattern, flags), replacement);
-      return newStem + ext;
-    } catch { return stem + ext; }
-  });
+function duplicateStep(id) {
+  const i = stepIndex(id);
+  if (i < 0) return;
+  const src = steps[i];
+  const copy = newStep(src.type, JSON.parse(JSON.stringify(src.opts)), src.enabled);
+  src.open = false;
+  steps.splice(i + 1, 0, copy);
+  focusedId = copy.id;
+  structureChanged(`.step-card[data-id="${copy.id}"] .step-toggle`);
+  setFocused(copy.id);
 }
 
-function applyPrefixSuffix(names) {
-  const prefix = document.getElementById('prefixText').value;
-  const suffix = document.getElementById('suffixText').value;
-  return names.map(name => {
-    const [stem, ext] = splitName(name);
-    return prefix + stem + suffix + ext;
-  });
-}
+/* ---------- Steps: events ---------- */
 
-function applyNumbering(names) {
-  const start = parseInt(document.getElementById('seqStart').value) || 1;
-  const step = parseInt(document.getElementById('seqStep').value) || 1;
-  const pad = parseInt(document.getElementById('seqPad').value) || 3;
-  const position = document.querySelector('input[name="seqPos"]:checked').value;
-  const sep = document.getElementById('seqSep').value;
-  const replaceAll = document.getElementById('seqReplace').checked;
-  return names.map((name, idx) => {
-    const [stem, ext] = splitName(name);
-    const num = String(start + idx * step).padStart(pad, '0');
-    if (replaceAll) return num + ext;
-    if (position === 'Prefix') return num + sep + stem + ext;
-    return stem + sep + num + ext;
-  });
-}
+const stepList = $('stepList');
 
-function applyDateStamp(names) {
-  const fmt = document.getElementById('dateFormat').value;
-  const position = document.querySelector('input[name="datePos"]:checked').value;
-  const sep = document.getElementById('dateSep').value;
-  const dateStr = document.getElementById('dateValue').value;
-  const d = dateStr ? new Date(dateStr) : new Date();
-
-  const Y = d.getFullYear(), M = String(d.getMonth() + 1).padStart(2, '0'), D = String(d.getDate()).padStart(2, '0');
-  const h = String(d.getHours()).padStart(2, '0'), m = String(d.getMinutes()).padStart(2, '0'), s = String(d.getSeconds()).padStart(2, '0');
-
-  let stamp;
-  switch (fmt) {
-    case 'YYYY-MM-DD': stamp = `${Y}-${M}-${D}`; break;
-    case 'YYYYMMDD': stamp = `${Y}${M}${D}`; break;
-    case 'DD-MM-YYYY': stamp = `${D}-${M}-${Y}`; break;
-    case 'MM-DD-YYYY': stamp = `${M}-${D}-${Y}`; break;
-    case 'YYYY-MM-DD_HH-mm-ss': stamp = `${Y}-${M}-${D}_${h}-${m}-${s}`; break;
-    default: stamp = `${Y}-${M}-${D}`;
-  }
-
-  return names.map(name => {
-    const [stem, ext] = splitName(name);
-    if (position === 'Prefix') return stamp + sep + stem + ext;
-    return stem + sep + stamp + ext;
-  });
-}
-
-function applyCaseConversion(names) {
-  const mode = document.getElementById('caseMode').value;
-  return names.map(name => {
-    const [stem, ext] = splitName(name);
-    let newStem;
-    switch (mode) {
-      case 'lowercase': newStem = stem.toLowerCase(); break;
-      case 'UPPERCASE': newStem = stem.toUpperCase(); break;
-      case 'Title Case': newStem = stem.replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()); break;
-      case 'snake_case':
-        newStem = stem.replace(/[\s\-]+/g, '_').toLowerCase();
-        newStem = newStem.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
-        break;
-      case 'camelCase':
-        const parts = stem.split(/[\s_\-]+/);
-        newStem = parts[0].toLowerCase() + parts.slice(1).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('');
-        break;
-      case 'kebab-case':
-        newStem = stem.replace(/[\s_]+/g, '-').toLowerCase();
-        newStem = newStem.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
-        break;
-      default: newStem = stem;
-    }
-    return newStem + ext;
-  });
-}
-
-function applyExtension(names) {
-  const mode = document.querySelector('input[name="extMode"]:checked').value;
-  let newExt = document.getElementById('newExt').value;
-  return names.map(name => {
-    const [stem, ext] = splitName(name);
-    if (mode === 'remove') return stem;
-    if (mode === 'change') {
-      if (!newExt) return stem + ext;
-      return stem + (newExt.startsWith('.') ? newExt : '.' + newExt);
-    }
-    if (mode === 'add') {
-      if (!newExt) return stem + ext;
-      const extra = newExt.startsWith('.') ? newExt : '.' + newExt;
-      return stem + ext + extra;
-    }
-    return name;
-  });
-}
-
-function applyTrim(names) {
-  const trimStart = parseInt(document.getElementById('trimStart').value) || 0;
-  const trimEnd = parseInt(document.getElementById('trimEnd').value) || 0;
-  const spaceReplace = document.getElementById('spaceReplace').value;
-  const stripSpecial = document.getElementById('stripSpecial').checked;
-  return names.map(name => {
-    let [stem, ext] = splitName(name);
-    if (trimStart > 0) stem = stem.slice(trimStart);
-    if (trimEnd > 0 && trimEnd < stem.length) stem = stem.slice(0, -trimEnd);
-    if (spaceReplace === 'remove') stem = stem.replace(/ /g, '');
-    else if (spaceReplace) stem = stem.replace(/ /g, spaceReplace);
-    if (stripSpecial) stem = stem.replace(/[^\w\-.]/g, '');
-    return stem + ext;
-  });
-}
-
-// Preview
-function updatePreview() {
-  if (!uploadedFiles.length) return;
-  const names = uploadedFiles.map(f => f.name);
-  const newNames = applyRule(names);
-
-  const dups = {};
-  newNames.forEach(n => { dups[n] = (dups[n] || 0) + 1; });
-  const dupSet = new Set(Object.keys(dups).filter(k => dups[k] > 1));
-
-  let html = '<table class="preview-table"><tr><th></th><th>Now</th><th></th><th>After renaming</th></tr>';
-  let changedCount = 0;
-  for (let i = 0; i < names.length; i++) {
-    const changed = names[i] !== newNames[i];
-    if (changed) changedCount++;
-    const icon = changed ? 'pencil-simple' : 'minus';
-    const cls = changed ? 'changed' : 'unchanged';
-    const dupTag = dupSet.has(newNames[i]) ? ' <span class="dup-warn"><i class="ph ph-warning" aria-hidden="true"></i> same name twice</span>' : '';
-    html += `<tr><td class="icon-cell"><i class="ph ph-${icon}" aria-hidden="true"></i></td><td class="unchanged">${escapeHTML(names[i])}</td><td class="icon-cell"><i class="ph ph-arrow-right" aria-hidden="true"></i></td><td class="${cls}">${escapeHTML(newNames[i])}${dupTag}</td></tr>`;
-  }
-  html += '</table>';
-
-  document.getElementById('previewContent').innerHTML = html;
-  document.getElementById('previewStats').textContent = `${changedCount} of ${names.length} files change`;
-  document.getElementById('previewWarning').innerHTML = dupSet.size
-    ? '<div class="warning-msg"><i class="ph ph-warning" aria-hidden="true"></i> <span>Some files would end up with the same name. Adjust the rule so nothing is overwritten.</span></div>'
-    : '';
-}
-
-// Download ZIP
-function downloadZip(btn) {
-  if (!uploadedFiles.length) {
-    showInlineError(btn, 'Choose some files first.');
+function onFieldEdit(e) {
+  const input = e.target;
+  const li = input.closest('.step-card');
+  if (!li) return;
+  const s = stepById(li.dataset.id);
+  if (!s) return;
+  if (input.dataset.act === 'enable') {
+    if (e.type !== 'change') return;
+    s.enabled = input.checked;
+    li.classList.toggle('is-off', !s.enabled);
+    input.closest('.switch').title = s.enabled ? 'Step is on' : 'Step is off';
+    updateStepsSummary();
+    saveSteps();
+    updatePreview();
     return;
   }
-  const names = uploadedFiles.map(f => f.name);
-  const newNames = applyRule(names);
+  const k = input.dataset.k;
+  if (!k) return;
+  if (input.type === 'checkbox') s.opts[k] = input.checked;
+  else if (input.type === 'radio') { if (!input.checked) return; s.opts[k] = input.value; }
+  else s.opts[k] = input.value;
+  if (s.type === 'date_stamp' && k === 'source' && s.opts.source === 'custom') {
+    if (!s.opts.date) s.opts.date = C.localDateString(new Date());
+    if (!s.opts.time) s.opts.time = C.localTimeString(new Date());
+    const d = li.querySelector('[data-k="date"] input'), t = li.querySelector('[data-k="time"] input');
+    if (d) d.value = s.opts.date;
+    if (t) t.value = s.opts.time;
+  }
+  syncShown(li, s);
+  const sum = $(s.id + '-sum');
+  if (sum) sum.textContent = C.describeStep(s);
+  if (focusedId !== s.id) setFocused(s.id);
+  updateStepsSummary();
+  schedulePreview();
+}
+stepList.addEventListener('input', onFieldEdit);
+stepList.addEventListener('change', onFieldEdit);
 
-  setBusy(btn, true, 'Packing...');
-  const zip = new JSZip();
-  const promises = uploadedFiles.map((file, i) => {
-    return new Promise(resolve => {
-      const reader = new FileReader();
-      reader.onload = e => {
-        zip.file(newNames[i], e.target.result);
-        resolve();
-      };
-      reader.readAsArrayBuffer(file);
-    });
+stepList.addEventListener('click', e => {
+  const btn = e.target.closest('[data-act]');
+  if (!btn || btn.tagName === 'INPUT') return;
+  const li = btn.closest('.step-card');
+  const s = li && stepById(li.dataset.id);
+  if (!s) return;
+  switch (btn.dataset.act) {
+    case 'toggle': setOpen(s, !s.open); setFocused(s.id); break;
+    case 'up': moveStep(s.id, -1); break;
+    case 'down': moveStep(s.id, 1); break;
+    case 'dup': duplicateStep(s.id); break;
+    case 'remove': removeStep(s.id); break;
+  }
+});
+
+stepList.addEventListener('focusin', e => {
+  const li = e.target.closest('.step-card');
+  if (li && li.dataset.id !== focusedId && e.target.closest('.step-fields')) setFocused(li.dataset.id);
+});
+
+stepList.addEventListener('keydown', e => {
+  if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+  const li = e.target.closest('.step-card');
+  if (!li) return;
+  e.preventDefault();
+  moveStep(li.dataset.id, e.key === 'ArrowUp' ? -1 : 1);
+});
+
+/* Native drag and drop, started from the handle only so text in the fields can
+   still be selected with the mouse. The arrow buttons and Alt+Up/Down do the same. */
+stepList.addEventListener('pointerdown', e => {
+  const h = e.target.closest('.drag-handle');
+  const li = e.target.closest('.step-card');
+  if (li) li.draggable = !!h;
+});
+stepList.addEventListener('dragstart', e => {
+  const li = e.target.closest && e.target.closest('.step-card');
+  if (!li || !li.draggable) { e.preventDefault(); return; }
+  dragId = li.dataset.id;
+  li.classList.add('dragging');
+  try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'step'); } catch (err) {}
+});
+function clearDropMarks() {
+  stepList.querySelectorAll('.drop-before, .drop-after').forEach(el => el.classList.remove('drop-before', 'drop-after'));
+}
+stepList.addEventListener('dragover', e => {
+  if (!dragId) return;
+  const li = e.target.closest('.step-card');
+  if (!li) return;
+  e.preventDefault();
+  const r = li.getBoundingClientRect();
+  const after = e.clientY > r.top + r.height / 2;
+  clearDropMarks();
+  if (li.dataset.id !== dragId) li.classList.add(after ? 'drop-after' : 'drop-before');
+  dropTarget = { id: li.dataset.id, after };
+});
+stepList.addEventListener('drop', e => {
+  if (!dragId) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const id = dragId, t = dropTarget;
+  endDrag();
+  if (t) moveStepTo(id, t.id, t.after);
+});
+function endDrag() {
+  clearDropMarks();
+  stepList.querySelectorAll('.step-card').forEach(li => { li.classList.remove('dragging'); li.draggable = false; });
+  dragId = null; dropTarget = null;
+}
+stepList.addEventListener('dragend', endDrag);
+
+/* Add a step menu */
+const addBtn = $('addStepBtn'), addMenu = $('addStepMenu');
+function buildMenu() {
+  const rule = id => `<button type="button" role="menuitem" data-type="${id}"><i class="ph ph-${C.RULES[id].icon}" aria-hidden="true"></i> ${esc(C.RULES[id].label)}</button>`;
+  addMenu.innerHTML = RULE_IDS.map(rule).join('')
+    + '<p class="menu-label" role="presentation">Fixes</p>' + C.FIX_IDS.map(rule).join('');
+}
+function openMenu(open) {
+  addMenu.classList.toggle('hidden', !open);
+  addBtn.setAttribute('aria-expanded', String(open));
+  if (open) addMenu.querySelector('button').focus();
+}
+addBtn.addEventListener('click', () => openMenu(addMenu.classList.contains('hidden')));
+addMenu.addEventListener('click', e => {
+  const b = e.target.closest('button[data-type]');
+  if (!b) return;
+  openMenu(false);
+  addStep(b.dataset.type);
+});
+addMenu.addEventListener('keydown', e => {
+  const btns = [...addMenu.querySelectorAll('button')];
+  const i = btns.indexOf(document.activeElement);
+  if (e.key === 'Escape') { e.preventDefault(); openMenu(false); addBtn.focus(); }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); btns[(i + 1) % btns.length].focus(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); btns[(i - 1 + btns.length) % btns.length].focus(); }
+  else if (e.key === 'Home') { e.preventDefault(); btns[0].focus(); }
+  else if (e.key === 'End') { e.preventDefault(); btns[btns.length - 1].focus(); }
+  else if (e.key === 'Tab') openMenu(false);
+});
+document.addEventListener('click', e => {
+  if (!addMenu.classList.contains('hidden') && !e.target.closest('.add-step')) openMenu(false);
+});
+
+/* Hash: #numbering opens the first Numbering step, or adds one. */
+function applyRuleId(id) {
+  if (!RULE_IDS.includes(id)) return;
+  const s = steps.find(x => x.type === id);
+  if (s) {
+    setOpen(s, true);
+    setFocused(s.id, true);
+    const li = document.querySelector(`#stepList .step-card[data-id="${s.id}"]`);
+    if (li && li.scrollIntoView) li.scrollIntoView({ block: 'nearest' });
+  } else {
+    addStep(id);
+  }
+}
+
+/* ---------- Files ---------- */
+
+const dropZone = $('dropZone'), fileInput = $('fileInput');
+dropZone.addEventListener('click', e => { if (e.target !== fileInput) fileInput.click(); });
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', e => { addFiles(e.target.files); fileInput.value = ''; });
+
+function fileKey(f) { return f.name + '\u0000' + f.size + '\u0000' + f.lastModified; }
+
+function addFiles(list) {
+  const arr = Array.from(list || []);
+  if (!arr.length) return;
+  const known = new Set(items.filter(it => !it.handle).map(it => fileKey(it.file)));
+  let added = 0, same = 0;
+  for (const f of arr) {
+    const k = fileKey(f);
+    if (known.has(k)) { same++; continue; }
+    known.add(k);
+    items.push({ id: ++itemSeq, file: f, name: f.name, dir: '', size: f.size, lastModified: f.lastModified });
+    added++;
+  }
+  stampClock = new Date();
+  $('outputResult').innerHTML = '';
+  const msg = (added ? `Added ${plural(added, 'file')}.` : 'No new files added.') + (same ? ` ${plural(same, 'file was', 'files were')} already in the list.` : '');
+  announce(msg + ` ${plural(items.length, 'file')} in the list.`);
+  if (same && !added) toast(msg, 'info');
+  updateAll();
+}
+
+function removeItem(id) {
+  const i = items.findIndex(it => it.id === id);
+  if (i < 0) return;
+  const [it] = items.splice(i, 1);
+  updateAll();
+  toast(`Removed ${it.name} from the list.`, 'info', {
+    duration: 6000,
+    action: { label: 'Undo', onClick: () => { items.splice(Math.min(i, items.length), 0, it); updateAll(); } }
   });
+  const next = document.querySelector(`#previewContent tr[data-row="${i}"] .row-rm`) || document.querySelector(`#previewContent tr[data-row="${i - 1}"] .row-rm`);
+  if (next) next.focus(); else $('dropZone').focus();
+}
 
-  Promise.all(promises).then(() => {
-    zip.generateAsync({ type: 'blob' }).then(blob => {
-      setBusy(btn, false);
-      const a = document.createElement('a');
-      const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15);
-      a.href = URL.createObjectURL(blob);
-      a.download = `renamed_files_${ts}.zip`;
-      a.click();
-      URL.revokeObjectURL(a.href);
-    });
+function startOver() {
+  const snapshot = { items: items.slice(), folder, undoLog };
+  items = []; folder = null; undoLog = null; onlyProblems = false;
+  $('outputResult').innerHTML = '';
+  clearProgressEl();
+  updateAll();
+  setDirty(false);
+  $('dropZone').focus();
+  toast(`Cleared ${plural(snapshot.items.length, 'file')} from the list. Your files are unchanged.`, 'info', {
+    duration: 6000,
+    action: { label: 'Undo', onClick: () => { items = snapshot.items; folder = snapshot.folder; undoLog = snapshot.undoLog; updateAll(); } }
+  });
+}
+$('startOverBtn').addEventListener('click', startOver);
+
+/* Open a folder (Chrome and Edge on a computer) */
+async function collectFolder(dir, prefix, recursive, out, onCount) {
+  for await (const [name, h] of dir.entries()) {
+    if (h.kind === 'file') {
+      if (/^\.tfe-[a-z0-9]+-\d+\.tmp$/.test(name)) continue;
+      const file = await h.getFile();
+      out.push({ id: ++itemSeq, file, name, dir: prefix, size: file.size, lastModified: file.lastModified, handle: h, dirHandle: dir });
+      if (onCount && out.length % 50 === 0) onCount(out.length);
+    } else if (recursive && h.kind === 'directory') {
+      await collectFolder(h, prefix + name + '/', true, out, onCount);
+    }
+  }
+}
+
+async function openFolder() {
+  let dir;
+  try { dir = await window.showDirectoryPicker({ mode: 'readwrite', id: 'tfe-renamer' }); }
+  catch (e) {
+    if (e && e.name === 'AbortError') return;
+    toast('Could not open that folder. ' + (e && e.message ? e.message : ''), 'error');
+    return;
+  }
+  const btn = $('openFolderBtn');
+  if (window.setBusy) setBusy(btn, true, 'Reading the folder...');
+  const list = [];
+  try {
+    await collectFolder(dir, '', $('includeSub').checked, list, n => { btn.lastChild.textContent = ` Reading ${n} files...`; });
+  } catch (e) {
+    if (window.setBusy) setBusy(btn, false);
+    toast('Could not read that folder: ' + (e && e.message || e), 'error');
+    return;
+  }
+  if (window.setBusy) setBusy(btn, false);
+  list.sort((a, b) => (a.dir + a.name).localeCompare(b.dir + b.name, undefined, { numeric: true, sensitivity: 'base' }));
+  const replaced = items.length;
+  items = list;
+  folder = { handle: dir, name: dir.name };
+  undoLog = null;
+  stampClock = new Date();
+  setMethod('inplace');
+  $('outputResult').innerHTML = '';
+  const msg = `Opened ${dir.name}: ${plural(list.length, 'file')}.` + (replaced ? ' The list now shows only this folder.' : '');
+  announce(msg);
+  toast(msg, 'info');
+  updateAll();
+}
+$('openFolderBtn').addEventListener('click', openFolder);
+$('includeSub').addEventListener('change', e => { const P = prefs(); if (P) P.set('includeSub', e.target.checked); });
+
+/* ---------- Preview ---------- */
+
+function computeRun() {
+  const src = items.length ? items : EXAMPLE;
+  const names = src.map(it => it.name);
+  const dirs = src.map(it => it.dir || '');
+  const r = C.runSteps(steps, names, {
+    files: src.map(it => ({ lastModified: it.lastModified })),
+    now: stampClock, dirs, originals: names
+  });
+  const check = C.checkNames(r.names, names, dirs);
+  let changed = 0;
+  for (let i = 0; i < names.length; i++) if (names[i] !== r.names[i]) changed++;
+  return { src, names, dirs, newNames: r.names, infos: r.infos, check, changed, example: !items.length };
+}
+
+function schedulePreview() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => { saveSteps(); updatePreview(); }, 100);
+}
+
+function diffCells(a, b) {
+  if (a === b) return [esc(a), esc(b)];
+  const d = C.diffParts(a, b);
+  return [
+    esc(d.prefix) + (d.removed ? `<del>${esc(d.removed)}</del>` : '') + esc(d.suffix),
+    esc(d.prefix) + (d.added ? `<ins>${esc(d.added)}</ins>` : '') + esc(d.suffix)
+  ];
+}
+
+function updateStepStatus(run) {
+  steps.forEach(s => {
+    const el = $(s.id + '-status');
+    if (!el) return;
+    const info = run.infos[s.id];
+    const input = s.type === 'regex' ? $(s.id + '-pattern') : null;
+    if (input) input.removeAttribute('aria-invalid');
+    if (!s.enabled) { el.textContent = s.type === 'regex' || s.type === 'find_replace' ? 'This step is off.' : ''; return; }
+    if (!info) { el.textContent = ''; return; }
+    if (info.error) {
+      el.innerHTML = `<span class="bad"><i class="ph ph-warning-circle" aria-hidden="true"></i><span>Invalid pattern: ${esc(info.error)}</span></span>`;
+      if (input) input.setAttribute('aria-invalid', 'true');
+      return;
+    }
+    if (info.total != null) el.textContent = `Matches ${info.matches} of ${info.total}${run.example ? ' example names' : ''}`;
+    else el.textContent = '';
   });
 }
 
-function escapeHTML(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
+function updatePreview() {
+  clearTimeout(previewTimer);
+  const run = computeRun();
+  lastRun = run;
+  const n = run.names.length;
+  $('exampleTag').classList.toggle('hidden', !run.example);
+  $('exampleNote').classList.toggle('hidden', !run.example);
+  $('previewStats').textContent = `${run.changed} of ${plural(n, 'name')} change`;
+
+  // Problems
+  const bad = run.check.badRows;
+  const box = $('problemBox');
+  if (bad) {
+    const dupes = run.check.byCode.dup || 0;
+    const other = bad && Object.keys(run.check.byCode).some(k => k !== 'dup');
+    box.innerHTML = `<div class="error-msg" role="status"><i class="ph ph-warning-circle" aria-hidden="true"></i><div>
+      <strong>${plural(bad, 'problem')}.</strong> ${esc(C.summariseProblems(run.check))}. ${run.example ? '' : 'Nothing can be renamed until these are fixed, so no file is lost or overwritten.'}
+      <div class="fix-row">
+        ${dupes ? '<button class="btn btn-sm" type="button" data-fix="fix_dupes"><i class="ph ph-copy" aria-hidden="true"></i> Add (2), (3) to duplicates</button>' : ''}
+        ${other ? '<button class="btn btn-sm" type="button" data-fix="fix_illegal"><i class="ph ph-shield-check" aria-hidden="true"></i> Replace illegal characters with _</button>' : ''}
+      </div>
+      ${n > 20 ? `<label class="checkbox-label only-problems"><input type="checkbox" id="onlyProblems" data-no-remember${onlyProblems ? ' checked' : ''}><span>Show only rows with problems</span></label>` : ''}
+    </div></div>`;
+  } else {
+    box.innerHTML = '';
+    onlyProblems = false;
+  }
+
+  // Table
+  const rows = [];
+  let shown = 0, total = 0;
+  for (let i = 0; i < n; i++) {
+    const probs = run.check.rows[i];
+    if (onlyProblems && !probs.length) continue;
+    total++;
+    if (shown >= MAX_ROWS) continue;
+    shown++;
+    const a = run.names[i], b = run.newNames[i];
+    const [oldHtml, newHtml] = diffCells(a, b);
+    const dir = run.dirs[i] ? `<span class="dir-part">${esc(run.dirs[i])}</span>` : '';
+    const cls = (a === b ? 'same' : 'changed') + (probs.length ? ' has-problem' : '');
+    const probHtml = probs.map(p => `<div class="row-problem"><i class="ph ph-warning" aria-hidden="true"></i><span>${esc(p.text)}</span></div>`).join('');
+    const rm = run.example ? '' : `<button type="button" class="row-rm" data-rm="${run.src[i].id}" aria-label="Remove ${esc(a)} from the list" title="Remove from the list"><i class="ph ph-x" aria-hidden="true"></i></button>`;
+    rows.push(`<tr class="${cls}" data-row="${i}"><td class="num-col">${i + 1}</td><td class="old">${dir}${oldHtml}</td><td class="icon-cell"><i class="ph ph-arrow-right" aria-hidden="true"></i><span class="sr-only">becomes</span></td><td class="new">${dir}${newHtml}${probHtml}</td><td class="rm-col">${rm}</td></tr>`);
+  }
+  $('previewContent').innerHTML = `<table class="preview-table"><thead><tr><th class="num-col">#</th><th>Now</th><th class="icon-cell"></th><th>After renaming</th><th class="rm-col"><span class="sr-only">Remove</span></th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+  $('previewMore').textContent = total > shown
+    ? `Showing the first ${shown.toLocaleString()} of ${total.toLocaleString()} ${onlyProblems ? 'rows with problems' : 'files'}. Every file is renamed, not only the ones shown.`
+    : '';
+
+  updateStepStatus(run);
+  updateActions(run);
 }
+
+$('previewSection').addEventListener('click', e => {
+  const rm = e.target.closest('[data-rm]');
+  if (rm) { removeItem(+rm.dataset.rm); return; }
+  const fix = e.target.closest('[data-fix]');
+  if (fix) applyFix(fix.dataset.fix);
+});
+$('previewSection').addEventListener('change', e => {
+  if (e.target.id === 'onlyProblems') { onlyProblems = e.target.checked; updatePreview(); const el = $('onlyProblems'); if (el) el.focus(); }
+});
+
+function applyFix(type) {
+  const existing = steps.find(s => s.type === type);
+  if (existing) {
+    existing.enabled = true;
+    const i = stepIndex(existing.id);
+    steps.splice(i, 1);
+    if (type === 'fix_illegal') {
+      const d = steps.findIndex(s => s.type === 'fix_dupes');
+      steps.splice(d >= 0 ? d : steps.length, 0, existing);
+    } else steps.push(existing);
+    focusedId = existing.id;
+    structureChanged();
+  } else {
+    addStep(type);
+  }
+  const run = lastRun;
+  const msg = run && run.check.badRows
+    ? `Added the ${C.RULES[type].label} step. ${plural(run.check.badRows, 'problem')} left.`
+    : `Added the ${C.RULES[type].label} step. No problems left.`;
+  announce(msg);
+  toast(msg, 'success');
+  const next = document.querySelector('#problemBox [data-fix]') || $('primaryBtn');
+  if (next && !next.disabled && next.offsetParent) next.focus();
+}
+
+/* ---------- Output ---------- */
+
+function setMethod(m) {
+  if (m === 'inplace' && !canRenameInPlace) m = 'zip';
+  method = m;
+  document.querySelectorAll('input[name="outMethod"]').forEach(r => { r.checked = r.value === m; });
+  $('noteZip').classList.toggle('hidden', m !== 'zip');
+  $('noteScript').classList.toggle('hidden', m !== 'script');
+  $('noteInplace').classList.toggle('hidden', m !== 'inplace');
+  $('undoScriptBtn').classList.toggle('hidden', m !== 'script');
+  const P = prefs();
+  if (P) P.set('method', m);
+}
+document.querySelectorAll('input[name="outMethod"]').forEach(r => r.addEventListener('change', () => {
+  if (r.checked) { setMethod(r.value); updateActions(lastRun || computeRun()); }
+}));
+$('scriptKind').addEventListener('change', e => {
+  scriptKind = e.target.value;
+  const P = prefs();
+  if (P) P.set('scriptKind', scriptKind);
+  updateActions(lastRun || computeRun());
+});
+
+function changedPairs(run) {
+  const pairs = [];
+  run.src.forEach((it, i) => {
+    if (run.names[i] !== run.newNames[i]) pairs.push({ from: (it.dir || '') + run.names[i], to: (it.dir || '') + run.newNames[i], item: it });
+  });
+  return pairs;
+}
+
+function updateActions(run) {
+  const has = items.length > 0;
+  $('outputSection').classList.toggle('hidden', !has);
+  $('actionBar').classList.toggle('is-sticky', has);
+  if (!has) return;
+  const btn = $('primaryBtn');
+  if (busy) return;
+  const bad = run.check.badRows;
+  const fromFolder = items.every(it => it.handle);
+  let label, icon, reason = '', disabled = false;
+  if (method === 'zip') { label = `Download ZIP of ${plural(items.length, 'file')}`; icon = 'file-zip'; }
+  else if (method === 'script') { label = 'Download rename script'; icon = 'terminal-window'; }
+  else if (!fromFolder) { label = 'Open a folder'; icon = 'folder-open'; reason = folder ? 'Some files in the list were added by dropping them, so they cannot be renamed in place. Start over and open the folder.' : 'Open the folder that holds the files to rename them where they are.'; }
+  else { label = `Rename ${plural(run.changed, 'file')}`; icon = 'pencil-simple-line'; }
+
+  if (bad) { disabled = true; label = `Fix ${plural(bad, 'problem')} first`; icon = 'warning-circle'; }
+  else if (!run.changed && !(method === 'inplace' && !fromFolder)) { disabled = true; reason = 'No names change yet. Set up a step to see new names.'; }
+  else if (method === 'script') {
+    const blockers = C.scriptBlockers(changedPairs(run), scriptKind);
+    if (blockers.length) { disabled = true; reason = `${blockers[0]} has a character Command Prompt cannot handle. Choose PowerShell instead.`; }
+  }
+  if (method === 'inplace' && !fromFolder && folder) disabled = true;
+  btn.innerHTML = `<i class="ph ph-${icon}" aria-hidden="true"></i> ${esc(label)}`;
+  btn.disabled = disabled;
+  btn.dataset.kind = method === 'inplace' && !fromFolder ? 'open' : method;
+  $('undoScriptBtn').disabled = disabled;
+  $('actionReason').textContent = reason;
+  $('inplaceText').textContent = folder && fromFolder
+    ? `Renames the files directly in ${folder.name}. Nothing is copied, and you can undo it straight after.`
+    : 'Renames the files directly in the folder you open. Nothing is copied, and you can undo it straight after.';
+}
+
+$('primaryBtn').addEventListener('click', e => {
+  const btn = e.currentTarget;
+  const kind = btn.dataset.kind;
+  if (kind === 'zip') downloadZip(btn);
+  else if (kind === 'script') downloadScript('rename');
+  else if (kind === 'open') openFolder();
+  else if (kind === 'inplace') renameFolder(btn);
+});
+$('undoScriptBtn').addEventListener('click', () => downloadScript('undo'));
+
+function saveBlob(blob, name) {
+  const a = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  a.href = url;
+  a.download = name;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+function clearProgressEl() { if (window.clearProgress) clearProgress($('packProgress')); else $('packProgress').innerHTML = ''; }
+function progress(pct, label) { if (window.setProgress) setProgress($('packProgress'), pct, label); }
+
+function showResult(kind, html) {
+  const box = $('outputResult');
+  box.innerHTML = `<div class="${kind}-msg"><i class="ph ph-${kind === 'success' ? 'check-circle' : kind === 'error' ? 'warning-circle' : 'info'}" aria-hidden="true"></i><div>${html}</div></div>`;
+  return box.firstElementChild;
+}
+
+let jszipPromise = null;
+function loadJSZip() {
+  if (window.JSZip) return Promise.resolve(window.JSZip);
+  if (!jszipPromise) {
+    jszipPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = JSZIP_URL;
+      s.onload = () => window.JSZip ? resolve(window.JSZip) : reject(new Error('The ZIP library did not load.'));
+      s.onerror = () => { jszipPromise = null; reject(new Error('Could not load the ZIP library. Check your connection and try again.')); };
+      document.head.appendChild(s);
+    });
+  }
+  return jszipPromise;
+}
+
+/* ZIP entries store local wall-clock time, but JSZip writes the UTC fields, so the
+   date is shifted by the time zone offset to come out right when unzipped. */
+function zipDate(ms) {
+  const d = new Date(ms);
+  return new Date(ms - d.getTimezoneOffset() * 60000);
+}
+
+async function downloadZip(btn) {
+  const run = computeRun();
+  if (!items.length || run.check.badRows || busy) return;
+  busy = true;
+  const done = startJob('Packing the ZIP');
+  if (window.setBusy) setBusy(btn, true, 'Checking files...');
+  $('outputResult').innerHTML = '';
+  let failed = [];
+  try {
+    const JSZip = await loadJSZip();
+    progress(0, 'Checking files');
+    const src = run.src;
+    for (let i = 0; i < src.length; i++) {
+      try { await src[i].file.slice(0, 1).arrayBuffer(); }
+      catch (e) { failed.push(src[i]); }
+      if (i % 25 === 0) progress((i / src.length) * 10, 'Checking files');
+    }
+    if (failed.length) throw Object.assign(new Error('unreadable'), { unreadable: true });
+    const zip = new JSZip();
+    src.forEach((it, i) => {
+      zip.file((it.dir || '') + run.newNames[i], it.file, { binary: true, date: zipDate(it.lastModified) });
+    });
+    if (window.setBusy) { setBusy(btn, false); setBusy(btn, true, 'Packing...'); }
+    const blob = await zip.generateAsync({ type: 'blob', streamFiles: true }, meta => {
+      progress(10 + meta.percent * 0.9, meta.currentFile ? 'Packing ' + meta.currentFile : 'Packing');
+    });
+    const ts = new Date();
+    const name = `renamed_files_${C.localDateString(ts).replace(/-/g, '')}_${C.localTimeString(ts).replace(/:/g, '')}.zip`;
+    saveBlob(blob, name);
+    showResult('success', `<strong>Downloaded ${esc(name)}</strong>, ${plural(src.length, 'renamed copy', 'renamed copies')}, ${esc(fmtBytes(blob.size))}. Your original files are unchanged.`);
+    announce(`Downloaded ${name}.`);
+  } catch (e) {
+    if (e && e.unreadable) {
+      const names = failed.slice(0, 5).map(it => esc(it.name)).join(', ') + (failed.length > 5 ? ` and ${failed.length - 5} more` : '');
+      const el = showResult('error', `<strong>Could not read ${plural(failed.length, 'file')}:</strong> ${names}. ${failed.length === 1 ? 'It' : 'They'} may have been moved, renamed or deleted since you added ${failed.length === 1 ? 'it' : 'them'}. Nothing was downloaded.<div class="result-actions"><button class="btn btn-sm" type="button" id="dropUnreadable">Remove ${failed.length === 1 ? 'it' : 'them'} from the list</button></div>`);
+      const ids = new Set(failed.map(it => it.id));
+      el.querySelector('#dropUnreadable').addEventListener('click', () => {
+        items = items.filter(it => !ids.has(it.id));
+        $('outputResult').innerHTML = '';
+        updateAll();
+        $('primaryBtn').focus();
+      });
+    } else {
+      showResult('error', `<strong>Could not make the ZIP.</strong> ${esc(e && e.message || String(e))}`);
+    }
+    announce('Could not make the ZIP.');
+  } finally {
+    busy = false;
+    if (window.setBusy) setBusy(btn, false);
+    clearProgressEl();
+    done();
+    updateActions(computeRun());
+  }
+}
+
+function downloadScript(which) {
+  const run = computeRun();
+  if (!items.length || run.check.badRows) return;
+  const pairs = changedPairs(run).map(p => ({ from: p.from, to: p.to }));
+  if (!pairs.length) return;
+  const scripts = C.buildScripts(pairs, scriptKind, { token: scriptToken, now: new Date() });
+  const s = scripts[which];
+  saveBlob(new Blob([s.text], { type: 'application/octet-stream' }), s.name);
+  const other = which === 'rename' ? scripts.undo.name : scripts.rename.name;
+  const how = {
+    ps1: `Right-click it and choose <strong>Run with PowerShell</strong>. If Windows says scripts are disabled, open PowerShell in that folder and run <code>powershell -ExecutionPolicy Bypass -File .\\${esc(s.name)}</code>.`,
+    bat: 'Double-click it.',
+    sh: `Open a terminal in that folder and run <code>sh ./${esc(s.name)}</code>.`
+  }[scriptKind];
+  showResult('success', `<strong>Downloaded ${esc(s.name)}</strong> for ${plural(pairs.length, 'file')}. Save it in the folder that holds the files, then run it there. ${how}`
+    + (which === 'rename' ? ` Keep the undo script too, in case you want the old names back.<div class="result-actions"><button class="btn btn-sm" type="button" id="alsoUndo"><i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i> Download ${esc(other)}</button></div>` : ''));
+  const also = $('alsoUndo');
+  if (also) also.addEventListener('click', () => downloadScript('undo'));
+  announce(`Downloaded ${s.name}.`);
+}
+
+async function ensurePermission(handle) {
+  try {
+    if (!handle.queryPermission) return true;
+    if (await handle.queryPermission({ mode: 'readwrite' }) === 'granted') return true;
+    return await handle.requestPermission({ mode: 'readwrite' }) === 'granted';
+  } catch (e) { return false; }
+}
+
+async function runInPlace(btn, jobs, label) {
+  const done = startJob(label);
+  busy = true;
+  if (window.setBusy) setBusy(btn, true, label + '...');
+  try {
+    return await C.renameInPlace(jobs, {
+      token: C.makeToken(),
+      onProgress: (a, b) => progress(b ? (a / b) * 100 : 100, label)
+    });
+  } finally {
+    busy = false;
+    if (window.setBusy) setBusy(btn, false);
+    clearProgressEl();
+    done();
+  }
+}
+
+function notesHtml(notes) {
+  if (!notes.length) return '';
+  const shown = notes.slice(0, 20).map(n => `<li>${esc(n)}</li>`).join('');
+  return `<ul class="notes">${shown}${notes.length > 20 ? `<li>and ${notes.length - 20} more</li>` : ''}</ul>`;
+}
+
+async function refreshItem(it, handle, name) {
+  it.name = name;
+  try { it.file = await handle.getFile(); it.size = it.file.size; it.lastModified = it.file.lastModified; } catch (e) {}
+}
+
+async function renameFolder(btn) {
+  const run = computeRun();
+  if (!folder || run.check.badRows || busy) return;
+  if (!await ensurePermission(folder.handle)) { showResult('error', 'The browser did not get permission to change files in that folder, so nothing was renamed.'); return; }
+  const jobs = [];
+  run.src.forEach((it, i) => {
+    if (run.names[i] !== run.newNames[i]) jobs.push({ item: it, handle: it.handle, dir: it.dirHandle, dirKey: it.dir || '', from: run.names[i], to: run.newNames[i] });
+  });
+  if (!jobs.length) return;
+  $('outputResult').innerHTML = '';
+  let res;
+  try { res = await runInPlace(btn, jobs, 'Renaming'); }
+  catch (e) { showResult('error', `<strong>Renaming stopped.</strong> ${esc(e && e.message || e)}`); updatePreview(); return; }
+  for (const j of res.done) await refreshItem(j.item, j.handle, j.to);
+  undoLog = res.done.map(j => ({ item: j.item, handle: j.handle, dir: j.dir, dirKey: j.dirKey, from: j.from, to: j.to }));
+  updatePreview();
+  const skipped = jobs.length - res.done.length;
+  const el = showResult(res.done.length ? 'success' : 'error',
+    `<strong>Renamed ${plural(res.done.length, 'file')} in ${esc(folder.name)}.</strong>${skipped ? ` Skipped ${skipped}.` : ''} The list now shows the new names.${notesHtml(res.notes)}`
+    + (res.done.length ? '<div class="result-actions"><button class="btn btn-sm" type="button" id="undoRename"><i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i> Undo rename</button></div>' : ''));
+  const u = el.querySelector('#undoRename');
+  if (u) u.addEventListener('click', () => undoFolder(u));
+  announce(`Renamed ${plural(res.done.length, 'file')}.`);
+  reveal($('outputResult'));
+  if (u) u.focus();
+}
+
+async function undoFolder(btn) {
+  if (!undoLog || !undoLog.length || busy) return;
+  const jobs = undoLog.map(j => ({ item: j.item, handle: j.handle, dir: j.dir, dirKey: j.dirKey, from: j.to, to: j.from }));
+  let res;
+  try { res = await runInPlace(btn, jobs, 'Putting names back'); }
+  catch (e) { showResult('error', `<strong>Undo stopped.</strong> ${esc(e && e.message || e)}`); return; }
+  for (const j of res.done) await refreshItem(j.item, j.handle, j.to);
+  undoLog = null;
+  updatePreview();
+  const missed = jobs.length - res.done.length;
+  showResult(missed ? 'error' : 'success', `<strong>Put back the original names of ${plural(res.done.length, 'file')}.</strong>${missed ? ` ${missed} could not be put back.` : ''}${notesHtml(res.notes)}`);
+  announce(`Put back ${plural(res.done.length, 'original name')}.`);
+  $('primaryBtn').focus();
+}
+
+/* ---------- Whole page ---------- */
+
+function updateAll() {
+  const has = items.length > 0;
+  const bytes = items.reduce((n, it) => n + (it.size || 0), 0);
+  $('listBar').classList.toggle('hidden', !has);
+  $('listInfo').textContent = has
+    ? `${plural(items.length, 'file')} · ${fmtBytes(bytes)}${folder && items.every(it => it.handle) ? ' · from ' + folder.name : ''}`
+    : '';
+  $('dzTitle').textContent = has ? 'Drop more files here or browse' : 'Drop files here or browse';
+  $('dzHint').textContent = has ? 'They are added to the end of the list' : 'Any file type, any number of files';
+  setDirty(has);
+  updatePreview();
+}
+
+/* Start-up: render straight away with one Find and replace step, then restore
+   remembered steps and apply the shell once it has loaded. */
+buildMenu();
+if (canRenameInPlace) {
+  $('folderRow').classList.remove('hidden');
+  $('inplaceChoice').classList.remove('hidden');
+} else {
+  $('inplaceUnsupported').classList.remove('hidden');
+}
+$('scriptKind').value = scriptKind;
+steps = [newStep('find_replace')];
+focusedId = steps[0].id;
+const startHash = location.hash.slice(1);
+renderSteps();
+updateAll();
+setMethod('zip');
+
+document.addEventListener('DOMContentLoaded', () => {
+  const P = prefs();
+  if (P) {
+    const saved = P.get('steps', null);
+    if (saved && restoreSteps(saved)) {
+      if (steps.length) { steps[0].open = true; focusedId = steps[0].id; }
+    }
+    const m = P.get('method', null);
+    if (m) setMethod(m === 'inplace' && !canRenameInPlace ? 'zip' : m);
+    const k = P.get('scriptKind', null);
+    if (k && C.SCRIPT_KINDS[k]) { scriptKind = k; $('scriptKind').value = k; }
+    $('includeSub').checked = !!P.get('includeSub', false);
+  }
+  const hashId = startHash || location.hash.slice(1);
+  renderSteps();
+  if (RULE_IDS.includes(hashId)) {
+    const s = steps.find(x => x.type === hashId);
+    if (s) { steps.forEach(x => { x.open = x === s; }); focusedId = s.id; renderSteps(); }
+    else addStep(hashId);
+  }
+  if (focusedId) setFocused(focusedId);
+  updatePreview();
+
+  if (window.TFE) {
+    if (TFE.panelSummary) {
+      try {
+        panelSummaryHandle = TFE.panelSummary($('stepsPanel'), stepsSummaryText) || true;
+        $('stepsSummary').textContent = '';
+      } catch (e) { panelSummaryHandle = null; }
+    }
+    if (TFE.subtool && TFE.subtool.onChange) TFE.subtool.onChange(id => applyRuleId(id));
+    if (TFE.handoff && TFE.handoff.take) {
+      TFE.handoff.take().then(files => { if (files && files.length) addFiles(files); }).catch(() => {});
+    }
+  } else {
+    window.addEventListener('hashchange', () => applyRuleId(location.hash.slice(1)));
+  }
+  updateStepsSummary();
+});
+
+})();
 </script>
 <script src="../assets/app.js" defer></script>
 </body>
