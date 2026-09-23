@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Virtual Card Manager - Free Test Credit Card Generator</title>
-<meta name="description" content="Generate Luhn-valid test card numbers with spending caps for signups you do not trust. Local only, nothing is sent anywhere.">
+<title>Test Card Generator - Official Payment Test Numbers | Tools for Everyone</title>
+<meta name="description" content="Official test card numbers from Stripe, Adyen and Braintree for checking payment forms, with decline and 3D Secure scenarios. Real shops decline them.">
 <link rel="canonical" href="https://rehmozayub.github.io/tools-for-everyone/Virtual%20Card%20Manager/virtual_card_manager.html">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Virtual Card Manager - Free Test Credit Card Generator">
-<meta property="og:description" content="Generate Luhn-valid test card numbers with spending caps for signups you do not trust. Local only, nothing is sent anywhere.">
+<meta property="og:title" content="Test Card Generator - Official Payment Test Numbers | Tools for Everyone">
+<meta property="og:description" content="Official test card numbers from Stripe, Adyen and Braintree for checking payment forms, with decline and 3D Secure scenarios. Real shops decline them.">
 <meta property="og:url" content="https://rehmozayub.github.io/tools-for-everyone/Virtual%20Card%20Manager/virtual_card_manager.html">
 <meta property="og:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Virtual Card Manager - Free Test Credit Card Generator">
-<meta name="twitter:description" content="Generate Luhn-valid test card numbers with spending caps for signups you do not trust. Local only, nothing is sent anywhere.">
+<meta name="twitter:title" content="Test Card Generator - Official Payment Test Numbers | Tools for Everyone">
+<meta name="twitter:description" content="Official test card numbers from Stripe, Adyen and Braintree for checking payment forms, with decline and 3D Secure scenarios. Real shops decline them.">
 <meta name="twitter:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
 <link rel="manifest" href="../manifest.json">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f3f5">
@@ -29,92 +29,167 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <link rel="stylesheet" href="../assets/theme.css">
 <style>
-  .card-wrapper {
+  /* Generator controls */
+  .picker-fieldset { border: 0; padding: 0; margin: 0 0 14px; min-width: 0; }
+  .picker-fieldset legend {
+    font-size: 0.8125rem; font-weight: 500; color: var(--text-muted);
+    margin-bottom: 5px; padding: 0;
+  }
+  .picker-fieldset .radio-group { display: flex; margin-bottom: 0; }
+  .picker-fieldset .radio-group label { flex: 1 1 auto; }
+  .picker-fieldset .radio-group label > span { width: 100%; justify-content: center; }
+  .rule-line, .source-line { font-size: 0.8125rem; color: var(--text-muted); margin: 0 0 8px; }
+  .source-line a { overflow-wrap: anywhere; }
+
+  .trust-note { margin-bottom: 8px; }
+  .privacy-pointer { margin: 0 0 20px; max-width: 65ch; }
+
+  /* The generated card. It is deliberately a plain specimen, not a bank card. */
+  .specimen {
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--surface-2);
+    padding: 16px;
+    max-width: 460px;
+  }
+  .specimen-top {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+    font-size: 0.8125rem; color: var(--text-muted);
+  }
+  .specimen-number {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 1.3125rem;
+    letter-spacing: 0.03em;
+    margin: 14px 0 12px;
+    overflow-wrap: anywhere;
+    color: var(--text);
+  }
+  .specimen-fields { display: flex; gap: 24px; flex-wrap: wrap; font-size: 0.8125rem; color: var(--text-muted); }
+  .specimen-fields .v {
+    display: block; color: var(--text);
+    font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 0.9375rem;
+  }
+  .outcome { margin: 14px 0 4px; font-size: 0.9375rem; max-width: 65ch; }
+  .outcome-extra { margin: 0 0 4px; font-size: 0.8125rem; color: var(--text-muted); max-width: 65ch; }
+  .outcome code, .saved-outcome code, .outcome-extra code {
+    font-family: var(--font-mono); font-size: 0.85em;
+    background: var(--surface-2); border-radius: 4px; padding: 0 4px;
+  }
+  .gen-result .action-bar { margin-top: 14px; }
+  .copy-fallback { margin-top: 10px; flex-wrap: wrap; }
+  .copy-fallback textarea {
+    font-family: var(--font-mono); font-size: 0.8125rem; margin-top: 6px; min-height: 0;
+  }
+  .save-row {
+    margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border);
+  }
+  .save-row .form-row { align-items: flex-start; }
+  .save-row .form-group { margin-bottom: 10px; }
+  .field-hint { font-size: 0.75rem; color: var(--text-faint); margin-top: 4px; font-variant-numeric: tabular-nums; }
+
+  /* Saved list */
+  .saved-section { margin-top: 32px; }
+  .saved-title-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .saved-title-row h2 { margin-bottom: 4px; }
+  .saved-title-row .count { color: var(--text-muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .saved-toolbar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin: 10px 0 12px; }
+  .saved-toolbar .radio-group { margin-bottom: 0; }
+  .saved-toolbar .sort-group { display: flex; align-items: center; gap: 8px; }
+  .saved-toolbar .sort-group label { margin: 0; white-space: nowrap; }
+  .saved-toolbar select { width: auto; padding-top: 6px; padding-bottom: 6px; }
+  .backup-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .filter-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+
+  .saved-item {
+    display: grid;
+    grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
+    gap: 16px;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    padding: 16px;
-    margin-bottom: 16px;
+    padding: 14px;
+    margin-bottom: 12px;
   }
-  .test-banner {
-    display: flex; align-items: center; gap: 6px;
-    background: var(--warning-tint);
-    color: var(--warning);
-    border-radius: var(--radius);
-    padding: 6px 10px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    margin-bottom: 14px;
-  }
-  .card-head {
-    display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
-    margin-bottom: 2px;
-  }
-  .card-nickname { font-size: 1rem; font-weight: 600; }
-  .card-network { color: var(--text-muted); font-size: 0.8125rem; }
-  .card-number {
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
-    font-size: 1.25rem;
-    letter-spacing: 0.04em;
-    margin: 12px 0;
-  }
-  .card-details {
-    display: flex; gap: 28px; flex-wrap: wrap;
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
-    font-size: 0.8125rem;
-    color: var(--text-muted);
-  }
-  .card-details .value { color: var(--text); }
-  .cap-bar {
-    background: var(--surface-2);
-    border-radius: 2px;
-    height: 4px;
-    margin-top: 12px;
-    overflow: hidden;
-    max-width: 420px;
-  }
-  .cap-fill { height: 100%; border-radius: 2px; }
-  .cap-fill-ok { background: var(--accent); }
-  .cap-fill-warn { background: var(--warning); }
-  .cap-fill-danger { background: var(--danger); }
-  @media (prefers-reduced-motion: no-preference) {
-    .cap-fill { transition: width 160ms var(--ease); }
-  }
-  .status-tag {
-    font-size: 0.75rem;
-    font-weight: 500;
-    padding: 2px 8px;
+  .saved-item:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .saved-item.is-expired .mini-card { border-color: var(--danger); }
+  .mini-card {
+    border: 1px dashed var(--border-strong);
     border-radius: var(--radius);
     background: var(--surface-2);
+    padding: 10px 12px;
+    font-size: 0.75rem;
     color: var(--text-muted);
+    align-self: start;
   }
-  .card-frozen .card-nickname,
-  .card-frozen .card-number,
-  .card-frozen .card-details .value { color: var(--text-muted); }
-  .purpose-note {
-    color: var(--text-muted); font-size: 0.8125rem;
-    margin-top: 12px; display: flex; align-items: center; gap: 6px;
-  }
-  .card-actions { display: flex; gap: 8px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
-  .charge-input {
-    width: 110px; padding: 6px 10px;
-    background: var(--surface); border: 1px solid var(--border-strong);
-    border-radius: var(--radius); color: var(--text);
+  .mini-card .num {
+    display: block; margin: 6px 0;
     font-family: var(--font-mono); font-variant-numeric: tabular-nums;
-    font-size: 0.8125rem;
+    font-size: 0.875rem; color: var(--text); overflow-wrap: anywhere;
   }
-  .provider-links { list-style: none; font-size: 0.8125rem; }
+  .mini-card .fields { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .saved-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .saved-head h3 { font-size: 0.9375rem; font-weight: 600; color: var(--text); margin: 0; overflow-wrap: anywhere; }
+  .saved-outcome { font-size: 0.8125rem; color: var(--text-muted); margin: 6px 0 0; }
+  .saved-notes { font-size: 0.8125rem; margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .saved-meta { font-size: 0.75rem; color: var(--text-faint); margin: 6px 0 0; font-variant-numeric: tabular-nums; }
+  .saved-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; }
+  .saved-actions .spacer { flex: 1 1 auto; }
+  .edit-form .form-group { margin: 8px 0; }
+  .edit-form .edit-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* The small "More" menu that keeps Delete away from the everyday actions. */
+  .more-menu { position: relative; }
+  .more-menu > summary { list-style: none; cursor: pointer; }
+  .more-menu > summary::-webkit-details-marker { display: none; }
+  .more-pop {
+    position: absolute; right: 0; top: calc(100% + 4px); z-index: 20;
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 4px; min-width: 160px;
+  }
+  .more-pop button {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    padding: 8px 10px; min-height: 36px;
+    border: 0; border-radius: 6px; background: transparent;
+    font: inherit; font-size: 0.875rem; color: var(--danger); cursor: pointer; text-align: left;
+  }
+  .more-pop button:hover, .more-pop button:focus-visible { background: var(--danger-tint); }
+
+  .undo-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .notice-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .notice-body { min-width: 0; }
+  .provider-links { list-style: none; font-size: 0.8125rem; padding: 0; margin: 0; }
   .provider-links li { margin-bottom: 6px; color: var(--text-muted); }
-  .disclaimer { color: var(--text-muted); font-size: 0.8125rem; max-width: 65ch; margin-top: 32px; }
+  .providers { margin-top: 36px; max-width: 65ch; }
+
+  /* On phones the card and its copy buttons follow the pickers straight away;
+     the intro repeats the header, and the privacy pointer moves below the card. */
+  @media (max-width: 900px) {
+    .tool-main { display: flex; flex-direction: column; }
+    .tool-main > .tool-intro { display: none; }
+    .tool-main > #legacyNotice, .tool-main > #storageWarning { order: 0; margin-bottom: 12px; }
+    .tool-main > .trust-note { order: 1; }
+    .tool-main > .gen-result { order: 2; margin-top: 4px; }
+    .tool-main > .privacy-pointer { order: 3; margin-top: 4px; }
+    .tool-main > .saved-section { order: 4; margin-top: 12px; }
+    .tool-main > .providers { order: 5; }
+  }
+  @media (max-width: 640px) {
+    .saved-item { grid-template-columns: 1fr; gap: 10px; }
+    .specimen-number { font-size: 1.125rem; }
+  }
+  @media (pointer: coarse) {
+    .more-pop button { min-height: 44px; }
+    .more-menu > summary.icon-btn { width: 44px; height: 44px; }
+  }
 </style>
 </head>
 <body data-sw-path="../sw.js">
 
 <header class="tool-header">
   <a class="back" href="../index.html"><i class="ph ph-arrow-left" aria-hidden="true"></i> <span>All tools</span></a>
-  <h1><i class="ph ph-credit-card" aria-hidden="true"></i> Virtual Card Manager</h1>
+  <h1><i class="ph ph-credit-card" aria-hidden="true"></i> Test Card Generator</h1>
   <div class="header-actions">
     <button class="icon-btn" type="button" id="themeToggle" aria-label="Toggle theme"></button>
     <a class="icon-btn" href="https://github.com/RehmozAyub/tools-for-everyone" aria-label="Source on GitHub"><i class="ph ph-github-logo" aria-hidden="true"></i></a>
@@ -123,105 +198,154 @@
 
 <div class="tool-layout">
   <aside class="tool-controls">
-    <details class="panel" open data-mobile-collapsed>
-      <summary><span>New card</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
+    <details class="panel" open>
+      <summary><span>Test card</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
+
+      <fieldset class="picker-fieldset">
+        <legend>Processor</legend>
+        <div class="radio-group" id="processorGroup">
+          <label><input type="radio" name="processor" value="stripe" checked><span>Stripe</span></label>
+          <label><input type="radio" name="processor" value="adyen"><span>Adyen</span></label>
+          <label><input type="radio" name="processor" value="braintree"><span>Braintree</span></label>
+        </div>
+      </fieldset>
 
       <div class="form-group">
-        <label for="nickname">Card nickname</label>
-        <input type="text" id="nickname" placeholder="Streaming trial">
+        <label for="scenario">Scenario</label>
+        <select id="scenario"></select>
       </div>
 
-      <div class="form-group">
-        <label for="network">Card network</label>
-        <select id="network">
-          <option>Visa (Test)</option>
-          <option>Mastercard (Test)</option>
-          <option>Amex (Test)</option>
-          <option>Discover (Test)</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="currency">Currency</label>
-        <select id="currency">
-          <option value="USD|$">USD ($)</option>
-          <option value="EUR|&euro;">EUR (&euro;)</option>
-          <option value="GBP|&pound;">GBP (&pound;)</option>
-          <option value="INR|&#8377;">INR (&#8377;)</option>
-          <option value="JPY|&yen;">JPY (&yen;)</option>
-          <option value="CAD|C$">CAD (C$)</option>
-          <option value="AUD|A$">AUD (A$)</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="spending_cap">Spending cap</label>
-        <input type="number" id="spending_cap" min="1" max="100000" value="50" step="5">
-      </div>
-
-      <div class="form-group">
-        <label for="months_valid">Valid for</label>
-        <input type="range" id="months_valid" min="1" max="36" value="12">
-        <div class="slider-value" id="months_label">12 months</div>
-      </div>
-
-      <div class="form-group">
-        <label for="purpose">Purpose or notes</label>
-        <input type="text" id="purpose" placeholder="Free trial signup">
-      </div>
-
-      <button class="btn btn-primary" type="button" onclick="generateCard(this)"><i class="ph ph-plus-circle" aria-hidden="true"></i> Generate card</button>
-    </details>
-
-    <details class="panel" open data-mobile-collapsed>
-      <summary><span>Export</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
-      <button class="btn btn-export" type="button" onclick="exportCSV()" id="exportBtn" disabled><i class="ph ph-download-simple" aria-hidden="true"></i> Download CSV</button>
-    </details>
-
-    <details class="panel" open data-mobile-collapsed>
-      <summary><span>Real virtual card providers</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
-      <ul class="provider-links">
-        <li><a href="https://privacy.com" target="_blank" rel="noopener">Privacy.com</a>, free virtual cards in the US</li>
-        <li><a href="https://revolut.com" target="_blank" rel="noopener">Revolut</a>, disposable and virtual cards in the EU and UK</li>
-        <li><a href="https://wise.com" target="_blank" rel="noopener">Wise</a>, multi-currency virtual cards</li>
-        <li><a href="https://mysudo.com" target="_blank" rel="noopener">MySudo</a>, privacy-focused virtual cards</li>
-        <li><a href="https://eno.capitalone.com" target="_blank" rel="noopener">Capital One Eno</a>, free virtual numbers</li>
-      </ul>
+      <p class="rule-line" id="ruleLine"></p>
+      <p class="source-line" id="sourceLine"></p>
     </details>
   </aside>
 
-  <main class="tool-main">
-    <p class="tool-intro">Generate test card numbers with spending caps. Everything stays on your machine.</p>
+  <main class="tool-main" id="main">
+    <p class="tool-intro">Official test card numbers from Stripe, Adyen and Braintree for checking payment forms, with decline and 3D Secure scenarios.</p>
 
-    <div id="statsRow" style="display:none;">
-      <div class="stats">
-        <div class="stat-card">
-          <div class="stat-label">Cards</div>
-          <div class="stat-value" id="statTotal">0</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Active</div>
-          <div class="stat-value" id="statActive">0</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Frozen</div>
-          <div class="stat-value" id="statFrozen">0</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Total cap</div>
-          <div class="stat-value" id="statCap">$0</div>
+    <div class="info-msg trust-note"><i class="ph ph-info" aria-hidden="true"></i><span>These are the payment processors' own test numbers. They only work in test mode, and real shops decline them.</span></div>
+    <p class="privacy-pointer muted small">Want to protect yourself on free trials? Use a real virtual card from
+      <a href="https://privacy.com" target="_blank" rel="noopener">Privacy.com</a>,
+      <a href="https://www.revolut.com" target="_blank" rel="noopener">Revolut</a> or
+      <a href="https://wise.com" target="_blank" rel="noopener">Wise</a>.</p>
+
+    <div class="warning-msg hidden" id="legacyNotice" role="region" aria-label="Old cards">
+      <i class="ph ph-warning" aria-hidden="true"></i>
+      <div class="notice-body">
+        <span id="legacyText">Your old generated cards were removed because they were not real test numbers. Download them as CSV before they are cleared.</span>
+        <div class="notice-actions">
+          <button class="btn btn-sm" type="button" id="legacyDownload"><i class="ph ph-download-simple" aria-hidden="true"></i> Download old cards (CSV)</button>
+          <button class="btn btn-sm" type="button" id="legacyDismiss">Clear them now</button>
         </div>
       </div>
     </div>
 
-    <div id="cardList"></div>
+    <div class="warning-msg hidden" id="storageWarning" role="alert">
+      <i class="ph ph-warning" aria-hidden="true"></i>
+      <div class="notice-body">
+        <span>This browser is not saving your cards. Export a backup before you leave.</span>
+        <div class="notice-actions">
+          <button class="btn btn-sm" type="button" data-backup><i class="ph ph-download-simple" aria-hidden="true"></i> Back up (JSON)</button>
+        </div>
+      </div>
+    </div>
 
-    <p class="disclaimer">
-      These are test numbers only. They will never process a real payment. Everything you create here is
-      stored in your own browser and nothing is sent anywhere. For cards that really work, look at
-      <a href="https://privacy.com">Privacy.com</a>, <a href="https://revolut.com">Revolut</a>, or
-      <a href="https://wise.com">Wise</a>.
-    </p>
+    <section class="result gen-result" id="genResult" aria-labelledby="genHeading">
+      <div class="result-head">
+        <h2 id="genHeading">Test card</h2>
+      </div>
+      <div class="result-body">
+        <div class="specimen" id="specimen">
+          <div class="specimen-top">
+            <span class="pill pill-warning"><i class="ph ph-flask" aria-hidden="true"></i> Test mode only</span>
+            <span id="genBrand"></span>
+          </div>
+          <div class="specimen-number" id="genNumber" aria-label="Card number"></div>
+          <div class="specimen-fields">
+            <span>Expiry <span class="v" id="genExpiry"></span></span>
+            <span>CVC <span class="v" id="genCvc"></span></span>
+            <span id="genHolderWrap" class="hidden">Cardholder name <span class="v" id="genHolder"></span></span>
+          </div>
+        </div>
+        <p class="outcome" id="genOutcome"></p>
+        <p class="outcome-extra" id="genExtra"></p>
+        <p class="outcome-extra" id="genExpiryNote"></p>
+
+        <div class="action-bar" id="copyBar">
+          <button class="btn btn-primary" type="button" data-copy="number"><i class="ph ph-copy" aria-hidden="true"></i> Copy number</button>
+          <button class="btn" type="button" data-copy="expiry">Copy expiry</button>
+          <button class="btn" type="button" data-copy="cvc" id="copyCvcBtn">Copy CVC</button>
+          <button class="btn hidden" type="button" data-copy="holder" id="copyHolderBtn">Copy name</button>
+          <button class="btn" type="button" data-copy="json"><i class="ph ph-brackets-curly" aria-hidden="true"></i> Copy all as JSON</button>
+        </div>
+
+        <div class="save-row">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="saveLabel">Label (optional)</label>
+              <input type="text" id="saveLabel" data-no-remember autocomplete="off">
+              <div class="field-hint" id="saveLabelCount"></div>
+            </div>
+            <div class="form-group">
+              <label for="saveNotes">Notes (optional)</label>
+              <input type="text" id="saveNotes" data-no-remember autocomplete="off" placeholder="Used in checkout tests">
+              <div class="field-hint" id="saveNotesCount"></div>
+            </div>
+          </div>
+          <button class="btn" type="button" id="saveBtn"><i class="ph ph-bookmark-simple" aria-hidden="true"></i> Save to my list</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="saved-section" aria-labelledby="savedHeading">
+      <div class="saved-title-row">
+        <h2 id="savedHeading">Saved test cards <span class="count" id="savedCount"></span></h2>
+        <span class="muted small" id="backupInfo">Last backed up: never</span>
+      </div>
+
+      <div class="saved-toolbar">
+        <fieldset class="filter-fieldset">
+          <legend class="sr-only">Show</legend>
+          <div class="radio-group" id="filterGroup">
+            <label><input type="radio" name="savedFilter" value="all" checked><span>All</span></label>
+            <label><input type="radio" name="savedFilter" value="stripe"><span>Stripe</span></label>
+            <label><input type="radio" name="savedFilter" value="adyen"><span>Adyen</span></label>
+            <label><input type="radio" name="savedFilter" value="braintree"><span>Braintree</span></label>
+          </div>
+        </fieldset>
+        <div class="sort-group">
+          <label for="savedSort">Sort</label>
+          <select id="savedSort">
+            <option value="newest">Newest first</option>
+            <option value="label">Label, A to Z</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="backup-row">
+        <button class="btn btn-sm" type="button" data-backup id="backupBtn"><i class="ph ph-download-simple" aria-hidden="true"></i> Back up (JSON)</button>
+        <button class="btn btn-sm" type="button" id="restoreBtn"><i class="ph ph-upload-simple" aria-hidden="true"></i> Restore from backup</button>
+        <input type="file" id="restoreInput" accept=".json,application/json" class="hidden" data-no-remember>
+        <button class="btn btn-sm" type="button" id="csvBtn"><i class="ph ph-table" aria-hidden="true"></i> Download CSV (for spreadsheets)</button>
+      </div>
+
+      <div id="restoreMsg" aria-live="polite"></div>
+      <div id="undoBar"></div>
+      <div id="savedList"></div>
+    </section>
+
+    <section class="providers" aria-labelledby="providersHeading">
+      <h2 id="providersHeading">Real virtual cards for free trials</h2>
+      <p class="muted small">Test numbers cannot pay for anything. To keep a real card private on a signup, use a virtual card from a provider:</p>
+      <ul class="provider-links">
+        <li><a href="https://privacy.com" target="_blank" rel="noopener">Privacy.com</a>, virtual cards with limits in the US</li>
+        <li><a href="https://www.revolut.com" target="_blank" rel="noopener">Revolut</a>, disposable and virtual cards in the EU and UK</li>
+        <li><a href="https://wise.com" target="_blank" rel="noopener">Wise</a>, multi-currency virtual cards</li>
+        <li><a href="https://mysudo.com" target="_blank" rel="noopener">MySudo</a>, virtual cards alongside private phone numbers and email</li>
+      </ul>
+    </section>
+
+    <div class="sr-only" aria-live="polite" id="pageLive"></div>
   </main>
 </div>
 
@@ -232,291 +356,1072 @@
 </footer>
 
 <script>
-// Constants
-const CARD_PREFIXES = {
-  "Visa (Test)": ["4539", "4556", "4916", "4532", "4929"],
-  "Mastercard (Test)": ["5425", "5399", "5168", "5490", "5206"],
-  "Amex (Test)": ["3742", "3782", "3714", "3787", "3764"],
-  "Discover (Test)": ["6011", "6500", "6505", "6441", "6442"],
+'use strict';
+
+/* TEST_CARD_DATA:START
+   Every number, expiry and CVC below is copied from the processor's own documentation,
+   checked on 23 September 2026. Do not add a number that is not on one of these pages. */
+const SOURCES = {
+  stripe: { url: 'https://docs.stripe.com/testing', label: "Stripe's testing docs" },
+  adyen: { url: 'https://docs.adyen.com/development-resources/test-cards-and-credentials/test-card-numbers', label: "Adyen's test card numbers" },
+  adyen3ds: { url: 'https://docs.adyen.com/development-resources/testing/3d-secure-2-authentication', label: "Adyen's 3D Secure 2 testing docs" },
+  adyenRefusals: { url: 'https://docs.adyen.com/development-resources/testing/result-codes', label: "Adyen's refusal reason testing docs" },
+  braintree: { url: 'https://developer.paypal.com/braintree/docs/reference/general/testing', label: "Braintree's testing reference" },
+  braintree3ds: { url: 'https://developer.paypal.com/braintree/docs/guides/3d-secure/testing', label: "Braintree's 3D Secure testing guide" }
 };
+const CHECKED = 'September 2026';
 
-const CARD_LENGTHS = {
-  "Visa (Test)": 16,
-  "Mastercard (Test)": 16,
-  "Amex (Test)": 15,
-  "Discover (Test)": 16,
+const PROCESSORS = {
+  stripe: {
+    name: 'Stripe',
+    source: 'stripe',
+    expiry: 'future',
+    cvc: { len: 3, amexLen: 4, avoid: [] },
+    rule: 'Use any future expiry and any 3 digits (4 for American Express). A fresh expiry 3 years ahead and a random CVC are filled in for you.',
+    groups: [
+      { label: 'Succeeds, by brand', items: [
+        { id: 'visa', label: 'Visa', brand: 'Visa', number: '4242424242424242', outcome: 'Succeeds.' },
+        { id: 'visa_debit', label: 'Visa debit', brand: 'Visa (debit)', number: '4000056655665556', outcome: 'Succeeds.' },
+        { id: 'mastercard', label: 'Mastercard', brand: 'Mastercard', number: '5555555555554444', outcome: 'Succeeds.' },
+        { id: 'mc_2series', label: 'Mastercard 2-series', brand: 'Mastercard (2-series)', number: '2223003122003222', outcome: 'Succeeds.' },
+        { id: 'mc_debit', label: 'Mastercard debit', brand: 'Mastercard (debit)', number: '5200828282828210', outcome: 'Succeeds.' },
+        { id: 'mc_prepaid', label: 'Mastercard prepaid', brand: 'Mastercard (prepaid)', number: '5105105105105100', outcome: 'Succeeds.' },
+        { id: 'amex', label: 'American Express', brand: 'American Express', number: '378282246310005', amex: true, outcome: 'Succeeds.' },
+        { id: 'discover', label: 'Discover', brand: 'Discover', number: '6011111111111117', outcome: 'Succeeds.' },
+        { id: 'diners', label: 'Diners Club', brand: 'Diners Club', number: '3056930009020004', outcome: 'Succeeds.' },
+        { id: 'diners14', label: 'Diners Club, 14 digits', brand: 'Diners Club (14-digit)', number: '36227206271667', outcome: 'Succeeds.' },
+        { id: 'jcb', label: 'JCB', brand: 'JCB', number: '3566002020360505', outcome: 'Succeeds. JCB is issued outside the US, so a cross-border fee can apply even in test mode.' },
+        { id: 'unionpay', label: 'UnionPay', brand: 'UnionPay', number: '6200000000000005', outcome: 'Succeeds. UnionPay is issued outside the US, so a cross-border fee can apply even in test mode.' }
+      ] },
+      { label: 'Declines', items: [
+        { id: 'generic_decline', label: 'Generic decline', brand: 'Visa', number: '4000000000000002', outcome: 'Declined with <code>card_declined</code>, decline_code <code>generic_decline</code>.' },
+        { id: 'insufficient_funds', label: 'Insufficient funds', brand: 'Visa', number: '4000000000009995', outcome: 'Declined with <code>card_declined</code>, decline_code <code>insufficient_funds</code>.' },
+        { id: 'lost_card', label: 'Lost card', brand: 'Visa', number: '4000000000009987', outcome: 'Declined with <code>card_declined</code>, decline_code <code>lost_card</code>.' },
+        { id: 'stolen_card', label: 'Stolen card', brand: 'Visa', number: '4000000000009979', outcome: 'Declined with <code>card_declined</code>, decline_code <code>stolen_card</code>.' },
+        { id: 'expired_card', label: 'Expired card', brand: 'Visa', number: '4000000000000069', outcome: 'Declined with <code>expired_card</code>. Enter a future expiry anyway; the decline is simulated.' },
+        { id: 'incorrect_cvc', label: 'Incorrect CVC', brand: 'Visa', number: '4000000000000127', outcome: 'Declined with <code>incorrect_cvc</code>.', extra: 'Enter a CVC. Stripe skips the CVC check when it is left empty, so the check cannot fail.' },
+        { id: 'processing_error', label: 'Processing error', brand: 'Visa', number: '4000000000000119', outcome: 'Declined with <code>processing_error</code>.' },
+        { id: 'incorrect_number', label: 'Incorrect number', brand: 'Visa', number: '4242424242424241', luhnInvalid: true, outcome: 'Declined with <code>incorrect_number</code>.', extra: 'This number fails the Luhn check on purpose, so many forms reject it before it reaches Stripe.' },
+        { id: 'velocity', label: 'Velocity limit exceeded', brand: 'Visa', number: '4000000000006975', outcome: 'Declined with <code>card_declined</code>, decline_code <code>card_velocity_exceeded</code>.' },
+        { id: 'decline_after_attach', label: 'Decline after attaching', brand: 'Visa', number: '4000000000000341', outcome: 'Attaching it to a Customer succeeds, but charging that customer fails.' }
+      ] },
+      { label: '3D Secure', items: [
+        { id: '3ds_required', label: '3D Secure required', brand: 'Visa', number: '4000000000003220', outcome: '3D Secure authentication must be completed for the payment to succeed. Radar asks for it by default.' },
+        { id: '3ds_always', label: '3D Secure on every payment', brand: 'Visa', number: '4000002760003184', outcome: 'Asks for authentication on every payment, however the card is set up.' },
+        { id: '3ds_frictionless', label: '3D Secure 2 frictionless', brand: 'Visa', number: '4000000032200000', outcome: 'Authentication runs on every payment through the frictionless flow and succeeds.' },
+        { id: '3ds_declined', label: '3D Secure, then declined', brand: 'Visa', number: '4000008400001629', outcome: 'Needs 3D Secure, then declines with <code>card_declined</code> after authentication.' },
+        { id: '3ds_insufficient', label: '3D Secure, then insufficient funds', brand: 'Visa', number: '4000008260003178', outcome: 'Needs authentication for one-time payments, then declines with <code>insufficient_funds</code> even after it succeeds.' },
+        { id: '3ds_challenge_otp', label: '3D Secure 2 challenge, passcode (mobile SDK)', brand: 'Visa', number: '4000582600000045', outcome: 'In a mobile payment, triggers the one-time passcode challenge.', extra: 'Stripe notes that these challenge cards do nothing special in browser forms or API calls.' }
+      ] },
+      { label: 'Fraud and disputes', items: [
+        { id: 'always_blocked', label: 'Always blocked by Radar', brand: 'Visa', number: '4100000000000019', outcome: 'The charge has a risk level of highest and Radar always blocks it.' },
+        { id: 'cvc_check_fails', label: 'CVC check fails', brand: 'Visa', number: '4000000000000101', outcome: 'If you enter a CVC, the CVC check fails. Radar might block it depending on your settings.' },
+        { id: 'dispute_fraudulent', label: 'Disputed as fraudulent', brand: 'Visa', number: '4000000000000259', outcome: 'The charge succeeds, then is disputed as fraudulent.' }
+      ] }
+    ]
+  },
+
+  adyen: {
+    name: 'Adyen',
+    source: 'adyen',
+    expiry: 'fixed',
+    rule: "Adyen's test platform expects the exact expiry and CVC shown for each card, so they are filled in as documented.",
+    groups: [
+      { label: 'Test cards, by brand', items: [
+        { id: 'visa', label: 'Visa', brand: 'Visa (consumer, NL)', number: '4111111111111111', exp: [3, 2030], cvc: '737', outcome: 'A standard card. Payments go through unless you trigger a refusal.' },
+        { id: 'visa_debit', label: 'Visa debit', brand: 'Visa (debit, US)', number: '4400000000000008', exp: [3, 2030], cvc: '737', outcome: 'A standard debit card. Payments go through unless you trigger a refusal.' },
+        { id: 'mastercard', label: 'Mastercard', brand: 'Mastercard (credit, GB)', number: '5555555555554444', exp: [3, 2030], cvc: '737', outcome: 'A standard card. Payments go through unless you trigger a refusal.' },
+        { id: 'mc_2series', label: 'Mastercard 2-series', brand: 'Mastercard (credit, CA)', number: '2222400010000008', exp: [3, 2030], cvc: '737', outcome: 'A 2-series card. Payments go through unless you trigger a refusal.' },
+        { id: 'amex', label: 'American Express', brand: 'American Express (NL)', number: '370000000000002', exp: [3, 2030], cvc: '7373', outcome: 'A standard card. Payments go through unless you trigger a refusal.' },
+        { id: 'discover', label: 'Discover', brand: 'Discover (US)', number: '6011601160116611', exp: [3, 2030], cvc: '737', outcome: 'A standard card. Payments go through unless you trigger a refusal.' },
+        { id: 'diners', label: 'Diners', brand: 'Diners (US)', number: '36006666333344', exp: [3, 2030], cvc: '737', outcome: 'A standard card. Payments go through unless you trigger a refusal.' },
+        { id: 'jcb', label: 'JCB', brand: 'JCB (consumer, US)', number: '3569990010095841', exp: [3, 2030], cvc: '737', outcome: 'A standard card. Payments go through unless you trigger a refusal.' },
+        { id: 'unionpay', label: 'UnionPay', brand: 'China UnionPay (CN)', number: '6243030000000001', exp: [12, 2029], cvc: '737', outcome: 'An ExpressPay credit card.', extra: 'At the SMS step, enter 123456 on mobile or 111111 on desktop.' },
+        { id: 'maestro', label: 'Maestro', brand: 'Maestro (US)', number: '6771798021000008', exp: [3, 2030], cvc: '737', outcome: 'For online Maestro payments, 3D Secure is mandatory.' }
+      ] },
+      { label: 'Refusals (set the cardholder name)', items: [
+        { id: 'refused', label: 'Refused', brand: 'Visa', number: '4111111111111111', exp: [3, 2030], cvc: '737', holder: 'DECLINED', acquirerCode: 2, source: 'adyenRefusals', outcome: 'resultCode <code>Refused</code>, refusalReason <code>Refused</code>.' },
+        { id: 'not_enough_balance', label: 'Not enough balance', brand: 'Visa', number: '4111111111111111', exp: [3, 2030], cvc: '737', holder: 'NOT_ENOUGH_BALANCE', acquirerCode: 12, source: 'adyenRefusals', outcome: 'resultCode <code>Refused</code>, refusalReason <code>Not enough balance</code>.' },
+        { id: 'card_expired', label: 'Expired card', brand: 'Visa', number: '4111111111111111', exp: [3, 2030], cvc: '737', holder: 'CARD_EXPIRED', acquirerCode: 6, source: 'adyenRefusals', outcome: 'resultCode <code>Refused</code>, refusalReason <code>Expired Card</code>.' },
+        { id: 'cvc_declined', label: 'CVC declined', brand: 'Visa', number: '4111111111111111', exp: [3, 2030], cvc: '737', holder: 'CVC_DECLINED', acquirerCode: 24, source: 'adyenRefusals', outcome: 'resultCode <code>Refused</code>, refusalReason <code>CVC Declined</code>.' },
+        { id: 'blocked_card', label: 'Blocked card', brand: 'Visa', number: '4111111111111111', exp: [3, 2030], cvc: '737', holder: 'BLOCK_CARD', acquirerCode: 5, source: 'adyenRefusals', outcome: 'resultCode <code>Refused</code>, refusalReason <code>Blocked Card</code>.' },
+        { id: 'issuer_unavailable', label: 'Issuer unavailable', brand: 'Visa', number: '4111111111111111', exp: [3, 2030], cvc: '737', holder: 'ISSUER_UNAVAILABLE', acquirerCode: 9, source: 'adyenRefusals', outcome: 'resultCode <code>Refused</code>, refusalReason <code>Issuer Unavailable</code>.' },
+        { id: 'fraud', label: 'Fraud', brand: 'Visa', number: '4111111111111111', exp: [3, 2030], cvc: '737', holder: 'FRAUD', acquirerCode: 20, source: 'adyenRefusals', outcome: 'resultCode <code>Refused</code>, refusalReason <code>FRAUD</code>.' },
+        { id: 'acquirer_error', label: 'Acquirer error', brand: 'Visa', number: '4111111111111111', exp: [3, 2030], cvc: '737', holder: 'ERROR', acquirerCode: 4, source: 'adyenRefusals', outcome: 'resultCode <code>Error</code>, refusalReason <code>Acquirer Error</code>.' }
+      ] },
+      { label: '3D Secure 2', items: [
+        { id: '3ds2_visa', label: '3D Secure 2, Visa', brand: 'Visa', number: '4917610000000000', exp: [3, 2030], cvc: '737', source: 'adyen3ds', outcome: 'Enrolled in 3D Secure 2.', extra: 'At the text challenge, enter <code>password</code> in a browser or <code>1234</code> in a native app. Any other value fails the challenge.' },
+        { id: '3ds2_mastercard', label: '3D Secure 2, Mastercard', brand: 'Mastercard', number: '5454545454545454', exp: [3, 2030], cvc: '737', source: 'adyen3ds', outcome: 'Enrolled in 3D Secure 2.', extra: 'At the text challenge, enter <code>password</code> in a browser or <code>1234</code> in a native app. Any other value fails the challenge.' },
+        { id: '3ds2_amex', label: '3D Secure 2, American Express', brand: 'American Express', number: '371449635398431', exp: [3, 2030], cvc: '7373', source: 'adyen3ds', outcome: 'Enrolled in 3D Secure 2.', extra: 'At the text challenge, enter <code>password</code> in a browser or <code>1234</code> in a native app. Any other value fails the challenge.' },
+        { id: '3ds2_challenge', label: '3D Secure 2 challenge (Advanced flow)', brand: 'Visa', number: '4212345678910006', exp: [3, 2030], cvc: '737', source: 'adyen3ds', outcome: 'Returns <code>ChallengeShopper</code> with an action your integration must handle.', extra: 'Applies to the Advanced flow, not the Sessions flow.' },
+        { id: '3ds2_frictionless', label: '3D Secure 2 frictionless (Advanced flow)', brand: 'Mastercard', number: '5201281505129736', exp: [3, 2030], cvc: '737', source: 'adyen3ds', outcome: 'Frictionless flow: only the device fingerprint is needed. The ARes has transStatus <code>Y</code>.', extra: 'Applies to the Advanced flow, not the Sessions flow.' },
+        { id: '3ds2_not_authenticated', label: '3D Secure 2 not authenticated', brand: 'Mastercard', number: '5201281262435268', exp: [3, 2030], cvc: '737', source: 'adyen3ds', outcome: 'Returns an ARes with transStatus <code>N</code>: not authenticated, transaction denied.' }
+      ] }
+    ]
+  },
+
+  braintree: {
+    name: 'Braintree',
+    source: 'braintree',
+    expiry: 'future',
+    cvc: { len: 3, amexLen: 4, avoid: ['200', '201', '301', '2000', '2011', '3011'] },
+    rule: "Braintree's testing page does not set an expiry for these numbers, so a future date 3 years ahead is used. The CVC avoids 200, 201 and 301 (2000, 2011 and 3011 for American Express), which trigger CVV responses when CVV rules are on.",
+    groups: [
+      { label: 'Valid cards, by brand', items: [
+        { id: 'visa', label: 'Visa', brand: 'Visa', number: '4111111111111111', outcome: 'Verifies. A transaction with an amount from 0.01 to 1999.99 is authorised.' },
+        { id: 'visa_debit', label: 'Visa debit', brand: 'Visa', number: '4012000033330125', outcome: 'Returns the card type indicator debit = Yes.' },
+        { id: 'mastercard', label: 'Mastercard', brand: 'Mastercard', number: '5555555555554444', outcome: 'Verifies. A transaction with an amount from 0.01 to 1999.99 is authorised.' },
+        { id: 'mc_2series', label: 'Mastercard 2-series', brand: 'Mastercard', number: '2223000048400011', outcome: 'Verifies. A transaction with an amount from 0.01 to 1999.99 is authorised.' },
+        { id: 'amex', label: 'American Express', brand: 'American Express', number: '378282246310005', amex: true, outcome: 'Verifies. A transaction with an amount from 0.01 to 1999.99 is authorised.' },
+        { id: 'discover', label: 'Discover', brand: 'Discover', number: '6011000991300009', outcome: 'Verifies. A transaction with an amount from 0.01 to 1999.99 is authorised.' },
+        { id: 'diners', label: 'Diners Club', brand: 'Diners Club', number: '36259600000004', outcome: 'Verifies. Braintree processes Diners Club cards as Discover.' },
+        { id: 'jcb', label: 'JCB', brand: 'JCB', number: '3530111333300000', outcome: 'Verifies. A transaction with an amount from 0.01 to 1999.99 is authorised.' },
+        { id: 'maestro', label: 'Maestro', brand: 'Maestro', number: '6304000000000000', outcome: 'Verifies. A transaction with an amount from 0.01 to 1999.99 is authorised.' },
+        { id: 'unionpay', label: 'UnionPay', brand: 'UnionPay', number: '6243030000000001', outcome: 'Verifies. A transaction with an amount from 0.01 to 1999.99 is authorised.' }
+      ] },
+      { label: 'Transaction results (set the amount)', items: [
+        { id: 'amount_declined', label: 'Processor declined', brand: 'Visa', number: '4111111111111111', outcome: 'Processor Declined, with a processor response code equal to the amount.', extra: 'Charge an amount from 2000.00 to 2999.99. Transaction results depend on the amount, not the card.' },
+        { id: 'amount_failed', label: 'Failed (3000)', brand: 'Visa', number: '4111111111111111', outcome: 'Failed with processor response 3000.', extra: 'Charge an amount from 3000.00 to 3000.99.' },
+        { id: 'amount_gateway', label: 'Gateway rejected', brand: 'Visa', number: '4111111111111111', outcome: 'Gateway Rejected with the reason Application Incomplete.', extra: 'Charge exactly 5001.00.' }
+      ] },
+      { label: 'Card verification fails', items: [
+        { id: 'verify_declined_visa', label: 'Verification declined, Visa', brand: 'Visa', number: '4000111111111115', outcome: 'Card verification returns processor declined.' },
+        { id: 'verify_declined_mc', label: 'Verification declined, Mastercard', brand: 'Mastercard', number: '5105105105105100', outcome: 'Card verification returns processor declined.' },
+        { id: 'verify_declined_amex', label: 'Verification declined, American Express', brand: 'American Express', number: '378734493671000', amex: true, outcome: 'Card verification returns processor declined.' },
+        { id: 'verify_declined_discover', label: 'Verification declined, Discover', brand: 'Discover', number: '6011000990139424', outcome: 'Card verification returns processor declined.' },
+        { id: 'verify_failed_jcb', label: 'Verification failed (3000), JCB', brand: 'JCB', number: '3566002020360505', outcome: 'Card verification returns failed (3000).' }
+      ] },
+      { label: 'Fraud tools', items: [
+        { id: 'fraud_rejected', label: 'Rejected as fraud', brand: 'Visa', number: '4000111111111511', outcome: 'Status <code>gateway_rejected</code>, reason <code>fraud</code>.' },
+        { id: 'risk_threshold', label: 'Rejected by risk threshold', brand: 'Visa', number: '4111130000000003', outcome: 'Status <code>gateway_rejected</code>, reason <code>risk_threshold</code>.' }
+      ] },
+      { label: '3D Secure', items: [
+        { id: '3ds_frictionless_ok', label: '3D Secure frictionless, succeeds', brand: 'Visa', number: '4000000000002701', expiry: 'braintree3ds', source: 'braintree3ds', outcome: 'No challenge. Status <code>authenticate_successful</code>.' },
+        { id: '3ds_frictionless_failed', label: '3D Secure frictionless, fails', brand: 'Visa', number: '4000000000002925', expiry: 'braintree3ds', source: 'braintree3ds', outcome: 'No challenge. Status <code>authenticate_frictionless_failed</code>; ask for another payment method.' },
+        { id: '3ds_challenge_ok', label: '3D Secure challenge, succeeds', brand: 'Visa', number: '4000000000002503', expiry: 'braintree3ds', source: 'braintree3ds', outcome: 'Challenge shown. Status <code>authenticate_successful</code>.' },
+        { id: '3ds_challenge_failed', label: '3D Secure challenge, fails', brand: 'Visa', number: '4000000000002370', expiry: 'braintree3ds', source: 'braintree3ds', outcome: 'Status <code>challenge_required</code> after lookup, then <code>authenticate_failed</code>.' },
+        { id: '3ds_lookup_error', label: '3D Secure lookup error', brand: 'Visa', number: '4000000000002446', expiry: 'braintree3ds', source: 'braintree3ds', outcome: 'Status <code>lookup_error</code>: an error occurred while looking up enrolment.' },
+        { id: '3ds_mc_ok', label: '3D Secure frictionless, Mastercard', brand: 'Mastercard', number: '5200000000002235', expiry: 'braintree3ds', source: 'braintree3ds', outcome: 'No challenge. Status <code>authenticate_successful</code>.' },
+        { id: '3ds_amex_ok', label: '3D Secure frictionless, American Express', brand: 'American Express', number: '340000000002708', amex: true, expiry: 'braintree3ds', source: 'braintree3ds', outcome: 'No challenge. Status <code>authenticate_successful</code>.' }
+      ] }
+    ]
+  }
 };
+/* TEST_CARD_DATA:END */
 
-const STORAGE_KEY = "virtual_card_manager_cards";
+const STORE_KEY = 'tfe:test-cards:v1';
+const BACKUP_KEY = 'tfe:test-cards:last-backup';
+const LEGACY_KEY = 'virtual_card_manager_cards';
+const BACKUP_FORMAT = 'tools-for-everyone.test-cards';
+const LABEL_MAX = 60;
+const NOTES_MAX = 500;
+const EXPIRY_RULES = ['future', 'fixed', 'braintree3ds'];
 
-// Helpers
-function luhnChecksum(cardNumber) {
-  const digits = cardNumber.split("").map(Number);
-  const oddDigits = [];
-  const evenDigits = [];
-  for (let i = digits.length - 1; i >= 0; i -= 2) oddDigits.push(digits[i]);
-  for (let i = digits.length - 2; i >= 0; i -= 2) evenDigits.push(digits[i]);
-  let total = oddDigits.reduce((a, b) => a + b, 0);
-  for (const d of evenDigits) {
-    const doubled = d * 2;
-    total += Math.floor(doubled / 10) + (doubled % 10);
-  }
-  return total % 10;
-}
+/* ---------- Small helpers ---------- */
 
-function generateCardNumber(network) {
-  const prefixes = CARD_PREFIXES[network];
-  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-  const length = CARD_LENGTHS[network];
-  let body = prefix;
-  for (let i = 0; i < length - prefix.length - 1; i++) {
-    body += Math.floor(Math.random() * 10);
-  }
-  for (let check = 0; check < 10; check++) {
-    const candidate = body + check;
-    if (luhnChecksum(candidate) === 0) return candidate;
-  }
-  return body + "0";
-}
-
-function generateCVV(network) {
-  const len = network.includes("Amex") ? 4 : 3;
-  let cvv = "";
-  for (let i = 0; i < len; i++) cvv += Math.floor(Math.random() * 10);
-  return cvv;
-}
-
-function generateExpiry(monthsValid) {
-  const now = new Date();
-  now.setDate(now.getDate() + monthsValid * 30);
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const yy = String(now.getFullYear() % 100).padStart(2, "0");
-  return mm + "/" + yy;
-}
-
-function formatCardNumber(num) {
-  if (num.length === 15) return num.slice(0, 4) + " " + num.slice(4, 10) + " " + num.slice(10);
-  return num.match(/.{1,4}/g).join(" ");
-}
-
-function maskCardNumber(num) {
-  return "**** **** **** " + num.slice(-4);
-}
-
-// Storage
-function loadCards() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-  } catch { return []; }
-}
-
-function saveCards(cards) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
-  } catch { /* storage may be unavailable in private mode */ }
-}
-
-// Generate card
-function generateCard(btn) {
-  const nickname = document.getElementById("nickname").value || `Card ${cards.length + 1}`;
-  const network = document.getElementById("network").value;
-  const currParts = document.getElementById("currency").value.split("|");
-  const spendingCap = parseFloat(document.getElementById("spending_cap").value) || 50;
-  const monthsValid = parseInt(document.getElementById("months_valid").value) || 12;
-  const purpose = document.getElementById("purpose").value;
-
-  const card = {
-    nickname,
-    network,
-    number: generateCardNumber(network),
-    cvv: generateCVV(network),
-    expiry: generateExpiry(monthsValid),
-    spending_cap: spendingCap,
-    currency: currParts[0],
-    currency_symbol: currParts[1],
-    spent: 0,
-    purpose,
-    status: "active",
-    created: new Date().toISOString(),
-  };
-
-  cards.unshift(card);
-  saveCards(cards);
-  render();
-  showToast(`${card.nickname} created`, 'success');
-
-  // Reset form
-  document.getElementById("nickname").value = "";
-  document.getElementById("purpose").value = "";
-}
-
-// Card actions
-function freezeCard(idx) {
-  cards[idx].status = "frozen";
-  saveCards(cards);
-  render();
-}
-
-function unfreezeCard(idx) {
-  cards[idx].status = "active";
-  saveCards(cards);
-  render();
-}
-
-function logCharge(idx, btn) {
-  const input = document.getElementById(`charge-${idx}`);
-  const amount = parseFloat(input.value);
-  if (!amount || amount <= 0) {
-    showInlineError(btn, 'Enter an amount above zero first.');
-    return;
-  }
-  const remaining = cards[idx].spending_cap - (cards[idx].spent || 0);
-  if (amount > remaining) {
-    showInlineError(btn, 'That is more than the cap has left.');
-    return;
-  }
-  cards[idx].spent = (cards[idx].spent || 0) + amount;
-  saveCards(cards);
-  render();
-}
-
-function resetSpend(idx) {
-  cards[idx].spent = 0;
-  saveCards(cards);
-  render();
-}
-
-function deleteCard(idx) {
-  cards.splice(idx, 1);
-  saveCards(cards);
-  render();
-}
-
-// Export CSV
-function exportCSV() {
-  if (!cards.length) return;
-  const headers = ["nickname", "network", "masked_number", "expiry", "spending_cap", "spent", "remaining", "purpose", "status", "created"];
-  let csv = headers.join(",") + "\n";
-  for (const c of cards) {
-    const remaining = c.spending_cap - (c.spent || 0);
-    const row = [
-      `"${(c.nickname || "").replace(/"/g, '""')}"`,
-      `"${c.network}"`,
-      `"${maskCardNumber(c.number)}"`,
-      c.expiry,
-      c.spending_cap.toFixed(2),
-      (c.spent || 0).toFixed(2),
-      remaining.toFixed(2),
-      `"${(c.purpose || "").replace(/"/g, '""')}"`,
-      c.status || "active",
-      c.created,
-    ];
-    csv += row.join(",") + "\n";
-  }
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  const today = new Date().toISOString().slice(0, 10);
-  a.download = `virtual_cards_${today}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-// Render
-function render() {
-  const statsRow = document.getElementById("statsRow");
-  const cardList = document.getElementById("cardList");
-  const exportBtn = document.getElementById("exportBtn");
-
-  if (!cards.length) {
-    statsRow.style.display = "none";
-    cardList.innerHTML = '<div class="empty-state"><i class="ph ph-credit-card" aria-hidden="true"></i><p>You have not made a card yet.</p><p class="hint">Fill in the new card panel to make your first one.</p></div>';
-    exportBtn.disabled = true;
-    return;
-  }
-
-  exportBtn.disabled = false;
-
-  // Stats
-  const active = cards.filter(c => c.status === "active").length;
-  const frozen = cards.filter(c => c.status === "frozen").length;
-  const totalCap = cards.reduce((s, c) => s + c.spending_cap, 0);
-
-  document.getElementById("statTotal").textContent = cards.length;
-  document.getElementById("statActive").textContent = active;
-  document.getElementById("statFrozen").textContent = frozen;
-  document.getElementById("statCap").textContent = "$" + totalCap.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  statsRow.style.display = "block";
-
-  // Cards
-  let html = "";
-  for (let idx = 0; idx < cards.length; idx++) {
-    const card = cards[idx];
-    const spent = card.spent || 0;
-    const cap = card.spending_cap;
-    const remaining = cap - spent;
-    const pct = cap > 0 ? (spent / cap * 100) : 0;
-    const sym = card.currency_symbol || "$";
-    const isFrozen = card.status === "frozen";
-
-    let fillClass = "cap-fill-ok";
-    if (pct > 90) fillClass = "cap-fill-danger";
-    else if (pct > 60) fillClass = "cap-fill-warn";
-
-    const statusTag = isFrozen ? '<span class="status-tag">Frozen</span>' : '';
-    const money = v => sym + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-    html += `
-      <div class="card-wrapper${isFrozen ? ' card-frozen' : ''}">
-        <div class="test-banner"><i class="ph ph-warning" aria-hidden="true"></i> Test card, not a real payment method</div>
-        <div class="card-head">
-          <span class="card-nickname">${escapeHTML(card.nickname)}</span>
-          <span class="card-network">${escapeHTML(card.network)}</span>
-          ${statusTag}
-        </div>
-        <div class="card-number">${formatCardNumber(card.number)}</div>
-        <div class="card-details">
-          <span>Expires <span class="value">${card.expiry}</span></span>
-          <span>CVV <span class="value">${card.cvv}</span></span>
-          <span>Cap <span class="value">${money(cap)}</span></span>
-          <span>Spent <span class="value">${money(spent)}</span></span>
-          <span>Left <span class="value">${money(remaining)}</span></span>
-        </div>
-        <div class="cap-bar"><div class="cap-fill ${fillClass}" data-pct="${Math.min(pct, 100).toFixed(1)}"></div></div>
-        <div class="card-actions">
-          <input type="number" class="charge-input" id="charge-${idx}" min="0" max="${remaining > 0 ? remaining : 0.01}" step="1" value="0" aria-label="Amount to log against ${escapeHTML(card.nickname)}">
-          <button class="btn btn-sm btn-charge" type="button" onclick="logCharge(${idx}, this)" ${isFrozen ? 'disabled' : ''}><i class="ph ph-coin" aria-hidden="true"></i> Log charge</button>
-          ${isFrozen
-            ? `<button class="btn btn-sm btn-unfreeze" type="button" onclick="unfreezeCard(${idx})"><i class="ph ph-sun" aria-hidden="true"></i> Unfreeze</button>`
-            : `<button class="btn btn-sm btn-freeze" type="button" onclick="freezeCard(${idx})"><i class="ph ph-snowflake" aria-hidden="true"></i> Freeze</button>`
-          }
-          <button class="btn btn-sm btn-reset" type="button" onclick="resetSpend(${idx})"><i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i> Reset spend</button>
-          <button class="btn btn-sm btn-delete" type="button" onclick="deleteCard(${idx})"><i class="ph ph-trash" aria-hidden="true"></i> Delete</button>
-        </div>
-        ${card.purpose ? `<div class="purpose-note"><i class="ph ph-note" aria-hidden="true"></i> ${escapeHTML(card.purpose)}</div>` : ""}
-      </div>
-    `;
-  }
-  cardList.innerHTML = html;
-  // The bar width is a computed number, so it is set here rather than inline in the markup.
-  cardList.querySelectorAll('.cap-fill').forEach(el => { el.style.width = el.dataset.pct + '%'; });
-}
+function $(id) { return document.getElementById(id); }
 
 function escapeHTML(str) {
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-// Init
-let cards = loadCards();
+function stripTags(html) { return String(html || '').replace(/<[^>]+>/g, ''); }
 
-document.getElementById("months_valid").addEventListener("input", function () {
-  document.getElementById("months_label").textContent = this.value + " months";
-});
+function luhnValid(num) {
+  if (!/^\d+$/.test(num)) return false;
+  let sum = 0, dbl = false;
+  for (let i = num.length - 1; i >= 0; i--) {
+    let d = num.charCodeAt(i) - 48;
+    if (dbl) { d *= 2; if (d > 9) d -= 9; }
+    sum += d; dbl = !dbl;
+  }
+  return sum % 10 === 0;
+}
 
-render();
+/* Real month arithmetic: Jan 31 + 1 month is the last day of February, never early March. */
+function addMonths(date, months) {
+  const d = new Date(date.getTime());
+  const day = d.getDate();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + months);
+  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(day, lastDay));
+  return d;
+}
+
+function expiryForRule(rule, fixed, now) {
+  now = now || new Date();
+  if (rule === 'fixed' && fixed) return { month: fixed[0], year: fixed[1] };
+  if (rule === 'braintree3ds') return { month: 1, year: now.getFullYear() + 3 };
+  const d = addMonths(now, 36);
+  return { month: d.getMonth() + 1, year: d.getFullYear() };
+}
+
+/* A card is valid through the last day of its expiry month. */
+function isExpired(card, now) {
+  if (card.expiry_rule === 'fixed') return false;
+  now = now || new Date();
+  const firstDayAfter = new Date(card.exp_year, card.exp_month, 1);
+  return now >= firstDayAfter;
+}
+
+function isOutOfRule(card, now) {
+  if (card.expiry_rule !== 'braintree3ds') return false;
+  now = now || new Date();
+  return card.exp_month !== 1 || card.exp_year !== now.getFullYear() + 3;
+}
+
+function mmYY(month, year) {
+  return String(month).padStart(2, '0') + '/' + String(year % 100).padStart(2, '0');
+}
+
+function formatNumber(num) {
+  if (num.length === 15) return num.slice(0, 4) + ' ' + num.slice(4, 10) + ' ' + num.slice(10);
+  if (num.length === 14) return num.slice(0, 4) + ' ' + num.slice(4, 10) + ' ' + num.slice(10);
+  return num.match(/.{1,4}/g).join(' ');
+}
+
+function randomDigits(len) {
+  let s = '';
+  const buf = new Uint8Array(len);
+  (window.crypto || {}).getRandomValues ? crypto.getRandomValues(buf) : buf.forEach((_, i) => { buf[i] = Math.floor(Math.random() * 256); });
+  for (let i = 0; i < len; i++) s += String(buf[i] % 10);
+  return s;
+}
+
+function makeCvc(proc, item) {
+  if (typeof item.cvc === 'string') return item.cvc;
+  const rule = proc.cvc || { len: 3, amexLen: 4, avoid: [] };
+  const len = item.amex ? rule.amexLen : rule.len;
+  let cvc;
+  do { cvc = randomDigits(len); } while (rule.avoid.indexOf(cvc) !== -1);
+  return cvc;
+}
+
+function newId() {
+  try { if (crypto.randomUUID) return crypto.randomUUID(); } catch (e) {}
+  return 'c-' + Date.now().toString(36) + '-' + randomDigits(8);
+}
+
+function findScenario(procId, scenarioId) {
+  const proc = PROCESSORS[procId];
+  if (!proc) return null;
+  for (const g of proc.groups) for (const it of g.items) if (it.id === scenarioId) return it;
+  return null;
+}
+
+function sourceFor(procId, item) {
+  return SOURCES[(item && item.source) || PROCESSORS[procId].source];
+}
+
+function announce(text) {
+  try {
+    if (window.TFE && typeof window.TFE.announce === 'function') { window.TFE.announce(text); return; }
+  } catch (e) {}
+  const live = $('pageLive');
+  if (!live) return;
+  live.textContent = '';
+  setTimeout(() => { live.textContent = text; }, 30);
+}
+
+function toast(msg, kind, opts) {
+  if (typeof window.showToast === 'function') window.showToast(msg, kind, opts);
+}
+
+function prefs() {
+  try { return window.TFE && typeof window.TFE.prefs === 'function' ? window.TFE.prefs('cards') : null; }
+  catch (e) { return null; }
+}
+function prefGet(key, fallback) {
+  const p = prefs();
+  try { return p ? p.get(key, fallback) : fallback; } catch (e) { return fallback; }
+}
+function prefSet(key, value) {
+  const p = prefs();
+  try { if (p) p.set(key, value); } catch (e) {}
+}
+
+function downloadText(text, filename, type) {
+  const blob = new Blob([text], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function today() { return new Date().toISOString().slice(0, 10); }
+
+/* Spreadsheet apps run cells that start with = + - @ as formulas, so those get a leading quote. */
+function csvCell(v) {
+  let s = String(v == null ? '' : v);
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return '"' + s.replace(/"/g, '""') + '"';
+}
+
+/* ---------- The generator ---------- */
+
+let current = null;
+
+function currentProcessor() {
+  const el = document.querySelector('input[name="processor"]:checked');
+  return el ? el.value : 'stripe';
+}
+
+function fillScenarioSelect(procId, wanted) {
+  const sel = $('scenario');
+  const proc = PROCESSORS[procId];
+  sel.innerHTML = proc.groups.map(g =>
+    '<optgroup label="' + escapeHTML(g.label) + '">' +
+    g.items.map(it => '<option value="' + escapeHTML(it.id) + '">' + escapeHTML(it.label) + '</option>').join('') +
+    '</optgroup>').join('');
+  sel.value = findScenario(procId, wanted) ? wanted : proc.groups[0].items[0].id;
+}
+
+function generate() {
+  const procId = currentProcessor();
+  const proc = PROCESSORS[procId];
+  const item = findScenario(procId, $('scenario').value);
+  const rule = item.expiry || proc.expiry;
+  const exp = expiryForRule(rule, item.exp);
+  current = {
+    processor: procId,
+    scenario: item.id,
+    scenario_label: item.label,
+    brand: item.brand,
+    number: item.number,
+    exp_month: exp.month,
+    exp_year: exp.year,
+    expiry_rule: rule,
+    cvc: makeCvc(proc, item),
+    holder_name: item.holder || ''
+  };
+  renderGenerator(item);
+}
+
+function expiryNote(rule, item) {
+  if (rule === 'fixed') return 'Adyen fixes this expiry, so it is used exactly as documented and never shows as expired here.';
+  if (rule === 'braintree3ds') return "Braintree's 3D Secure cards need January of the current year plus 3 years.";
+  return '';
+}
+
+function renderGenerator(item) {
+  const proc = PROCESSORS[current.processor];
+  const src = sourceFor(current.processor, item);
+  $('genHeading').textContent = proc.name + ' · ' + item.label;
+  $('genBrand').textContent = proc.name + ' · ' + item.brand;
+  $('genNumber').textContent = formatNumber(current.number);
+  $('genExpiry').textContent = mmYY(current.exp_month, current.exp_year);
+  $('genCvc').textContent = current.cvc || 'None';
+  $('copyCvcBtn').classList.toggle('hidden', !current.cvc);
+  const hasHolder = !!current.holder_name;
+  $('genHolderWrap').classList.toggle('hidden', !hasHolder);
+  $('copyHolderBtn').classList.toggle('hidden', !hasHolder);
+  $('genHolder').textContent = current.holder_name;
+  $('genOutcome').innerHTML = '<strong>Expected result:</strong> ' + item.outcome;
+  let extra = item.extra || '';
+  if (item.holder) {
+    extra = 'Set the cardholder name (<code>paymentMethod.holderName</code>) to <code>' + escapeHTML(item.holder) + '</code>, or send <code>additionalData.RequestedTestAcquirerResponseCode</code> ' + item.acquirerCode + '.' + (extra ? ' ' + extra : '');
+  }
+  $('genExtra').innerHTML = extra;
+  $('genExtra').classList.toggle('hidden', !extra);
+  const note = expiryNote(current.expiry_rule, item);
+  $('genExpiryNote').textContent = note;
+  $('genExpiryNote').classList.toggle('hidden', !note);
+  $('ruleLine').textContent = proc.rule;
+  $('sourceLine').innerHTML = 'From <a href="' + escapeHTML(src.url) + '" target="_blank" rel="noopener">' + escapeHTML(src.label) + '</a>, checked ' + CHECKED + '.';
+  $('saveLabel').placeholder = proc.name + ' · ' + item.label;
+  hideCopyFallback();
+}
+
+/* ---------- Copying ---------- */
+
+function cardJSON(c) {
+  const o = { number: c.number, exp_month: c.exp_month, exp_year: c.exp_year, cvc: c.cvc };
+  if (c.holder_name) o.holder_name = c.holder_name;
+  return JSON.stringify(o, null, 2);
+}
+
+function copyValue(c, what) {
+  if (what === 'number') return { text: c.number, name: 'card number' };
+  if (what === 'expiry') return { text: mmYY(c.exp_month, c.exp_year), name: 'expiry' };
+  if (what === 'cvc') return { text: c.cvc, name: 'CVC' };
+  if (what === 'holder') return { text: c.holder_name, name: 'cardholder name' };
+  return { text: cardJSON(c), name: 'card as JSON' };
+}
+
+function legacyCopy(text) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed'; ta.style.opacity = '0'; ta.style.top = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand && document.execCommand('copy');
+    ta.remove();
+    return !!ok;
+  } catch (e) { return false; }
+}
+
+let fallbackEl = null;
+function hideCopyFallback() { if (fallbackEl) { fallbackEl.remove(); fallbackEl = null; } }
+
+function showCopyFallback(anchor, text, name) {
+  hideCopyFallback();
+  const box = document.createElement('div');
+  box.className = 'info-msg copy-fallback';
+  box.setAttribute('role', 'status');
+  const lines = Math.min(8, text.split('\n').length);
+  box.innerHTML = '<i class="ph ph-info" aria-hidden="true"></i><div class="notice-body" style="flex:1 1 auto">' +
+    '<span>This browser blocked copying. The ' + escapeHTML(name) + ' is selected below; press Ctrl+C (or long-press and Copy).</span>' +
+    '<textarea readonly rows="' + lines + '" aria-label="' + escapeHTML(name) + ' to copy"></textarea></div>';
+  const ta = box.querySelector('textarea');
+  ta.value = text;
+  anchor.insertAdjacentElement('afterend', box);
+  fallbackEl = box;
+  ta.focus();
+  ta.select();
+  announce('Copying was blocked. The ' + name + ' is selected so you can copy it yourself.');
+}
+
+async function copyText(text, name, anchor) {
+  let ok = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(text); ok = true; }
+  } catch (e) { ok = false; }
+  if (!ok) ok = legacyCopy(text);
+  if (ok) {
+    hideCopyFallback();
+    toast('Copied ' + name, 'success');
+    announce('Copied ' + name + '.');
+  } else {
+    showCopyFallback(anchor, text, name);
+  }
+  return ok;
+}
+
+/* ---------- Storage (K2) ---------- */
+
+let cards = [];
+let storageOk = true;
+let persistAsked = false;
+
+function readStore() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    const out = [];
+    for (const c of arr) { const r = validateCard(c); if (r.card) out.push(r.card); }
+    return out;
+  } catch (e) { return null; }
+}
+
+function writeStore(list) {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(list));
+    return true;
+  } catch (e) { return false; }
+}
+
+function setStorageHealth(ok) {
+  storageOk = ok;
+  $('storageWarning').classList.toggle('hidden', ok);
+}
+
+/* Apply one change to the freshest copy of the list, so two open tabs do not overwrite each other. */
+function mutate(change) {
+  let base = cards;
+  if (storageOk) {
+    const latest = readStore();
+    if (latest) base = latest;
+  }
+  base = base.map(c => Object.assign({}, c));
+  change(base);
+  const ok = writeStore(base);
+  cards = base;
+  setStorageHealth(ok);
+  if (ok && !persistAsked && base.length) {
+    persistAsked = true;
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}
+  }
+  renderSaved();
+  return ok;
+}
+
+let editingId = null;
+let pendingRender = false;
+
+function onStorage(e) {
+  if (e.key === BACKUP_KEY) { renderBackupInfo(); return; }
+  if (e.key !== null && e.key !== STORE_KEY) return;
+  const latest = readStore();
+  if (!latest) return;
+  if (!storageOk) {
+    // This tab could not save; keep its cards alongside the other tab's, matched by id.
+    const ids = new Set(latest.map(c => c.id));
+    for (const c of cards) if (!ids.has(c.id)) latest.push(c);
+  }
+  cards = latest;
+  if (editingId && cards.some(c => c.id === editingId)) { pendingRender = true; return; }
+  editingId = null;
+  renderSaved();
+}
+
+/* ---------- Validation (K6) ---------- */
+
+function validateCard(c) {
+  if (!c || typeof c !== 'object' || Array.isArray(c)) return { error: 'not an object' };
+  const bad = why => ({ error: why });
+  if (typeof c.id !== 'string' || !c.id || c.id.length > 100) return bad('missing id');
+  if (!PROCESSORS[c.processor]) return bad('unknown processor');
+  if (typeof c.number !== 'string' || !/^\d{12,19}$/.test(c.number)) return bad('card number is not 12 to 19 digits');
+  const m = Number(c.exp_month), y = Number(c.exp_year);
+  if (!Number.isInteger(m) || m < 1 || m > 12) return bad('expiry month is not 1 to 12');
+  if (!Number.isInteger(y) || y < 2000 || y > 2100) return bad('expiry year is not a four-digit year');
+  if (EXPIRY_RULES.indexOf(c.expiry_rule) === -1) return bad('unknown expiry rule');
+  if (typeof c.cvc !== 'string' || !/^\d{0,4}$/.test(c.cvc)) return bad('CVC is not up to 4 digits');
+  if (typeof c.label !== 'string' || !c.label.trim() || c.label.length > LABEL_MAX) return bad('label is empty or longer than ' + LABEL_MAX + ' characters');
+  const notes = c.notes == null ? '' : c.notes;
+  if (typeof notes !== 'string' || notes.length > NOTES_MAX) return bad('notes are longer than ' + NOTES_MAX + ' characters');
+  if (typeof c.scenario !== 'string' || typeof c.brand !== 'string') return bad('missing scenario or brand');
+  const holder = c.holder_name == null ? '' : c.holder_name;
+  if (typeof holder !== 'string' || holder.length > 60) return bad('cardholder name is too long');
+  if (typeof c.created !== 'string' || isNaN(Date.parse(c.created))) return bad('created date is not a date');
+  return { card: {
+    id: c.id, label: c.label, processor: c.processor, scenario: c.scenario,
+    scenario_label: typeof c.scenario_label === 'string' ? c.scenario_label : c.scenario,
+    brand: c.brand, number: c.number, exp_month: m, exp_year: y, expiry_rule: c.expiry_rule,
+    cvc: c.cvc, holder_name: holder, notes: notes, created: c.created
+  } };
+}
+
+function lengthError(value, max, what) {
+  if (value.length > max) return 'Keep the ' + what + ' to ' + max + ' characters or fewer. This one has ' + value.length + '.';
+  return '';
+}
+
+function updateCounter(input, counter, max) {
+  const n = input.value.length;
+  counter.textContent = n > max * 0.8 || n > max ? n + ' of ' + max + ' characters' : '';
+}
+
+/* ---------- Saving from the generator ---------- */
+
+function saveCurrent() {
+  if (typeof clearInlineErrors === 'function') clearInlineErrors();
+  const labelEl = $('saveLabel'), notesEl = $('saveNotes');
+  const label = labelEl.value.trim();
+  const notes = notesEl.value.trim();
+  let err = lengthError(label, LABEL_MAX, 'label');
+  if (err) { inlineError(labelEl, err); labelEl.focus(); return; }
+  err = lengthError(notes, NOTES_MAX, 'notes');
+  if (err) { inlineError(notesEl, err); notesEl.focus(); return; }
+  const proc = PROCESSORS[current.processor];
+  const card = Object.assign({}, current, {
+    id: newId(),
+    label: label || (proc.name + ' · ' + current.scenario_label),
+    notes: notes,
+    created: new Date().toISOString()
+  });
+  const filter = currentFilter();
+  if (filter !== 'all' && filter !== card.processor) setFilter('all');
+  const ok = mutate(list => { list.unshift(card); });
+  labelEl.value = ''; notesEl.value = '';
+  updateCounter(labelEl, $('saveLabelCount'), LABEL_MAX);
+  updateCounter(notesEl, $('saveNotesCount'), NOTES_MAX);
+  if (ok) {
+    toast('Saved ' + card.label + ' to your list', 'success');
+    announce('Saved ' + card.label + ' to your list.');
+  } else {
+    toast('Added for this visit only. This browser is not saving it.', 'error');
+    announce('Added ' + card.label + ' for this visit only. This browser is not saving your cards.');
+  }
+  focusCard(card.id);
+}
+
+function inlineError(el, msg) {
+  if (typeof window.showInlineError === 'function') window.showInlineError(el, msg);
+  else toast(msg, 'error');
+}
+
+function focusCard(id) {
+  const el = document.getElementById('card-' + id);
+  if (!el) return;
+  el.focus({ preventScroll: true });
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  el.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+}
+
+/* ---------- Saved list rendering ---------- */
+
+function currentFilter() {
+  const el = document.querySelector('input[name="savedFilter"]:checked');
+  return el ? el.value : 'all';
+}
+function setFilter(v) {
+  const el = document.querySelector('input[name="savedFilter"][value="' + v + '"]');
+  if (el) el.checked = true;
+  prefSet('filter', v);
+}
+
+function formatDate(iso) {
+  try { return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); }
+  catch (e) { return iso.slice(0, 10); }
+}
+
+function renderSaved() {
+  pendingRender = false;
+  const list = $('savedList');
+  const filter = currentFilter();
+  const sort = $('savedSort').value;
+  const counts = { all: cards.length, stripe: 0, adyen: 0, braintree: 0 };
+  for (const c of cards) counts[c.processor] = (counts[c.processor] || 0) + 1;
+  document.querySelectorAll('input[name="savedFilter"]').forEach(r => {
+    r.nextElementSibling.textContent = (r.value === 'all' ? 'All' : PROCESSORS[r.value].name) + ' (' + counts[r.value] + ')';
+  });
+  $('savedCount').textContent = cards.length ? '(' + cards.length + ')' : '';
+  $('csvBtn').disabled = !cards.length;
+  $('backupBtn').disabled = !cards.length;
+
+  let shown = cards.filter(c => filter === 'all' || c.processor === filter);
+  if (sort === 'label') shown = shown.slice().sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
+  else shown = shown.slice().sort((a, b) => (b.created > a.created ? 1 : b.created < a.created ? -1 : 0));
+
+  if (!cards.length) {
+    list.innerHTML = '<div class="empty-state"><i class="ph ph-bookmark-simple" aria-hidden="true"></i><p>No saved test cards yet. Save a scenario you use often.</p><p class="hint">Pick a processor and scenario, then choose Save to my list.</p></div>';
+    renderBackupInfo();
+    return;
+  }
+  if (!shown.length) {
+    list.innerHTML = '<div class="empty-state"><i class="ph ph-funnel" aria-hidden="true"></i><p>No saved ' + escapeHTML(PROCESSORS[filter].name) + ' cards.</p><p class="hint">Choose All to see your other cards.</p></div>';
+    renderBackupInfo();
+    return;
+  }
+  const now = new Date();
+  list.innerHTML = shown.map(c => savedItemHTML(c, now)).join('');
+  renderBackupInfo();
+}
+
+function savedItemHTML(c, now) {
+  const proc = PROCESSORS[c.processor];
+  const item = findScenario(c.processor, c.scenario);
+  const expired = isExpired(c, now);
+  const outOfRule = !expired && isOutOfRule(c, now);
+  const id = escapeHTML(c.id);
+  const label = escapeHTML(c.label);
+  let pills = '<span class="pill">' + escapeHTML(proc.name) + '</span>';
+  if (expired) pills += '<span class="pill pill-danger"><i class="ph ph-clock-countdown" aria-hidden="true"></i> Expired</span>';
+  if (outOfRule) pills += '<span class="pill pill-warning">Expiry out of date</span>';
+  if (c.expiry_rule === 'fixed') pills += '<span class="pill" title="Adyen requires this exact expiry">Fixed expiry</span>';
+
+  const editing = editingId === c.id;
+  let body;
+  if (editing) {
+    body = '<div class="edit-form" data-id="' + id + '">' +
+      '<div class="form-group"><label for="edit-label-' + id + '">Label</label>' +
+      '<input type="text" id="edit-label-' + id + '" data-edit="label" data-no-remember autocomplete="off" value="' + label + '"></div>' +
+      '<div class="form-group"><label for="edit-notes-' + id + '">Notes</label>' +
+      '<textarea id="edit-notes-' + id + '" data-edit="notes" data-no-remember rows="2">' + escapeHTML(c.notes) + '</textarea>' +
+      '<div class="field-hint">Enter saves, Shift+Enter adds a line, Esc cancels.</div></div>' +
+      '<div class="edit-buttons"><button class="btn btn-sm" type="button" data-action="edit-save" data-id="' + id + '">Save changes</button>' +
+      '<button class="btn btn-sm" type="button" data-action="edit-cancel" data-id="' + id + '">Cancel</button></div></div>';
+  } else {
+    body = '<div class="saved-head"><h3 id="label-' + id + '">' + label + '</h3>' + pills + '</div>' +
+      '<p class="saved-outcome">' + escapeHTML(c.scenario_label) + (item ? ': ' + item.outcome : '') + '</p>' +
+      (c.notes ? '<p class="saved-notes">' + escapeHTML(c.notes) + '</p>' : '') +
+      '<p class="saved-meta">Saved ' + escapeHTML(formatDate(c.created)) +
+      (expired ? ' · Expired at the end of ' + mmYY(c.exp_month, c.exp_year) : '') +
+      (outOfRule ? " · Braintree's 3D Secure cards need 01/" + String((now.getFullYear() + 3) % 100).padStart(2, '0') + ' now' : '') + '</p>' +
+      '<div class="saved-actions">' +
+      ((expired || outOfRule) ? '<button class="btn btn-sm" type="button" data-action="refresh" data-id="' + id + '"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i> Refresh expiry</button>' : '') +
+      '<button class="btn btn-sm" type="button" data-action="copy" data-what="number" data-id="' + id + '"><i class="ph ph-copy" aria-hidden="true"></i> Number</button>' +
+      '<button class="btn btn-sm" type="button" data-action="copy" data-what="expiry" data-id="' + id + '">Expiry</button>' +
+      (c.cvc ? '<button class="btn btn-sm" type="button" data-action="copy" data-what="cvc" data-id="' + id + '">CVC</button>' : '') +
+      '<button class="btn btn-sm" type="button" data-action="copy" data-what="json" data-id="' + id + '">JSON</button>' +
+      '<button class="btn btn-sm" type="button" data-action="edit" data-id="' + id + '" aria-label="Edit label and notes of ' + label + '"><i class="ph ph-pencil-simple" aria-hidden="true"></i> Edit</button>' +
+      '<span class="spacer"></span>' +
+      '<details class="more-menu"><summary class="icon-btn" aria-label="More actions for ' + label + '"><i class="ph ph-dots-three" aria-hidden="true"></i></summary>' +
+      '<div class="more-pop"><button type="button" data-action="delete" data-id="' + id + '"><i class="ph ph-trash" aria-hidden="true"></i> Delete card</button></div></details>' +
+      '</div>';
+  }
+  return '<article class="saved-item' + (expired ? ' is-expired' : '') + '" id="card-' + id + '" tabindex="-1" aria-label="' + label + '">' +
+    '<div class="mini-card">' +
+    '<span>' + escapeHTML(proc.name) + ' · ' + escapeHTML(c.brand) + '</span>' +
+    '<span class="num">' + escapeHTML(formatNumber(c.number)) + '</span>' +
+    '<span class="fields">' + mmYY(c.exp_month, c.exp_year) + (c.cvc ? ' · ' + escapeHTML(c.cvc) : '') +
+    (c.holder_name ? ' · ' + escapeHTML(c.holder_name) : '') + '</span></div>' +
+    '<div class="saved-body">' + body + '</div></article>';
+}
+
+/* ---------- Saved list actions ---------- */
+
+function cardById(id) { return cards.find(c => c.id === id); }
+
+function startEdit(id) {
+  editingId = id;
+  renderSaved();
+  const input = document.getElementById('edit-label-' + id);
+  if (input) { input.focus(); input.select(); }
+}
+
+function cancelEdit(id) {
+  editingId = null;
+  renderSaved();
+  const btn = document.querySelector('[data-action="edit"][data-id="' + cssEscape(id) + '"]');
+  if (btn) btn.focus();
+}
+
+function saveEdit(id) {
+  if (typeof clearInlineErrors === 'function') clearInlineErrors();
+  const labelEl = document.getElementById('edit-label-' + id);
+  const notesEl = document.getElementById('edit-notes-' + id);
+  if (!labelEl || !notesEl) return;
+  const label = labelEl.value.trim();
+  const notes = notesEl.value.trim();
+  if (!label) { inlineError(labelEl, 'Give the card a label, or press Esc to keep the old one.'); labelEl.focus(); return; }
+  let err = lengthError(label, LABEL_MAX, 'label');
+  if (err) { inlineError(labelEl, err); labelEl.focus(); return; }
+  err = lengthError(notes, NOTES_MAX, 'notes');
+  if (err) { inlineError(notesEl, err); notesEl.focus(); return; }
+  editingId = null;
+  const ok = mutate(list => {
+    const c = list.find(x => x.id === id);
+    if (c) { c.label = label; c.notes = notes; }
+  });
+  toast(ok ? 'Saved changes' : 'Changed for this visit only. This browser is not saving it.', ok ? 'success' : 'error');
+  announce('Saved changes to ' + label + '.');
+  const btn = document.querySelector('[data-action="edit"][data-id="' + cssEscape(id) + '"]');
+  if (btn) btn.focus();
+}
+
+function cssEscape(s) { return window.CSS && CSS.escape ? CSS.escape(s) : String(s).replace(/["\\]/g, '\\$&'); }
+
+function refreshExpiry(id) {
+  const c = cardById(id);
+  if (!c) return;
+  const exp = expiryForRule(c.expiry_rule, null);
+  mutate(list => {
+    const x = list.find(y => y.id === id);
+    if (x) { x.exp_month = exp.month; x.exp_year = exp.year; }
+  });
+  const text = 'Expiry moved to ' + mmYY(exp.month, exp.year);
+  toast(text, 'success');
+  announce(text + ' for ' + c.label + '.');
+  focusCard(id);
+}
+
+let undoTimer = null;
+
+function deleteCard(id) {
+  const index = cards.findIndex(c => c.id === id);
+  if (index === -1) return;
+  const card = cards[index];
+  const shownIds = Array.from(document.querySelectorAll('#savedList .saved-item')).map(el => el.id.slice(5));
+  const pos = shownIds.indexOf(id);
+  mutate(list => {
+    const i = list.findIndex(c => c.id === id);
+    if (i !== -1) list.splice(i, 1);
+  });
+  const undo = () => {
+    clearUndoBar();
+    mutate(list => {
+      if (!list.some(c => c.id === id)) list.splice(Math.min(index, list.length), 0, card);
+    });
+    toast('Restored ' + card.label, 'success');
+    announce('Restored ' + card.label + '.');
+    focusCard(id);
+  };
+  const msg = 'Deleted ' + card.label;
+  const hasShellToast = !!(window.TFE && typeof window.showToast === 'function');
+  if (hasShellToast) {
+    toast(msg, 'info', { duration: 6000, action: { label: 'Undo', onClick: undo } });
+  } else {
+    showUndoBar(msg, undo);
+  }
+  announce(msg + '. Undo is available for 6 seconds.');
+  // Keep focus in the list: the next card, the one before, or the list heading.
+  const nextId = shownIds[pos + 1] || shownIds[pos - 1];
+  const next = nextId && document.getElementById('card-' + nextId);
+  if (next) next.focus({ preventScroll: true });
+  else { const h = $('savedHeading'); h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
+}
+
+function clearUndoBar() {
+  clearTimeout(undoTimer);
+  $('undoBar').innerHTML = '';
+}
+
+function showUndoBar(msg, undo) {
+  clearUndoBar();
+  const bar = document.createElement('div');
+  bar.className = 'info-msg undo-bar';
+  bar.setAttribute('role', 'status');
+  bar.innerHTML = '<i class="ph ph-trash" aria-hidden="true"></i><span></span>';
+  bar.querySelector('span').textContent = msg + '.';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn btn-sm';
+  btn.textContent = 'Undo';
+  btn.addEventListener('click', undo);
+  bar.appendChild(btn);
+  $('undoBar').appendChild(bar);
+  undoTimer = setTimeout(clearUndoBar, 6000);
+}
+
+/* ---------- Backup, restore and CSV (K4) ---------- */
+
+function lastBackup() {
+  try { return localStorage.getItem(BACKUP_KEY); } catch (e) { return null; }
+}
+
+function relativeTime(iso) {
+  const then = Date.parse(iso);
+  if (isNaN(then)) return 'never';
+  const secs = Math.round((Date.now() - then) / 1000);
+  if (secs < 60) return 'just now';
+  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+  const mins = Math.round(secs / 60);
+  if (mins < 60) return rtf.format(-mins, 'minute');
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return rtf.format(-hours, 'hour');
+  const days = Math.round(hours / 24);
+  if (days < 45) return rtf.format(-days, 'day');
+  const months = Math.round(days / 30.44);
+  if (months < 18) return rtf.format(-months, 'month');
+  return rtf.format(-Math.round(days / 365.25), 'year');
+}
+
+function renderBackupInfo() {
+  const iso = lastBackup();
+  $('backupInfo').textContent = 'Last backed up: ' + (iso ? relativeTime(iso) : 'never');
+  if (iso) $('backupInfo').title = new Date(iso).toLocaleString();
+}
+
+function backupJSON() {
+  if (!cards.length) { toast('There are no saved cards to back up yet.', 'info'); return; }
+  const data = { format: BACKUP_FORMAT, version: 1, exported_at: new Date().toISOString(), cards: cards };
+  downloadText(JSON.stringify(data, null, 2), 'test-cards-backup-' + today() + '.json', 'application/json');
+  try { localStorage.setItem(BACKUP_KEY, data.exported_at); } catch (e) {}
+  renderBackupInfo();
+  toast('Backup downloaded with ' + cards.length + (cards.length === 1 ? ' card' : ' cards'), 'success');
+  announce('Backup downloaded.');
+}
+
+function exportCSV() {
+  if (!cards.length) return;
+  const headers = ['id', 'label', 'processor', 'scenario', 'brand', 'number', 'expiry', 'cvc', 'cardholder_name', 'notes', 'created'];
+  const rows = [headers.join(',')];
+  for (const c of cards) {
+    rows.push([c.id, c.label, PROCESSORS[c.processor].name, c.scenario_label, c.brand, c.number,
+      mmYY(c.exp_month, c.exp_year), c.cvc, c.holder_name, c.notes, c.created].map(csvCell).join(','));
+  }
+  downloadText(rows.join('\r\n') + '\r\n', 'test-cards-' + today() + '.csv', 'text/csv');
+  toast('CSV downloaded', 'success');
+}
+
+function restoreFromText(text, anchor) {
+  if (typeof clearInlineErrors === 'function') clearInlineErrors();
+  $('restoreMsg').innerHTML = '';
+  let data;
+  try { data = JSON.parse(text); }
+  catch (e) { inlineError(anchor, 'That file is not valid JSON. Pick a file made with Back up (JSON).'); return null; }
+  let list = null;
+  if (Array.isArray(data)) list = data;
+  else if (data && typeof data === 'object' && Array.isArray(data.cards)) {
+    if (data.format && data.format !== BACKUP_FORMAT) { inlineError(anchor, 'That file is a backup from a different tool. Pick a file made with Back up (JSON) on this page.'); return null; }
+    list = data.cards;
+  }
+  if (!list) { inlineError(anchor, 'That file is not a test card backup. It has no list of cards.'); return null; }
+  const have = new Set(cards.map(c => c.id));
+  const fresh = [], seen = new Set();
+  let dup = 0, invalid = 0;
+  const reasons = [];
+  for (const raw of list) {
+    const r = validateCard(raw);
+    if (!r.card) { invalid++; if (reasons.length < 3) reasons.push(r.error); continue; }
+    if (have.has(r.card.id) || seen.has(r.card.id)) { dup++; continue; }
+    seen.add(r.card.id);
+    fresh.push(r.card);
+  }
+  if (!fresh.length && !dup) {
+    inlineError(anchor, list.length ? 'None of the ' + list.length + ' entries in that file are valid saved cards (' + reasons.join('; ') + ').' : 'That backup has no cards in it.');
+    return { added: 0, dup, invalid };
+  }
+  let ok = true;
+  if (fresh.length) ok = mutate(l => { for (const c of fresh) l.push(c); });
+  const parts = ['Restored ' + fresh.length + (fresh.length === 1 ? ' card' : ' cards') + '.'];
+  if (dup) parts.push('Skipped ' + dup + (dup === 1 ? ' that is' : ' that are') + ' already in your list.');
+  if (invalid) parts.push(invalid + (invalid === 1 ? ' entry was' : ' entries were') + ' not valid and left out (' + reasons.join('; ') + ').');
+  if (!ok) parts.push('This browser is not saving them, so they last for this visit only.');
+  const msg = parts.join(' ');
+  $('restoreMsg').innerHTML = '<div class="' + (invalid || !ok ? 'warning-msg' : 'success-msg') + '" style="margin-bottom:12px"><i class="ph ph-' + (invalid || !ok ? 'warning' : 'check-circle') + '" aria-hidden="true"></i><span></span></div>';
+  $('restoreMsg').querySelector('span').textContent = msg;
+  announce(msg);
+  return { added: fresh.length, dup, invalid };
+}
+
+/* ---------- Old Virtual Card Manager data (K2 migration) ---------- */
+
+let legacyRaw = null;
+
+function checkLegacy() {
+  try { legacyRaw = localStorage.getItem(LEGACY_KEY); } catch (e) { legacyRaw = null; }
+  if (legacyRaw == null) { $('legacyNotice').classList.add('hidden'); return false; }
+  let parsed = null;
+  try { parsed = JSON.parse(legacyRaw); } catch (e) {}
+  if (Array.isArray(parsed) && parsed.length === 0) {
+    try { localStorage.removeItem(LEGACY_KEY); } catch (e) {}
+    return false;
+  }
+  $('legacyNotice').classList.remove('hidden');
+  return true;
+}
+
+function legacyDownload() {
+  let parsed = null;
+  try { parsed = JSON.parse(legacyRaw); } catch (e) {}
+  if (!Array.isArray(parsed)) {
+    downloadText(String(legacyRaw), 'old-virtual-cards-' + today() + '.txt', 'text/plain');
+    return;
+  }
+  const headers = ['nickname', 'network', 'masked_number', 'expiry', 'spending_cap', 'currency', 'spent', 'purpose', 'status', 'created'];
+  const rows = [headers.join(',')];
+  for (const c of parsed) {
+    if (!c || typeof c !== 'object') continue;
+    const num = String(c.number || '');
+    rows.push([c.nickname, c.network, num ? '**** **** **** ' + num.slice(-4) : '', c.expiry, c.spending_cap, c.currency,
+      c.spent, c.purpose, c.status, c.created].map(csvCell).join(','));
+  }
+  downloadText(rows.join('\r\n') + '\r\n', 'old-virtual-cards-' + today() + '.csv', 'text/csv');
+  $('legacyDismiss').textContent = 'Done, clear them';
+  toast('Old cards downloaded as CSV', 'success');
+}
+
+function legacyDismiss() {
+  let ok = true;
+  try { localStorage.removeItem(LEGACY_KEY); } catch (e) { ok = false; }
+  $('legacyNotice').classList.add('hidden');
+  legacyRaw = null;
+  toast(ok ? 'Old cards cleared' : 'Could not clear the old cards in this browser', ok ? 'success' : 'error');
+  announce(ok ? 'Old cards cleared.' : 'Could not clear the old cards.');
+}
+
+/* ---------- Wiring ---------- */
+
+function closeMenus(except) {
+  document.querySelectorAll('.more-menu[open]').forEach(d => { if (d !== except) d.open = false; });
+}
+
+function init() {
+  // Generator
+  const savedProc = prefGet('processor', 'stripe');
+  const procRadio = document.querySelector('input[name="processor"][value="' + (PROCESSORS[savedProc] ? savedProc : 'stripe') + '"]');
+  if (procRadio) procRadio.checked = true;
+  fillScenarioSelect(currentProcessor(), prefGet('scenario:' + currentProcessor(), prefGet('scenario', '')));
+  generate();
+
+  document.querySelectorAll('input[name="processor"]').forEach(r => r.addEventListener('change', () => {
+    const p = currentProcessor();
+    prefSet('processor', p);
+    fillScenarioSelect(p, prefGet('scenario:' + p, ''));
+    prefSet('scenario', $('scenario').value);
+    generate();
+  }));
+  $('scenario').addEventListener('change', () => {
+    prefSet('scenario', $('scenario').value);
+    prefSet('scenario:' + currentProcessor(), $('scenario').value);
+    generate();
+  });
+
+  $('copyBar').addEventListener('click', e => {
+    const btn = e.target.closest('[data-copy]');
+    if (!btn || !current) return;
+    const v = copyValue(current, btn.dataset.copy);
+    copyText(v.text, v.name, $('copyBar'));
+  });
+
+  $('saveBtn').addEventListener('click', saveCurrent);
+  [['saveLabel', 'saveLabelCount', LABEL_MAX], ['saveNotes', 'saveNotesCount', NOTES_MAX]].forEach(([i, c, m]) => {
+    $(i).addEventListener('input', () => updateCounter($(i), $(c), m));
+    $(i).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); saveCurrent(); } });
+  });
+
+  // Saved list
+  const savedFilter = prefGet('filter', 'all');
+  if (savedFilter === 'all' || PROCESSORS[savedFilter]) setFilter(savedFilter);
+  const savedSort = prefGet('sort', 'newest');
+  if (savedSort === 'newest' || savedSort === 'label') $('savedSort').value = savedSort;
+  document.querySelectorAll('input[name="savedFilter"]').forEach(r => r.addEventListener('change', () => { prefSet('filter', currentFilter()); renderSaved(); }));
+  $('savedSort').addEventListener('change', () => { prefSet('sort', $('savedSort').value); renderSaved(); });
+
+  $('savedList').addEventListener('click', e => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const act = btn.dataset.action;
+    if (act === 'copy') {
+      const c = cardById(id);
+      if (!c) return;
+      const v = copyValue(c, btn.dataset.what);
+      copyText(v.text, v.name, btn.closest('.saved-actions'));
+    } else if (act === 'edit') startEdit(id);
+    else if (act === 'edit-save') saveEdit(id);
+    else if (act === 'edit-cancel') cancelEdit(id);
+    else if (act === 'refresh') refreshExpiry(id);
+    else if (act === 'delete') deleteCard(id);
+  });
+  $('savedList').addEventListener('keydown', e => {
+    const field = e.target.closest('[data-edit]');
+    if (!field) return;
+    const id = field.closest('.edit-form').dataset.id;
+    if (e.key === 'Escape') { e.preventDefault(); cancelEdit(id); }
+    else if (e.key === 'Enter' && !(field.tagName === 'TEXTAREA' && e.shiftKey)) { e.preventDefault(); saveEdit(id); }
+  });
+  $('savedList').addEventListener('toggle', e => { if (e.target.open) closeMenus(e.target); }, true);
+  document.addEventListener('click', e => { if (!e.target.closest('.more-menu')) closeMenus(null); });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    const open = document.querySelector('.more-menu[open]');
+    if (open) { open.open = false; open.querySelector('summary').focus(); }
+  });
+
+  document.querySelectorAll('[data-backup]').forEach(b => b.addEventListener('click', backupJSON));
+  $('csvBtn').addEventListener('click', exportCSV);
+  $('restoreBtn').addEventListener('click', () => $('restoreInput').click());
+  $('restoreInput').addEventListener('change', async () => {
+    const f = $('restoreInput').files[0];
+    $('restoreInput').value = '';
+    if (!f) return;
+    if (f.size > 5 * 1024 * 1024) { inlineError($('restoreBtn').parentNode, 'That file is larger than 5 MB, so it is not a test card backup.'); return; }
+    restoreFromText(await f.text(), $('restoreBtn').parentNode);
+  });
+
+  $('legacyDownload').addEventListener('click', legacyDownload);
+  $('legacyDismiss').addEventListener('click', legacyDismiss);
+
+  window.addEventListener('storage', onStorage);
+
+  const loaded = readStore();
+  cards = loaded || [];
+  if (loaded === null) setStorageHealth(false);
+  renderSaved();
+  checkLegacy();
+
+  try { if (window.TFE && window.TFE.setDirty) window.TFE.setDirty(false); } catch (e) {}
+  // Refresh "Last backed up" and Expired badges when the person comes back to the tab.
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && !editingId) renderSaved(); });
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+else init();
 </script>
 <script src="../assets/app.js" defer></script>
 </body>

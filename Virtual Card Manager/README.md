@@ -5,6 +5,8 @@ Everything runs locally - no data leaves your machine.
 
 > ⚠️ **These are test card numbers only.** They pass Luhn validation but will NOT process real payments. For real virtual cards, see the provider links inside the app.
 
+> **The browser version is now the [Test Card Generator](https://rehmozayub.github.io/tools-for-everyone/Virtual%20Card%20Manager/virtual_card_manager.html).** It gives the official test card numbers published by Stripe, Adyen and Braintree, with decline and 3D Secure scenarios, because those are the only test numbers payment systems accept. The Streamlit app described below is the older design. Its numbers use real bank prefixes, so real shops decline them and payment test modes reject them.
+
 ## Features
 
 ### Generate
