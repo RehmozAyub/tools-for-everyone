@@ -1,15 +1,72 @@
 {
+  "id": "/tools-for-everyone/index.html",
   "name": "Tools for Everyone",
   "short_name": "Tools",
-  "description": "Free browser tools for PDFs, images, video, and files. Nothing is ever uploaded.",
+  "description": "Free tools that run in your browser: a PDF suite, image compressor, video converter, audio transcriber, private AI chat, QR code studio, metadata scrubber, bulk file renamer and test card generator. Your files are never uploaded, and each tool keeps working offline once you have opened it.",
+  "lang": "en",
+  "dir": "ltr",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f2f3f5",
   "theme_color": "#f2f3f5",
+  "categories": ["productivity", "utilities"],
   "icons": [
     { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png" },
     { "src": "assets/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
-  ]
+  ],
+  "shortcuts": [
+    {
+      "name": "PDF Suite",
+      "short_name": "PDF",
+      "description": "Merge, split, compress and sign PDFs",
+      "url": "./PDF%20Suite/pdf_suite.html",
+      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Image Compressor",
+      "short_name": "Images",
+      "description": "Shrink, resize and convert photos",
+      "url": "./Image%20Compressor/image_compressor.html",
+      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Private AI Chat",
+      "short_name": "AI Chat",
+      "description": "Chat with an AI model that runs on your device",
+      "url": "./Private%20AI%20Chat/private_ai_chat.html",
+      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "QR Code Studio",
+      "short_name": "QR codes",
+      "description": "Make or read a QR code",
+      "url": "./QR%20Code%20Studio/qr_code_studio.html",
+      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ],
+  "screenshots": [
+    { "src": "assets/screenshots/pdf-suite.png", "sizes": "1280x900", "type": "image/png", "form_factor": "wide", "label": "PDF Suite: merge, split, compress and more" },
+    { "src": "assets/screenshots/private-ai-chat.png", "sizes": "1280x900", "type": "image/png", "form_factor": "wide", "label": "Private AI Chat running on the device" },
+    { "src": "assets/screenshots/audio-transcriber.png", "sizes": "1280x900", "type": "image/png", "form_factor": "wide", "label": "Audio Transcriber working offline" },
+    { "src": "assets/screenshots/video-converter.png", "sizes": "1280x900", "type": "image/png", "form_factor": "wide", "label": "Video Converter turning a clip into a GIF" },
+    { "src": "assets/screenshots/bulk-file-renamer.png", "sizes": "1280x900", "type": "image/png", "form_factor": "wide", "label": "Bulk File Renamer with a live preview" }
+  ],
+  "share_target": {
+    "action": "./share-target",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "files",
+          "accept": ["application/pdf", ".pdf", "image/*", ".jpg", ".jpeg", ".png", ".webp", ".gif"]
+        }
+      ]
+    }
+  }
 }

@@ -7,10 +7,23 @@
 <!-- This tool was called AI Text Rewriter until it became a full chat. The page
      that replaced it lives at the address below. Anything pointing here, a
      bookmark, a shared link, or a search result, is sent on rather than met with
-     a missing page. -->
+     a missing page, and lands on the paraphrase mode that replaced the rewriter
+     unless the link asked for another one. -->
 <link rel="canonical" href="https://rehmozayub.github.io/tools-for-everyone/Private%20AI%20Chat/private_ai_chat.html">
-<meta http-equiv="refresh" content="0; url=../Private%20AI%20Chat/private_ai_chat.html">
 <meta name="robots" content="noindex">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f3f5">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1114">
+<script>
+  try {
+    var t = localStorage.getItem('theme');
+    if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+  (function () {
+    var target = '../Private%20AI%20Chat/private_ai_chat.html' + (location.hash && location.hash.length > 1 ? location.hash : '#paraphrase');
+    location.replace(target);
+  })();
+</script>
+<noscript><meta http-equiv="refresh" content="0; url=../Private%20AI%20Chat/private_ai_chat.html#paraphrase"></noscript>
 <link rel="icon" href="../assets/favicon.svg">
 <link rel="stylesheet" href="../assets/theme.css">
 </head>
@@ -18,9 +31,8 @@
 <main class="tool-layout" style="grid-template-columns: 1fr; grid-template-areas: 'main';">
   <div class="tool-main">
     <h1>This tool is now Private AI Chat</h1>
-    <p class="tool-intro">Taking you there now. If nothing happens, <a href="../Private%20AI%20Chat/private_ai_chat.html">open Private AI Chat</a>.</p>
+    <p class="tool-intro">Taking you there now. If nothing happens, <a href="../Private%20AI%20Chat/private_ai_chat.html#paraphrase">open Private AI Chat</a>.</p>
   </div>
 </main>
-<script>location.replace('../Private%20AI%20Chat/private_ai_chat.html');</script>
 </body>
 </html>

@@ -2,18 +2,18 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Tools for Everyone - Free Browser Tools, No Upload</title>
-<meta name="description" content="Nine free tools for PDFs, images, video, text, and files that run entirely in your browser. No uploads, no accounts, no installs.">
+<meta name="description" content="Free tools for PDFs, images, video, audio, QR codes and more that run entirely in your browser. No uploads, no accounts, no installs.">
 <link rel="canonical" href="https://rehmozayub.github.io/tools-for-everyone/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Tools for Everyone - Free Browser Tools, No Upload">
-<meta property="og:description" content="Nine free tools for PDFs, images, video, text, and files that run entirely in your browser. No uploads, no accounts, no installs.">
+<meta property="og:description" content="Free tools for PDFs, images, video, audio, QR codes and more that run entirely in your browser. No uploads, no accounts, no installs.">
 <meta property="og:url" content="https://rehmozayub.github.io/tools-for-everyone/">
 <meta property="og:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Tools for Everyone - Free Browser Tools, No Upload">
-<meta name="twitter:description" content="Nine free tools for PDFs, images, video, text, and files that run entirely in your browser. No uploads, no accounts, no installs.">
+<meta name="twitter:description" content="Free tools for PDFs, images, video, audio, QR codes and more that run entirely in your browser. No uploads, no accounts, no installs.">
 <meta name="twitter:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f3f5">
@@ -29,14 +29,8 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <link rel="stylesheet" href="assets/theme.css">
 <style>
-  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 24px; }
+  .page { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
 
-  .site-header {
-    height: 64px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
   .wordmark {
     display: flex;
     align-items: center;
@@ -45,23 +39,14 @@
     font-weight: 600;
     color: var(--text);
     text-decoration: none;
+    white-space: nowrap;
   }
-  .wordmark .ph { font-size: 1.25rem; color: var(--text-muted); }
-  .site-header .actions {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .site-header .actions a.text-link {
-    font-size: 0.8125rem;
-    font-weight: 500;
-    color: var(--text-muted);
-    text-decoration: none;
-  }
-  .site-header .actions a.text-link:hover { color: var(--text); }
+  .wordmark { min-width: 0; }
+  .wordmark span { overflow: hidden; text-overflow: ellipsis; }
+  .wordmark .ph { font-size: 1.25rem; color: var(--text-muted); flex-shrink: 0; }
+  .wordmark:hover { color: var(--text); }
 
-  .hero { max-width: 640px; padding-top: 64px; }
+  .hero { max-width: 680px; padding-top: 64px; }
   .hero h1 {
     font-size: clamp(2.25rem, 4.5vw, 3.25rem);
     font-weight: 600;
@@ -72,47 +57,171 @@
   }
   .hero p { color: var(--text-muted); font-size: 1.0625rem; }
 
+  /* ---------- Search ---------- */
+
+  .finder { max-width: 680px; margin-top: 36px; }
+  .search-box { position: relative; display: flex; align-items: center; }
+  .search-box > .ph {
+    position: absolute;
+    left: 16px;
+    font-size: 1.25rem;
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+  .search-box input {
+    width: 100%;
+    min-height: 54px;
+    padding: 12px 52px 12px 48px;
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 1.0625rem;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .search-box input:focus { border-color: var(--accent); }
+  .search-box input::placeholder { color: var(--text-faint); }
+  .search-box .kbd { position: absolute; right: 16px; pointer-events: none; }
+  .search-box input:focus ~ .kbd,
+  .search-box input:not(:placeholder-shown) ~ .kbd { display: none; }
+  .finder-hint { margin-top: 12px; color: var(--text-muted); font-size: 0.8125rem; }
+  .finder-hint .link-btn { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+
+  .results {
+    margin-top: 28px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    list-style: none;
+  }
+  .results li + li { border-top: 1px solid var(--border); }
+  .result-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .result-row:hover { background: var(--surface-2); color: var(--text); }
+  .result-row:focus-visible { outline-offset: -3px; background: var(--surface-2); }
+  .result-row > .ph { font-size: 1.25rem; color: var(--text-muted); flex-shrink: 0; }
+  .result-row .rr-text { flex: 1; min-width: 0; }
+  .result-row .rr-name { display: block; font-size: 0.9375rem; font-weight: 600; }
+  .result-row .rr-desc { display: block; color: var(--text-muted); font-size: 0.8125rem; }
+  .result-row .rr-meta { flex-shrink: 0; color: var(--text-faint); font-size: 0.75rem; text-align: right; }
+  .no-results { margin-top: 28px; padding: 32px 18px; border: 1px dashed var(--border-strong); border-radius: var(--radius-lg); text-align: center; color: var(--text-muted); }
+  .no-results p { margin: 0 auto 6px; }
+
+  /* ---------- Directory ---------- */
+
+  .block { margin-top: 48px; }
+  .block > h2 {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+  .block > h2 .count { color: var(--text-faint); font-weight: 400; }
+  #directory > .block:first-child { margin-top: 56px; }
+
+  .recent-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .recent-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .recent-link .ph { font-size: 1.125rem; color: var(--text-muted); }
+  .recent-link .meta { color: var(--text-muted); font-weight: 400; font-size: 0.8125rem; }
+  .recent-link:hover { border-color: var(--accent); color: var(--text); background: var(--accent-tint); }
+
   .directory {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 1px;
     background: var(--border);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     overflow: hidden;
     box-shadow: var(--shadow);
-    margin-top: 80px;
   }
+  /* A short last row stretches its last card, so no empty grey cell is left. */
+  .directory > .cell:last-child:nth-child(3n + 1) { grid-column: 1 / -1; }
+  .directory > .cell:last-child:nth-child(3n + 2) { grid-column: span 2; }
+
   .cell {
     position: relative;
+    display: flex;
+    flex-direction: column;
     background: var(--surface);
-    padding: 28px;
-    text-decoration: none;
+    padding: 24px 24px 22px;
     color: var(--text);
-    display: block;
   }
-  .cell:hover { background: var(--surface-2); }
+  .cell:hover, .cell:focus-within { background: var(--surface-2); }
   .cell .tool-icon { font-size: 1.5rem; color: var(--text); display: block; }
-  .cell h2 {
-    font-size: 1.125rem;
+  .cell h3 {
+    font-size: 1.0625rem;
     font-weight: 600;
-    margin: 14px 0 6px;
-    padding-right: 24px;
+    color: var(--text);
+    margin: 12px 0 6px;
+    padding-right: 40px;
   }
-  .cell .desc { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 10px; }
+  .cell-link { color: inherit; text-decoration: none; }
+  .cell-link:hover { color: inherit; }
+  .cell-link::after { content: ""; position: absolute; inset: 0; z-index: 0; }
+  .cell-link:focus-visible { outline: none; }
+  /* The directory clips its corners, so the focus ring is drawn inside the card. */
+  .cell-link:focus-visible::after { outline: 2px solid var(--accent); outline-offset: -3px; border-radius: 2px; }
+  .cell .desc { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 12px; flex: 1 0 auto; }
   .cell .accepts {
     font-family: var(--font-mono);
     font-size: 0.75rem;
     color: var(--text-faint);
   }
-  .cell .go {
-    position: absolute;
-    top: 28px;
-    right: 28px;
-    font-size: 1rem;
-    color: var(--text-faint);
-  }
+  .cell .go { font-size: 0.875rem; color: var(--text-faint); margin-left: 4px; vertical-align: -0.05em; }
   .cell:hover .go { color: var(--text-muted); }
+
+  .sub-chips { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 4px; margin: -2px 0 12px; }
+  .sub-chips a {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 9px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .sub-chips a:hover { border-color: var(--accent); color: var(--accent); }
+  .sub-chips a:focus-visible { outline-offset: 1px; }
+
+  @media (pointer: coarse) {
+    .sub-chips { gap: 6px; }
+    .sub-chips a { min-height: 44px; padding: 0 14px; font-size: 0.8125rem; }
+  }
+
+  .pin-btn { position: absolute; top: 14px; right: 14px; z-index: 1; }
+  .pin-btn[aria-pressed="true"] { color: var(--accent); }
+  @media (hover: hover) and (pointer: fine) {
+    .pin-btn[aria-pressed="false"] { opacity: 0; }
+    .cell:hover .pin-btn, .cell:focus-within .pin-btn, .pin-btn:focus-visible { opacity: 1; }
+  }
 
   .privacy { margin-top: 80px; }
   .privacy h2 { font-size: 1.375rem; letter-spacing: -0.01em; margin-bottom: 20px; }
@@ -127,148 +236,415 @@
   .privacy li .ph { font-size: 1.25rem; color: var(--text-muted); flex-shrink: 0; margin-top: 0.1em; }
   .privacy .aside { color: var(--text-muted); font-size: 0.875rem; margin-top: 24px; }
 
-  .site-footer {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 24px;
-    align-items: center;
-    color: var(--text-muted);
-    font-size: 0.8125rem;
-    margin-top: 80px;
-    padding: 24px 0 40px;
-    border-top: 1px solid var(--border);
-  }
-  .site-footer a { color: var(--text-muted); text-decoration: none; }
-  .site-footer a:hover { color: var(--accent); }
+  .landing-footer { margin-top: 80px; }
 
   @media (prefers-reduced-motion: no-preference) {
-    .cell, .cell .go { transition: color 160ms var(--ease), background-color 160ms var(--ease), transform 160ms var(--ease); }
+    .cell, .cell .go, .pin-btn, .result-row, .recent-link, .sub-chips a {
+      transition: color 160ms var(--ease), background-color 160ms var(--ease), border-color 160ms var(--ease), opacity 160ms var(--ease), transform 160ms var(--ease);
+    }
     .cell:hover .go { transform: translateX(2px); }
   }
 
-  @media (max-width: 720px) {
-    .directory { grid-template-columns: 1fr; margin-top: 48px; }
-    .privacy, .site-footer { margin-top: 48px; }
+  @media (max-width: 900px) {
+    .directory { grid-template-columns: repeat(2, 1fr); }
+    .directory > .cell:last-child:nth-child(3n + 1),
+    .directory > .cell:last-child:nth-child(3n + 2) { grid-column: auto; }
+    .directory > .cell:last-child:nth-child(odd) { grid-column: 1 / -1; }
     .hero { padding-top: 40px; }
+    .block { margin-top: 40px; }
+    .privacy, .landing-footer { margin-top: 56px; }
   }
 
   @media (max-width: 640px) {
-    .wrap { padding: 0 16px; }
-    .cell { padding: 24px; }
-    .cell .go { top: 24px; right: 24px; }
+    .page { padding: 0 16px; }
+    .directory { grid-template-columns: 1fr; }
+    .directory > .cell:last-child:nth-child(odd) { grid-column: auto; }
+    .cell { padding: 20px; }
+    .pin-btn { top: 10px; right: 10px; }
+    .finder { margin-top: 28px; }
+    .search-box input { font-size: 1rem; }
+    .search-box .kbd { display: none; }
+    .result-row { padding: 12px 14px; }
+    .result-row .rr-meta { display: none; }
   }
 </style>
 </head>
-<body data-sw-path="sw.js">
-<div class="wrap">
-  <header class="site-header">
-    <a class="wordmark" href="index.html">
-      <i class="ph ph-toolbox" aria-hidden="true"></i>
-      <span>Tools for Everyone</span>
-    </a>
-    <div class="actions">
-      <button class="btn btn-sm hidden" type="button" id="installApp"><i class="ph ph-download-simple" aria-hidden="true"></i> Install app</button>
-      <a class="text-link" href="https://github.com/RehmozAyub/tools-for-everyone">GitHub</a>
-      <button class="icon-btn" type="button" id="themeToggle" aria-label="Toggle theme"></button>
-    </div>
-  </header>
+<body data-sw-path="sw.js" class="landing">
+<header class="tool-header">
+  <a class="wordmark" href="./">
+    <i class="ph ph-toolbox" aria-hidden="true"></i>
+    <span>Tools for Everyone</span>
+  </a>
+  <nav class="header-actions" aria-label="Site">
+    <button class="icon-btn" type="button" id="themeToggle" aria-label="Toggle theme"></button>
+    <a class="icon-btn" href="https://github.com/RehmozAyub/tools-for-everyone" aria-label="Source on GitHub"><i class="ph ph-github-logo" aria-hidden="true"></i></a>
+  </nav>
+</header>
 
+<main id="main" class="page">
   <div class="hero">
     <h1>Free tools that stay on your device.</h1>
-    <p>Nine browser tools for PDFs, images, video, text, and privacy. Nothing you open here is uploaded anywhere.</p>
+    <p>Browser tools for PDFs, images, video, audio and everyday jobs. Your files are processed by this browser and never uploaded.</p>
   </div>
 
-  <section class="directory" aria-label="Tools">
-    <a class="cell" href="PDF%20Suite/pdf_suite.html">
-      <i class="ph ph-file-pdf tool-icon" aria-hidden="true"></i>
-      <h2>PDF Suite</h2>
-      <p class="desc">Merge, split, compress, watermark, and a dozen more PDF jobs in one page.</p>
-      <p class="accepts">PDF</p>
-      <i class="ph ph-arrow-right go" aria-hidden="true"></i>
-    </a>
+  <div class="finder" role="search">
+    <div class="search-box">
+      <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+      <label class="sr-only" for="toolSearch">Search tools</label>
+      <input type="search" id="toolSearch" placeholder="Search tools, e.g. merge pdf, remove gps, gif" autocomplete="off" spellcheck="false" aria-controls="searchResults" aria-describedby="searchHint" data-no-remember>
+      <kbd class="kbd" aria-hidden="true">/</kbd>
+    </div>
+    <p class="finder-hint" id="searchHint">Or drop a file anywhere on this page, or <button class="link-btn" type="button" id="pickFile">choose a file</button>, to see which tools can open it.</p>
+    <input type="file" id="routeInput" multiple hidden data-no-remember>
+  </div>
 
-    <a class="cell" href="Image%20Compressor/image_compressor.html">
-      <i class="ph ph-image tool-icon" aria-hidden="true"></i>
-      <h2>Image Compressor</h2>
-      <p class="desc">Shrink, resize, and convert photos without uploading a single file.</p>
-      <p class="accepts">JPG PNG WebP GIF</p>
-      <i class="ph ph-arrow-right go" aria-hidden="true"></i>
-    </a>
+  <div id="searchResults" hidden>
+    <ul class="results" id="resultList" aria-label="Matching tools"></ul>
+    <div class="no-results" id="noResults" hidden>
+      <p id="noResultsText">No tool matches that.</p>
+      <p><a href="https://github.com/RehmozAyub/tools-for-everyone/issues/new">Ask for it on GitHub</a></p>
+    </div>
+  </div>
 
-    <a class="cell" href="Private%20AI%20Chat/private_ai_chat.html">
-      <i class="ph ph-chat-teardrop-text tool-icon" aria-hidden="true"></i>
-      <h2>Private AI Chat</h2>
-      <p class="desc">Chat with an AI model that runs on your device. Ask it things, rewrite, summarise, draft.</p>
-      <p class="accepts">Nothing leaves your browser</p>
-      <i class="ph ph-arrow-right go" aria-hidden="true"></i>
-    </a>
+  <div id="directory">
+    <section class="block" id="recentBlock" aria-labelledby="recentTitle" hidden>
+      <h2 id="recentTitle">Jump back in</h2>
+      <div class="recent-row" id="recentRow"></div>
+    </section>
 
-    <a class="cell" href="QR%20Code%20Studio/qr_code_studio.html">
-      <i class="ph ph-qr-code tool-icon" aria-hidden="true"></i>
-      <h2>QR Code Studio</h2>
-      <p class="desc">Make QR codes for links, WiFi, and contacts, or read one from an image.</p>
-      <p class="accepts">Text, WiFi, vCard, email</p>
-      <i class="ph ph-arrow-right go" aria-hidden="true"></i>
-    </a>
+    <section class="block" id="pinnedBlock" aria-labelledby="pinnedTitle" hidden>
+      <h2 id="pinnedTitle">Pinned</h2>
+      <div class="directory" id="pinnedGrid"></div>
+    </section>
 
-    <a class="cell" href="Audio%20Transcriber/audio_transcriber.html">
-      <i class="ph ph-microphone tool-icon" aria-hidden="true"></i>
-      <h2>Audio Transcriber</h2>
-      <p class="desc">Transcribe recordings fully offline in your browser, or with your own OpenAI key.</p>
-      <p class="accepts">MP3 WAV M4A and more</p>
-      <i class="ph ph-arrow-right go" aria-hidden="true"></i>
-    </a>
+    <section class="block" data-category="documents" aria-labelledby="g-documents">
+      <h2 id="g-documents">Documents</h2>
+      <div class="directory">
+        <article class="cell" data-tool="pdf">
+          <i class="ph ph-file-pdf tool-icon" aria-hidden="true"></i>
+          <h3><a class="cell-link" href="PDF%20Suite/pdf_suite.html">PDF Suite<i class="ph ph-arrow-right go" aria-hidden="true"></i></a></h3>
+          <p class="desc">Merge, split, compress, sign and a dozen more PDF jobs in one page.</p>
+          <p class="accepts">PDF, JPG, PNG</p>
+        </article>
 
-    <a class="cell" href="Video%20Converter/video_converter.html">
-      <i class="ph ph-film-strip tool-icon" aria-hidden="true"></i>
-      <h2>Video Converter</h2>
-      <p class="desc">Turn a clip into a GIF, or compress it down, on a small in-browser engine.</p>
-      <p class="accepts">MP4 MOV WebM</p>
-      <i class="ph ph-arrow-right go" aria-hidden="true"></i>
-    </a>
+        <article class="cell" data-tool="metadata">
+          <i class="ph ph-shield-check tool-icon" aria-hidden="true"></i>
+          <h3><a class="cell-link" href="Metadata%20Scrubber/metadata_scrubber.html">Metadata Scrubber<i class="ph ph-arrow-right go" aria-hidden="true"></i></a></h3>
+          <p class="desc">See and remove hidden details, such as GPS location, before you share a file.</p>
+          <p class="accepts">JPG, PNG, WebP, PDF, DOCX, XLSX, PPTX</p>
+        </article>
 
-    <a class="cell" href="Metadata%20Scrubber/metadata_scrubber.html">
-      <i class="ph ph-shield-check tool-icon" aria-hidden="true"></i>
-      <h2>Metadata Scrubber</h2>
-      <p class="desc">See and remove hidden metadata, including GPS location, before you share.</p>
-      <p class="accepts">JPG PNG WebP PDF DOCX XLSX PPTX</p>
-      <i class="ph ph-arrow-right go" aria-hidden="true"></i>
-    </a>
+        <article class="cell" data-tool="renamer">
+          <i class="ph ph-folders tool-icon" aria-hidden="true"></i>
+          <h3><a class="cell-link" href="Bulk%20File%20Renamer/bulk_rename.html">Bulk File Renamer<i class="ph ph-arrow-right go" aria-hidden="true"></i></a></h3>
+          <p class="desc">Rename hundreds of files at once with patterns, numbering and regex.</p>
+          <p class="accepts">Any file</p>
+        </article>
+      </div>
+    </section>
 
-    <a class="cell" href="Bulk%20File%20Renamer/bulk_rename.html">
-      <i class="ph ph-folders tool-icon" aria-hidden="true"></i>
-      <h2>Bulk File Renamer</h2>
-      <p class="desc">Rename hundreds of files at once with patterns, numbering, and regex.</p>
-      <p class="accepts">Any file type</p>
-      <i class="ph ph-arrow-right go" aria-hidden="true"></i>
-    </a>
+    <section class="block" data-category="media" aria-labelledby="g-media">
+      <h2 id="g-media">Media</h2>
+      <div class="directory">
+        <article class="cell" data-tool="image">
+          <i class="ph ph-image tool-icon" aria-hidden="true"></i>
+          <h3><a class="cell-link" href="Image%20Compressor/image_compressor.html">Image Compressor<i class="ph ph-arrow-right go" aria-hidden="true"></i></a></h3>
+          <p class="desc">Shrink, resize and convert photos, one or hundreds at a time.</p>
+          <p class="accepts">JPG, PNG, WebP, AVIF, GIF</p>
+        </article>
 
-    <a class="cell" href="Virtual%20Card%20Manager/virtual_card_manager.html">
-      <i class="ph ph-credit-card tool-icon" aria-hidden="true"></i>
-      <h2>Virtual Card Manager</h2>
-      <p class="desc">Create Luhn-valid test card numbers for signups you do not trust yet.</p>
-      <p class="accepts">Test numbers only</p>
-      <i class="ph ph-arrow-right go" aria-hidden="true"></i>
-    </a>
-  </section>
+        <article class="cell" data-tool="video">
+          <i class="ph ph-film-strip tool-icon" aria-hidden="true"></i>
+          <h3><a class="cell-link" href="Video%20Converter/video_converter.html">Video Converter<i class="ph ph-arrow-right go" aria-hidden="true"></i></a></h3>
+          <p class="desc">Turn a clip into a GIF, make it smaller, or convert it to another format.</p>
+          <p class="accepts">MP4, MOV, WebM</p>
+        </article>
 
-  <section class="privacy">
-    <h2>Nothing leaves your device.</h2>
+        <article class="cell" data-tool="audio">
+          <i class="ph ph-microphone tool-icon" aria-hidden="true"></i>
+          <h3><a class="cell-link" href="Audio%20Transcriber/audio_transcriber.html">Audio Transcriber<i class="ph ph-arrow-right go" aria-hidden="true"></i></a></h3>
+          <p class="desc">Turn speech into text on your device, from a file or a recording.</p>
+          <p class="accepts">MP3, WAV, M4A, FLAC, OGG, MP4</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="block" data-category="everyday" aria-labelledby="g-everyday">
+      <h2 id="g-everyday">Everyday</h2>
+      <div class="directory">
+        <article class="cell" data-tool="chat">
+          <i class="ph ph-chat-teardrop-text tool-icon" aria-hidden="true"></i>
+          <h3><a class="cell-link" href="Private%20AI%20Chat/private_ai_chat.html">Private AI Chat<i class="ph ph-arrow-right go" aria-hidden="true"></i></a></h3>
+          <p class="desc">Chat with an AI model that runs on your device: ask, rewrite, summarise, draft.</p>
+          <p class="accepts">Text</p>
+        </article>
+
+        <article class="cell" data-tool="qr">
+          <i class="ph ph-qr-code tool-icon" aria-hidden="true"></i>
+          <h3><a class="cell-link" href="QR%20Code%20Studio/qr_code_studio.html">QR Code Studio<i class="ph ph-arrow-right go" aria-hidden="true"></i></a></h3>
+          <p class="desc">Make QR codes for links, Wi-Fi and contacts, or read one from a picture.</p>
+          <p class="accepts">Text, links, Wi-Fi, vCard, PNG, JPG</p>
+        </article>
+
+        <article class="cell" data-tool="cards">
+          <i class="ph ph-credit-card tool-icon" aria-hidden="true"></i>
+          <h3><a class="cell-link" href="Virtual%20Card%20Manager/virtual_card_manager.html">Test Card Generator<i class="ph ph-arrow-right go" aria-hidden="true"></i></a></h3>
+          <p class="desc">Official test card numbers for checking payment forms, with decline and 3D Secure scenarios.</p>
+          <p class="accepts">Stripe, Adyen, Braintree</p>
+        </article>
+      </div>
+    </section>
+  </div>
+
+  <section class="privacy" aria-labelledby="privacyTitle">
+    <h2 id="privacyTitle">Nothing leaves your device.</h2>
     <ul>
       <li><i class="ph ph-shield-check" aria-hidden="true"></i><span>Your files are processed by your own browser, not by a server.</span></li>
-      <li><i class="ph ph-wifi-slash" aria-hidden="true"></i><span>Once a tool has loaded, it keeps working with the internet switched off.</span></li>
+      <li><i class="ph ph-wifi-slash" aria-hidden="true"></i><span>Each tool keeps working with the internet switched off once you have opened it online one time.</span></li>
       <li><i class="ph ph-code" aria-hidden="true"></i><span>The source code is public on GitHub, so you can check any of this yourself.</span></li>
     </ul>
     <p class="aside">One exception: Audio Transcriber's OpenAI mode sends your audio to OpenAI with your own key. Its offline mode, which is the default, never leaves your device. Most tools also come as a Python app, see the <a href="https://github.com/RehmozAyub/tools-for-everyone">repository README</a>.</p>
   </section>
+</main>
 
-  <footer class="site-footer">
-    <span>Made with ❤️ by <a href="https://github.com/RehmozAyub">RehmozAyub</a></span>
-    <a href="https://github.com/RehmozAyub/tools-for-everyone">Source on GitHub</a>
-    <button class="link-btn" type="button" onclick="sharePage()">Share</button>
-    <span>MIT licence</span>
-  </footer>
-</div>
+<footer class="tool-footer landing-footer">
+  <span>Made with ❤️ by <a href="https://github.com/RehmozAyub">RehmozAyub</a></span>
+  <a href="https://github.com/RehmozAyub/tools-for-everyone">Source on GitHub</a>
+  <button class="link-btn" type="button" onclick="sharePage()">Share</button>
+  <a href="https://github.com/RehmozAyub/tools-for-everyone/blob/main/LICENSE">MIT licence</a>
+</footer>
+
+<script>
+/* Landing page: search, pins, recently used, and dropping a file to pick a tool.
+   The registry, search and file routing come from assets/app.js (window.TFE). */
+document.addEventListener('DOMContentLoaded', function () {
+  var T = window.TFE;
+  if (!T || !T.tools) return;
+
+  function $(id) { return document.getElementById(id); }
+  function make(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function icon(name, cls) {
+    var i = make('i', 'ph ph-' + name + (cls ? ' ' + cls : ''));
+    i.setAttribute('aria-hidden', 'true');
+    return i;
+  }
+
+  /* ---------- Sub-tool chips on the PDF card ---------- */
+
+  var pdf = T.toolById('pdf');
+  var pdfCard = document.querySelector('.cell[data-tool="pdf"]');
+  if (pdf && pdfCard) {
+    var featured = ['merge', 'split', 'compress', 'protect'];
+    var chips = make('div', 'sub-chips');
+    chips.setAttribute('aria-label', 'Jump to a PDF tool');
+    chips.setAttribute('role', 'group');
+    featured.forEach(function (id) {
+      var s = pdf.subtools.filter(function (x) { return x.id === id; })[0];
+      if (!s) return;
+      var a = make('a', null, s.name.replace(/ (PDFs?|a PDF)$/, ''));
+      a.href = s.href;
+      a.setAttribute('aria-label', s.name);
+      chips.appendChild(a);
+    });
+    var more = pdf.subtools.length - featured.length;
+    if (more > 0) {
+      var m = make('a', null, '+' + more);
+      m.href = pdf.href;
+      m.setAttribute('aria-label', more + ' more PDF tools');
+      chips.appendChild(m);
+    }
+    pdfCard.insertBefore(chips, pdfCard.querySelector('.accepts'));
+  }
+
+  /* ---------- Pins ---------- */
+
+  var cards = Array.prototype.slice.call(document.querySelectorAll('#directory .cell[data-tool]'));
+  var home = {};
+  cards.forEach(function (card, i) {
+    home[card.dataset.tool] = { grid: card.parentNode, index: i };
+    var name = card.querySelector('.cell-link').textContent.trim();
+    var b = make('button', 'icon-btn pin-btn');
+    b.type = 'button';
+    b.dataset.name = name;
+    b.appendChild(icon('push-pin'));
+    b.addEventListener('click', function () {
+      var pinned = b.getAttribute('aria-pressed') !== 'true';
+      T.pins.set(card.dataset.tool, pinned);
+      placeCards();
+      b.focus();
+      T.announce(name + (pinned ? ' pinned to the top' : ' unpinned'));
+    });
+    card.appendChild(b);
+  });
+
+  function placeCards() {
+    var pins = T.pins.list();
+    cards.forEach(function (card) {
+      if (pins.indexOf(card.dataset.tool) === -1) home[card.dataset.tool].grid.appendChild(card);
+    });
+    pins.forEach(function (id) {
+      var card = cards.filter(function (c) { return c.dataset.tool === id; })[0];
+      if (card) $('pinnedGrid').appendChild(card);
+    });
+    cards.forEach(function (card) {
+      var b = card.querySelector('.pin-btn');
+      var on = pins.indexOf(card.dataset.tool) !== -1;
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.setAttribute('aria-label', (on ? 'Unpin ' : 'Pin ') + b.dataset.name);
+      b.title = on ? 'Unpin' : 'Pin to the top';
+    });
+    $('pinnedBlock').hidden = !pins.length;
+    var blocks = document.querySelectorAll('#directory .block[data-category]');
+    for (var i = 0; i < blocks.length; i++) {
+      blocks[i].hidden = !blocks[i].querySelector('.cell');
+    }
+  }
+  placeCards();
+
+  /* ---------- Jump back in ---------- */
+
+  function renderRecent() {
+    var row = $('recentRow');
+    row.innerHTML = '';
+    var items = T.recent.list(3);
+    items.forEach(function (e) {
+      var a = make('a', 'recent-link');
+      a.href = e.href;
+      a.appendChild(icon(e.icon));
+      a.appendChild(make('span', null, e.name));
+      if (e.sub) a.appendChild(make('span', 'meta', e.tool.name));
+      row.appendChild(a);
+    });
+    $('recentBlock').hidden = !items.length;
+  }
+  renderRecent();
+
+  /* ---------- Search ---------- */
+
+  var input = $('toolSearch');
+  var results = $('searchResults');
+  var list = $('resultList');
+  var directory = $('directory');
+  var announceTimer = null;
+
+  function renderSearch() {
+    var q = input.value.trim();
+    if (!q) {
+      results.hidden = true;
+      directory.hidden = false;
+      return;
+    }
+    var hits = T.search(q, 30);
+    directory.hidden = true;
+    results.hidden = false;
+    list.innerHTML = '';
+    hits.forEach(function (e) {
+      var li = make('li');
+      var a = make('a', 'result-row');
+      a.href = e.href;
+      a.appendChild(icon(e.icon));
+      var text = make('span', 'rr-text');
+      text.appendChild(make('span', 'rr-name', e.name));
+      text.appendChild(make('span', 'rr-desc', e.description));
+      a.appendChild(text);
+      a.appendChild(make('span', 'rr-meta', e.sub ? e.tool.name : 'Tool'));
+      li.appendChild(a);
+      list.appendChild(li);
+    });
+    list.hidden = !hits.length;
+    $('noResults').hidden = !!hits.length;
+    $('noResultsText').textContent = 'No tool matches “' + q + '”. If you need one, ask for it.';
+    clearTimeout(announceTimer);
+    announceTimer = setTimeout(function () {
+      T.announce(hits.length ? hits.length + (hits.length === 1 ? ' match' : ' matches') : 'No matches');
+    }, 500);
+  }
+
+  function rows() { return Array.prototype.slice.call(list.querySelectorAll('.result-row')); }
+
+  input.addEventListener('input', renderSearch);
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      var first = rows()[0];
+      if (first) { e.preventDefault(); location.href = first.href; }
+    } else if (e.key === 'ArrowDown') {
+      var r = rows();
+      if (r.length) { e.preventDefault(); r[0].focus(); }
+    } else if (e.key === 'Escape' && input.value) {
+      e.preventDefault();
+      input.value = '';
+      renderSearch();
+    }
+  });
+  list.addEventListener('keydown', function (e) {
+    var r = rows();
+    var i = r.indexOf(document.activeElement);
+    if (i === -1) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); (r[i + 1] || r[i]).focus(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); if (i === 0) input.focus(); else r[i - 1].focus(); }
+    else if (e.key === 'Escape') { e.preventDefault(); input.focus(); }
+  });
+  if (input.value) renderSearch();
+
+  /* ---------- Drop a file (or choose one) to pick a tool ---------- */
+
+  var overlay = make('div', 'drop-overlay');
+  overlay.hidden = true;
+  overlay.setAttribute('aria-hidden', 'true');
+  var box = make('div', 'drop-overlay-box');
+  box.appendChild(icon('file-arrow-up'));
+  box.appendChild(make('span', null, 'Drop a file to pick a tool'));
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  var depth = 0;
+  function hasFiles(e) {
+    var types = e.dataTransfer && e.dataTransfer.types;
+    return !!types && Array.prototype.indexOf.call(types, 'Files') !== -1;
+  }
+  document.addEventListener('dragenter', function (e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    depth++;
+    overlay.hidden = false;
+  });
+  document.addEventListener('dragover', function (e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  });
+  document.addEventListener('dragleave', function (e) {
+    if (!hasFiles(e)) return;
+    depth = Math.max(0, depth - 1);
+    if (!depth) overlay.hidden = true;
+  });
+  document.addEventListener('drop', function (e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    depth = 0;
+    overlay.hidden = true;
+    if (e.dataTransfer.files && e.dataTransfer.files.length) T.routeFiles(e.dataTransfer.files);
+  });
+  window.addEventListener('blur', function () { depth = 0; overlay.hidden = true; });
+
+  var picker = $('routeInput');
+  $('pickFile').addEventListener('click', function () { picker.click(); });
+  picker.addEventListener('change', function () {
+    if (picker.files && picker.files.length) T.routeFiles(Array.prototype.slice.call(picker.files));
+    picker.value = '';
+  });
+
+  /* Files shared to the installed app arrive here (see share_target in manifest.json). */
+  T.handoff.take().then(function (files) {
+    if (files && files.length) T.routeFiles(files);
+  });
+});
+</script>
 <script src="assets/app.js" defer></script>
 </body>
 </html>

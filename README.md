@@ -9,9 +9,15 @@ I believe technology should be shared for good and productive purposes, so every
 
 ![Tools for Everyone](assets/screenshots/landing-page.png)
 
-Every tool runs entirely in your browser. Nothing you open here is ever uploaded to a server, mine or anyone else's.
+Every tool runs entirely in your browser. Nothing you open here is ever uploaded to a server, mine or anyone else's. Each tool keeps working offline once you have opened it online one time, libraries included.
 
-You can also install the site as an app. Open the live site and use the **Install app** button in the header (Chrome, Edge, and Android). On iPhone, use Share then **Add to Home Screen**. It then opens in its own window and keeps working offline.
+You can also install the site as an app. Use the **Install** button in the header of any page (Chrome, Edge, and Android). On iPhone, use Share then **Add to Home Screen**. It then opens in its own window, and PDFs and images can be shared to it from other apps.
+
+Getting around:
+- **Search** on the home page finds tools and the jobs inside them ("merge pdf", "remove gps", "gif"). Press **Ctrl K** (**⌘K** on a Mac) on any page to jump to another tool or job.
+- **Drop a file** on the home page and it lists the tools that can open it. When a tool finishes, **Continue with** passes the result straight to the next tool, without downloading it first.
+- **Jump back in** and **Pinned** keep the tools you use most at the top, and tools remember the settings you last used.
+- Links can point at a single job, for example `PDF Suite/pdf_suite.html#compress`.
 
 Most tools come in **two versions**:
 - **HTML (browser)** - what the live site above runs. Also works completely offline: double-click the `.html` file in any tool folder and it runs instantly, no setup needed.
@@ -73,11 +79,9 @@ Rename many files at once with find and replace, regex patterns, prefix/suffix, 
 
 ![Bulk File Renamer](assets/screenshots/bulk-file-renamer.png)
 
-### Virtual Card Manager
-Generate Luhn-valid test card numbers with spending caps and expiry dates, so you never hand real banking details to a site you don't trust yet. Freeze/unfreeze, spending progress bar, CSV export, and links to real virtual-card providers. Zero network calls, everything stays on your machine.
-[Open in browser](https://rehmozayub.github.io/tools-for-everyone/Virtual%20Card%20Manager/virtual_card_manager.html) · [Streamlit version](Virtual%20Card%20Manager/)
-
-![Virtual Card Manager](assets/screenshots/virtual-card-manager.png)
+### Test Card Generator
+Official test card numbers from Stripe, Adyen and Braintree for checking payment forms during development, with scenarios such as a successful payment, a decline, insufficient funds and a 3D Secure challenge. Copy any number in one click, keep a saved list, and back it up to a file. These numbers only work in the processors' test modes. (This tool used to be called Virtual Card Manager, and its page keeps the old address.)
+[Open in browser](https://rehmozayub.github.io/tools-for-everyone/Virtual%20Card%20Manager/virtual_card_manager.html) · [Streamlit version](Virtual%20Card%20Manager/) (the older virtual card manager)
 
 ---
 
