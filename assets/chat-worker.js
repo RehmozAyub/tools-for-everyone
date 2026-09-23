@@ -18,10 +18,19 @@ import {
   pipeline,
   TextStreamer,
   InterruptableStoppingCriteria,
+  ModelRegistry,
   env,
 } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.0/dist/transformers.min.js';
 
-import { cache as modelStore } from './model-store.js';
+import {
+  cache as modelStore,
+  downloadFile,
+  getManifest,
+  setManifest,
+  modelStatus,
+} from './model-store.js';
+
+const HF_BASE = 'https://huggingface.co/';
 
 /* Models are kept in IndexedDB rather than the Cache Storage the library reaches for
    by default, because Chrome will not hold a single cache entry of 256MB or more and
@@ -89,9 +98,102 @@ function extractText(output) {
   return '';
 }
 
+/* ---------- Getting the files onto the device ----------
+
+   Rather than leaving the download to the library, which starts again from nothing
+   when a connection drops, the files a model needs are fetched here first with a
+   downloader that resumes (see assets/model-store.js). The library then finds every
+   one of them already stored and reads them from there. Anything the list below
+   misses is still fetched by the library in the usual way, so a wrong list costs a
+   download that cannot resume, never a broken model. */
+
+function prefixOf(model) {
+  return HF_BASE + model + '/resolve/main/';
+}
+
+async function treeSizes(model) {
+  const sizes = {};
+  const response = await fetch(HF_BASE + 'api/models/' + model + '/tree/main?recursive=true');
+  if (!response.ok) throw new Error('Hugging Face answered ' + response.status + '.');
+  for (const file of await response.json()) {
+    if (file && file.type === 'file') sizes[file.path] = (file.lfs && file.lfs.size) || file.size || 0;
+  }
+  return sizes;
+}
+
+// Which files, and how big. The page sends the list for the models it knows; for
+// anything else the library is asked, and the sizes come from Hugging Face.
+async function manifestFor(message) {
+  const prefix = prefixOf(message.model);
+  if (Array.isArray(message.files) && message.files.length) return message.files;
+  const stored = await getManifest(prefix);
+  if (stored) return stored;
+  const options = {};
+  if (message.dtype) options.dtype = message.dtype;
+  if (message.device) options.device = message.device;
+  const [paths, sizes] = await Promise.all([
+    ModelRegistry.get_pipeline_files(message.kind || 'text2text-generation', message.model, options),
+    treeSizes(message.model),
+  ]);
+  return paths.map((path) => ({ path: path, size: sizes[path] || 0 }));
+}
+
+// Byte counts go to the page a few times a second, not on every network read.
+function progressPoster(total, start) {
+  let loaded = start;
+  let last = 0;
+  const post = (force) => {
+    const now = Date.now();
+    if (!force && now - last < 200) return;
+    last = now;
+    self.postMessage({
+      type: 'download',
+      loaded: loaded,
+      total: total,
+      progress: total ? Math.min(100, Math.round((loaded / total) * 100)) : 0,
+    });
+  };
+  return {
+    add(n) { loaded += n; post(false); },
+    done() { loaded = total; post(true); },
+    now() { post(true); },
+  };
+}
+
+async function fetchFiles(message) {
+  const prefix = prefixOf(message.model);
+  let files;
+  try {
+    files = await manifestFor(message);
+  } catch (e) {
+    // Offline with nothing known about this model: the library gets to try.
+    return { listed: false };
+  }
+  await setManifest(prefix, files);
+  const status = await modelStatus(prefix, files);
+  if (status.complete) return { listed: true, fetched: false };
+
+  const total = files.reduce((sum, f) => sum + (f.size || 0), 0);
+  self.postMessage({ type: 'phase', phase: 'download', loaded: status.held, total: total });
+  const progress = progressPoster(total, status.held);
+  progress.now();
+  for (const file of files) {
+    if (!status.missing.includes(file.path)) continue;
+    const got = await downloadFile(prefix + file.path, { size: file.size, onBytes: (n) => progress.add(n) });
+    // A file that changed on Hugging Face since its size was noted comes down at its
+    // new size, and the list is corrected so the model still counts as whole.
+    if (got && got.size && got.size !== file.size) {
+      file.size = got.size;
+      await setManifest(prefix, files);
+    }
+  }
+  progress.done();
+  return { listed: true, fetched: true };
+}
+
 async function load(message) {
   const key = [message.model, message.kind, message.device, message.dtype].join('|');
-  if (generator && loadedKey === key) return;
+  if (generator && loadedKey === key) return { fetched: false };
 
   if (generator) {
     try { await generator.dispose(); } catch (e) { /* nothing held it */ }
@@ -99,11 +201,13 @@ async function load(message) {
     loadedKey = null;
   }
 
-  /* A model is several files, and the library reports each one's progress
-     separately. Forwarding those raw makes the bar jump backwards every time a new
-     file starts, which reads as flickering. Totalling the bytes across every file
-     gives one honest figure, and it is never allowed to fall, because the total
-     keeps growing as further files are discovered. */
+  const fetched = await fetchFiles(message);
+  self.postMessage({ type: 'phase', phase: 'load' });
+
+  /* Whatever the downloader did not fetch, the library does, and it reports each
+     file on its own. Totalling across files gives one figure that never falls, as
+     further files are discovered. When everything is already stored this is the
+     time spent reading the model off the disk, which is reported as loading. */
   const seen = new Map();
   let highest = 0;
 
@@ -124,7 +228,12 @@ async function load(message) {
       const pct = Math.min(99, Math.round((loaded / total) * 100));
       if (pct <= highest) return;
       highest = pct;
-      self.postMessage({ type: 'download', progress: pct });
+      self.postMessage({
+        type: fetched.listed ? 'loading' : 'download',
+        progress: pct,
+        loaded: loaded,
+        total: total,
+      });
     },
   };
   if (message.dtype) options.dtype = message.dtype;
@@ -132,7 +241,7 @@ async function load(message) {
 
   generator = await pipeline(message.kind || 'text2text-generation', message.model, options);
   loadedKey = key;
-  self.postMessage({ type: 'download', progress: 100 });
+  return { fetched: !!fetched.fetched || !fetched.listed };
 }
 
 async function generate(message) {
@@ -143,6 +252,8 @@ async function generate(message) {
   let produced = 0;
   let written = '';
   let looped = false;
+  const started = performance.now();
+  let firstAt = 0;
 
   stopper = new InterruptableStoppingCriteria();
 
@@ -151,7 +262,10 @@ async function generate(message) {
        conversation would be streamed out again before the new answer. */
     skip_prompt: isChat,
     skip_special_tokens: true,
-    token_callback_function: (tokens) => { produced += tokens.length; },
+    token_callback_function: (tokens) => {
+      if (!firstAt) firstAt = performance.now();
+      produced += tokens.length;
+    },
     callback_function: (text) => {
       if (!text) return;
       self.postMessage({ type: 'delta', id: message.id, text: text });
@@ -177,6 +291,7 @@ async function generate(message) {
   const output = await generator(input, options);
   const stopped = !looped && !!(stopper && stopper.interrupted);
   stopper = null;
+  const ended = performance.now();
 
   const text = extractText(output);
 
@@ -190,7 +305,20 @@ async function generate(message) {
        to work out why a sentence stops mid word. */
     truncated: !stopped && produced >= maxNew - 2,
     stopped: stopped,
+    // For the speed line under a reply: tokens written, how long until the first
+    // one, and how long the writing took after that.
+    produced: produced,
+    firstMs: firstAt ? Math.round(firstAt - started) : 0,
+    writeMs: firstAt ? Math.round(ended - firstAt) : 0,
   });
+}
+
+// The error's name is kept, because the page tells a full disk (QuotaExceededError)
+// apart from a dropped connection by it.
+function describe(e) {
+  if (!e) return 'Something went wrong.';
+  const message = e.message || String(e);
+  return e.name && e.name !== 'Error' ? e.name + ': ' + message : message;
 }
 
 self.addEventListener('message', async (event) => {
@@ -203,10 +331,23 @@ self.addEventListener('message', async (event) => {
 
   if (message.type === 'load') {
     try {
-      await load(message);
-      self.postMessage({ type: 'ready' });
+      const result = await load(message);
+      self.postMessage({ type: 'ready', fetched: !!(result && result.fetched) });
     } catch (e) {
-      self.postMessage({ type: 'error', message: (e && e.message) || String(e) });
+      self.postMessage({ type: 'error', message: describe(e) });
+    }
+    return;
+  }
+
+  // Fetching the files and nothing else, for "Download now": the model is not
+  // started, so a phone on Wi-Fi can fetch it ahead of time without the memory cost.
+  if (message.type === 'prefetch') {
+    try {
+      const result = await fetchFiles(message);
+      if (!result.listed) throw new Error('Hugging Face could not be reached to find the files this model needs.');
+      self.postMessage({ type: 'fetched', fetched: !!result.fetched });
+    } catch (e) {
+      self.postMessage({ type: 'error', message: describe(e) });
     }
     return;
   }
@@ -216,7 +357,7 @@ self.addEventListener('message', async (event) => {
       await generate(message);
     } catch (e) {
       stopper = null;
-      self.postMessage({ type: 'error', id: message.id, message: (e && e.message) || String(e) });
+      self.postMessage({ type: 'error', id: message.id, message: describe(e) });
     }
   }
 });

@@ -28,7 +28,6 @@
 </script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <link rel="stylesheet" href="../assets/theme.css">
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script type="module">
   /* The store is a module, the page script below is not, so it is passed across
      rather than imported. Modules run after the page script has been parsed, which
@@ -37,16 +36,110 @@
   window.__modelStoreReady(store);
 </script>
 <style>
+  /* ---------- Layout ---------- */
+
+  /* The side panel scrolls on its own on a desktop, so a long list of saved chats
+     never pushes the model settings out of reach. */
+  .chat-layout .side {
+    max-height: calc(100vh - 96px);
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  .side-section { margin-bottom: 28px; }
+  .side-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin: 0 0 10px;
+  }
+  .drawer-head { display: none; }
+  /* These set their own display, so the shared .hidden needs help to win. */
+  .edit-bar.hidden, .hist-search.hidden, .storage-line.hidden, .menu-note.hidden, .menu-item.hidden { display: none; }
+  .drawer-toggle { display: none; }
+  .drawer-backdrop { display: none; }
+
+  /* ---------- Saved chats ---------- */
+
+  .hist-search { margin-bottom: 8px; }
+  .hist-search input { width: 100%; }
+  .history { list-style: none; margin: 0; padding: 0; }
+  .hist-item {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    border-radius: var(--radius);
+  }
+  .hist-item:hover { background: var(--surface-2); }
+  .hist-item.active { background: var(--accent-tint); }
+  .hist-open {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    padding: 7px 10px;
+    border: 0;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.875rem;
+    text-align: left;
+    cursor: pointer;
+    border-radius: var(--radius);
+  }
+  .hist-title { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hist-date { font-size: 0.6875rem; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+  .hist-item .icon-btn { width: 30px; height: 30px; font-size: 0.9375rem; flex-shrink: 0; opacity: 0; }
+  .hist-item:hover .icon-btn,
+  .hist-item:focus-within .icon-btn,
+  .hist-item.active .icon-btn { opacity: 1; }
+  .hist-rename-input { flex: 1; min-width: 0; margin: 3px 4px; font-size: 0.875rem; padding: 5px 8px; }
+  .hist-item .inline-confirm { margin: 4px; font-size: 0.8125rem; }
+  .hist-empty { font-size: 0.8125rem; color: var(--text-muted); padding: 4px 2px; }
+
+  /* ---------- Files menu ---------- */
+
+  .menu { display: flex; flex-direction: column; gap: 2px; }
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 36px;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: var(--radius);
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.875rem;
+    text-align: left;
+    cursor: pointer;
+  }
+  .menu-item .ph { color: var(--text-muted); font-size: 1rem; }
+  .menu-item:hover { background: var(--surface-2); }
+  .menu-item:disabled { opacity: 0.5; cursor: not-allowed; }
+  .menu-item:disabled:hover { background: none; }
+  .menu-row { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 6px 10px; font-size: 0.875rem; }
+  .menu-row > span:first-child { display: inline-flex; align-items: center; gap: 10px; }
+  .menu-row > span:first-child .ph { color: var(--text-muted); font-size: 1rem; }
+  .menu-row .fmt { display: flex; gap: 6px; flex-wrap: wrap; padding-left: 26px; }
+  .menu-row .fmt .btn { margin-top: 0; }
+  .menu-note { font-size: 0.75rem; color: var(--text-faint); padding: 2px 10px 6px 36px; max-width: none; }
+
   /* ---------- Conversation ---------- */
 
   .chat {
     display: flex;
     flex-direction: column;
     gap: 18px;
-    min-height: 280px;
+    min-height: 240px;
     padding: 4px 0 20px;
   }
-  .msg { display: flex; flex-direction: column; max-width: 46rem; }
+  .msg { display: flex; flex-direction: column; max-width: 46rem; min-width: 0; }
   .msg.user { align-self: flex-end; align-items: flex-end; }
   .who {
     font-size: 0.6875rem;
@@ -61,9 +154,14 @@
     border-radius: var(--radius-lg);
     font-size: 0.9375rem;
     line-height: 1.65;
-    white-space: pre-wrap;
     overflow-wrap: anywhere;
+    min-width: 0;
+    max-width: 100%;
   }
+  /* What people type keeps its own line breaks; a reply is rendered markdown, which
+     brings its own paragraphs, so it must not also keep every newline. */
+  .msg.user .bubble,
+  .bubble.plain { white-space: pre-wrap; }
   .msg.user .bubble {
     background: var(--accent-tint);
     border: 1px solid transparent;
@@ -74,6 +172,7 @@
     border: 1px solid var(--border);
     border-bottom-left-radius: var(--radius);
   }
+  .msg.bot.failed .bubble { border-color: var(--danger); background: var(--danger-tint); }
   .bubble code {
     font-family: var(--font-mono);
     font-size: 0.875em;
@@ -87,11 +186,102 @@
     color: var(--text-muted);
     margin-bottom: 6px;
   }
+
+  /* Markdown inside a reply */
+  .md > :first-child { margin-top: 0; }
+  .md > :last-child { margin-bottom: 0; }
+  .md p, .md ul, .md ol, .md blockquote, .md table, .md .code-block { margin: 0 0 0.75em; }
+  .md ul, .md ol { padding-left: 1.4em; }
+  .md li { margin: 0.2em 0; }
+  .md li > p { margin: 0; }
+  .md h1, .md h2, .md h3, .md h4, .md h5, .md h6 {
+    font-size: 1em;
+    font-weight: 600;
+    margin: 1em 0 0.4em;
+    line-height: 1.4;
+  }
+  .md h1, .md h2 { font-size: 1.0625em; }
+  .md a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+  .md blockquote {
+    padding: 2px 0 2px 12px;
+    border-left: 3px solid var(--border-strong);
+    color: var(--text-muted);
+  }
+  .md hr { border: 0; border-top: 1px solid var(--border); margin: 1em 0; }
+  .md table { border-collapse: collapse; display: block; overflow-x: auto; max-width: 100%; font-size: 0.875rem; }
+  .md th, .md td { border: 1px solid var(--border); padding: 5px 10px; text-align: left; }
+  .md th { background: var(--surface-2); font-weight: 600; }
+  .code-block {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface-2);
+    overflow: hidden;
+  }
+  .code-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 3px 4px 3px 12px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+  .code-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 28px;
+    padding: 2px 8px;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--text-muted);
+    font: inherit;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+  .code-copy:hover { background: var(--surface); color: var(--text); }
+  .code-block pre {
+    margin: 0;
+    padding: 10px 12px;
+    overflow-x: auto;
+    white-space: pre;
+    overflow-wrap: normal;
+    font-size: 0.8125rem;
+    line-height: 1.55;
+  }
+  .code-block pre code { background: none; padding: 0; font-size: inherit; border-radius: 0; }
+
+  /* Highlighting drawn with the site's own colours, so it follows light and dark. */
+  .hljs-keyword, .hljs-selector-tag, .hljs-built_in, .hljs-doctag { color: var(--accent); }
+  .hljs-string, .hljs-attr, .hljs-template-tag, .hljs-regexp { color: var(--success); }
+  .hljs-number, .hljs-literal, .hljs-symbol, .hljs-bullet { color: var(--warning); }
+  .hljs-comment, .hljs-quote, .hljs-meta { color: var(--text-faint); font-style: italic; }
+  .hljs-title, .hljs-section, .hljs-name, .hljs-type { color: var(--danger); }
+  .hljs-variable, .hljs-params, .hljs-property { color: var(--text); }
+
   .bubble-actions {
     display: flex;
-    gap: 8px;
-    margin-top: 10px;
+    gap: 6px;
+    margin-top: 6px;
     flex-wrap: wrap;
+  }
+  .msg.user .bubble-actions { justify-content: flex-end; }
+  /* Actions show on hover and focus with a mouse, and stay visible for the latest
+     reply and on touch screens, where there is no hover. */
+  @media (hover: hover) and (pointer: fine) {
+    .msg .bubble-actions.on-hover { opacity: 0; transition: opacity 120ms var(--ease); }
+    .msg:hover .bubble-actions.on-hover,
+    .msg:focus-within .bubble-actions.on-hover { opacity: 1; }
+  }
+  .reply-meta {
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
   }
   .cut-note {
     display: flex;
@@ -103,8 +293,12 @@
     border-top: 1px solid var(--border);
     font-size: 0.8125rem;
     color: var(--text-muted);
+    white-space: normal;
   }
   .cut-note .ph { color: var(--warning); }
+  .fail-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .fail-text { display: flex; gap: 8px; align-items: flex-start; }
+  .fail-text .ph { color: var(--danger); font-size: 1.125rem; margin-top: 3px; }
 
   /* Three dots while the model is reading the question and has written nothing
      back yet, so the wait has a visible reason. */
@@ -122,38 +316,43 @@
     @keyframes blink { 0%, 60%, 100% { opacity: 0.25; } 30% { opacity: 1; } }
   }
 
-  .empty-chat { text-align: center; padding: 32px 16px 8px; color: var(--text-muted); }
+  .empty-chat { text-align: center; padding: 28px 16px 8px; color: var(--text-muted); }
   .empty-chat > .ph { font-size: 2rem; color: var(--text-faint); display: block; margin-bottom: 12px; }
-  .empty-chat p { max-width: 46ch; margin: 0 auto 20px; }
-  .suggestions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: center;
-    max-width: 40rem;
-    margin: 0 auto;
-  }
-  .chip {
+  .empty-chat p { max-width: 46ch; margin: 0 auto 8px; }
+
+  /* ---------- Asking before the first download ---------- */
+
+  .consent {
+    max-width: 34rem;
+    margin: 12px auto 0;
+    padding: 18px 20px;
     border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
     background: var(--surface);
-    color: var(--text);
-    border-radius: 999px;
-    padding: 7px 14px;
-    font-family: inherit;
-    font-size: 0.8125rem;
-    cursor: pointer;
+    text-align: left;
   }
-  .chip:hover { background: var(--surface-2); border-color: var(--border-strong); }
+  #statusArea .consent { margin: 0 0 12px; max-width: none; }
+  .consent-kicker { font-size: 0.75rem; color: var(--text-faint); margin-bottom: 4px; }
+  .consent-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+  .consent-head h2 { font-size: 1.0625rem; margin: 0; }
+  .consent-size { margin-left: auto; font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 0.8125rem; color: var(--text-muted); }
+  .consent p { margin: 0 0 8px; font-size: 0.875rem; max-width: none; }
+  .consent .why { color: var(--text-muted); font-size: 0.8125rem; }
+  .consent-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; align-items: center; }
+  .consent-actions .btn { margin-top: 0; }
+  .consent.attention { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
 
   /* ---------- Composer ---------- */
 
   .composer {
     position: sticky;
     bottom: 0;
+    z-index: 3;
     background: var(--bg);
     border-top: 1px solid var(--border);
-    padding: 14px 0 20px;
+    padding: 12px 0 16px;
   }
+  .modes { margin-bottom: 10px; }
   .composer textarea {
     width: 100%;
     font-family: inherit;
@@ -167,30 +366,87 @@
   .composer-row {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     margin-top: 8px;
-    flex-wrap: wrap;
   }
   .composer-row .hint {
     font-size: 0.75rem;
     color: var(--text-faint);
     margin-right: auto;
+    min-width: 0;
   }
-  .composer .btn-primary { margin-top: 0; }
-  .btn-stop { background: var(--surface); border-color: var(--danger); color: var(--danger); margin-top: 0; }
-  .btn-stop:hover { background: var(--danger-tint); }
+  .composer .btn-primary, .composer .btn { margin-top: 0; }
+  .send-btn { min-width: 104px; justify-content: center; }
+  .send-btn.is-stop { background: var(--surface); border-color: var(--danger); color: var(--danger); }
+  .send-btn.is-stop:hover { background: var(--danger-tint); }
+  .edit-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+  }
+  .edit-bar .ph { color: var(--accent); }
+  .model-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 18rem;
+    min-height: 36px;
+    padding: 4px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.8125rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .model-chip:hover { border-color: var(--border-strong); background: var(--surface-2); }
+  .model-chip .ph { color: var(--text-muted); flex-shrink: 0; }
+  .model-chip .chip-text { overflow: hidden; text-overflow: ellipsis; }
+  .model-chip .chip-state { color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
   /* Appears only when the conversation has been scrolled away from, so a reply
      arriving while someone is rereading does not drag the page around. */
   .jump {
     position: fixed;
     left: 50%;
-    bottom: 120px;
+    bottom: 150px;
     transform: translateX(-50%);
     z-index: 5;
     box-shadow: var(--shadow);
     background: var(--surface);
   }
+
+  /* ---------- Download progress ---------- */
+
+  .dl-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin: 0 0 12px;
+  }
+  .dl-card .dl-main { flex: 1; min-width: 0; }
+  .dl-title { font-size: 0.8125rem; font-weight: 500; margin-bottom: 6px; }
+  .dl-bar { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+  .dl-fill { height: 100%; width: 0; background: var(--accent); border-radius: 999px; }
+  .dl-bar.indeterminate .dl-fill { width: 30%; }
+  @media (prefers-reduced-motion: no-preference) {
+    .dl-fill { transition: width 200ms var(--ease); }
+    .dl-bar.indeterminate .dl-fill { animation: slide 1.4s ease-in-out infinite; }
+    @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+  }
+  .dl-text { margin-top: 5px; font-size: 0.75rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .dl-card .btn { margin-top: 0; flex-shrink: 0; }
+  .status-note { margin: 0 0 12px; }
+  .status-note .btn { margin-top: 0; }
 
   /* ---------- Model panel ---------- */
 
@@ -208,14 +464,17 @@
     color: var(--text-faint);
     white-space: nowrap;
   }
-  .model-state { font-size: 0.75rem; color: var(--text-muted); grid-column: 1 / -1; }
+  .model-state { font-size: 0.75rem; color: var(--text-muted); grid-column: 1 / -1; font-variant-numeric: tabular-nums; }
   .model-state.ready { color: var(--success); }
+  .model-state.partial { color: var(--warning); }
   .model-specs {
     grid-column: 1 / -1;
-    font-family: var(--font-mono);
     font-size: 0.75rem;
     color: var(--text-muted);
   }
+  .model-fit { grid-column: 1 / -1; }
+  .model-actions { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .model-actions .btn { margin-top: 0; }
   .status-bar {
     display: flex; align-items: center; gap: 8px;
     padding: 10px 14px;
@@ -228,7 +487,10 @@
 
   /* ---------- Model library ---------- */
 
+  /* The site's reset sets every margin to 0, which would pin the dialog to the top
+     left corner; auto puts it back in the middle. */
   .library {
+    margin: auto;
     width: min(760px, calc(100vw - 32px));
     max-height: min(84vh, 760px);
     padding: 0;
@@ -254,6 +516,19 @@
   }
   .library-head h2 { margin-bottom: 0; font-size: 1.125rem; }
   .library-body { padding: 20px 24px 28px; overflow-y: auto; max-height: calc(min(84vh, 760px) - 70px); }
+  .storage-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .storage-line .ph { color: var(--text-muted); }
   .lib-group {
     display: flex;
     align-items: baseline;
@@ -275,17 +550,9 @@
     margin-bottom: 10px;
   }
   .lib-card.chosen { border-color: var(--accent); background: var(--accent-tint); }
-  .lib-card.blocked { opacity: 0.55; }
-  .lib-head { display: flex; align-items: baseline; gap: 10px; }
+  .lib-card.blocked { opacity: 0.6; }
+  .lib-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .lib-name { font-size: 0.9375rem; font-weight: 600; }
-  .lib-pick {
-    font-size: 0.6875rem;
-    font-weight: 500;
-    color: var(--accent);
-    border: 1px solid var(--accent);
-    border-radius: 999px;
-    padding: 2px 8px;
-  }
   .lib-size {
     margin-left: auto;
     font-family: var(--font-mono);
@@ -306,99 +573,217 @@
     font-size: 0.8125rem;
     color: var(--text);
   }
-  .lib-blurb { font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 12px; max-width: none; }
+  .lib-blurb { font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 8px; max-width: none; }
+  .lib-why { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px; max-width: none; }
   .lib-search { display: flex; gap: 8px; margin-bottom: 14px; }
   .lib-search input { flex: 1; min-width: 0; }
   .lib-note { font-size: 0.75rem; color: var(--text-faint); }
   .lib-card select { font-size: 0.8125rem; padding: 5px 8px; min-height: 32px; max-width: 230px; }
   .lib-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-  .lib-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+  .lib-buttons { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .lib-buttons .btn { margin-top: 0; }
+  .lib-card .dl-card { margin: 10px 0 0; }
 
+  /* A fallback for the shell's helper, in case the page is opened without it. */
+  .sr-only {
+    position: absolute !important; width: 1px !important; height: 1px !important;
+    padding: 0 !important; margin: -1px !important; overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important;
+  }
+
+  /* ---------- Phones and narrow windows ----------
+     The conversation and the composer come first and fill the screen. Saved chats,
+     the model and the file actions live in a drawer behind the header button, so
+     none of it sits in the way of the chat. */
+  @media (max-width: 900px) {
+    .tool-layout.chat-layout,
+    .tool-layout.chat-layout[data-mobile-controls="after"] {
+      grid-template-columns: 1fr;
+      grid-template-areas: "main";
+      padding-top: 12px;
+    }
+    .chat-layout .side {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 60;
+      width: min(88vw, 360px);
+      max-height: none;
+      padding: 0 16px 24px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      background: var(--bg);
+      border-right: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      transform: translateX(-104%);
+      visibility: hidden;
+    }
+    body.drawer-open .chat-layout .side { transform: none; visibility: visible; }
+    .drawer-head {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 0 -16px 12px;
+      padding: 10px 8px 10px 16px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+    }
+    body.drawer-open .drawer-backdrop {
+      display: block;
+      position: fixed;
+      inset: 0;
+      z-index: 55;
+      background: rgba(21, 24, 30, 0.5);
+    }
+    .drawer-toggle { display: inline-flex; }
+    #newChatBtn .label { display: none; }
+    .tool-intro { font-size: 0.875rem; margin-bottom: 8px; }
+    .chat { min-height: 120px; }
+    .modes { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-left: -2px; padding: 0 2px 2px; }
+    .modes::-webkit-scrollbar { display: none; }
+    .composer { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+    .composer-row .hint { display: none; }
+    .composer-row .model-chip { margin-right: auto; max-width: 62vw; }
+  }
+  @media (max-width: 900px) and (prefers-reduced-motion: no-preference) {
+    .chat-layout .side { transition: transform 200ms var(--ease), visibility 200ms; }
+  }
   @media (max-width: 640px) {
-    .library-head { padding: 14px 16px; }
-    .library-body { padding: 16px 16px 24px; }
+    .library {
+      width: 100vw;
+      max-width: 100vw;
+      height: 100dvh;
+      max-height: 100dvh;
+      margin: 0;
+      border-radius: 0;
+      border: 0;
+    }
+    .library-head { padding: 12px 16px; }
+    .library-body { padding: 16px 16px 24px; max-height: calc(100dvh - 64px); }
     .lib-specs { gap: 10px 12px; }
-    .jump { bottom: 132px; }
+    .jump { bottom: 170px; }
+    .consent { padding: 16px; }
+  }
+
+  /* Touch screens: every control here at least 44px to hit. */
+  @media (pointer: coarse) {
+    .hist-item .icon-btn { width: 44px; height: 44px; opacity: 1; }
+    #newChatBtn { min-width: 44px; justify-content: center; }
+    .hist-open { min-height: 44px; }
+    .menu-item, .menu-row { min-height: 44px; }
+    .model-chip { min-height: 44px; }
+    .code-copy { min-height: 44px; min-width: 44px; justify-content: center; }
+    .bubble-actions .btn, .cut-note .btn, .fail-actions .btn, .model-actions .btn, .lib-buttons .btn { min-height: 44px; }
+    .lib-card select { min-height: 44px; }
   }
 </style>
 </head>
-<body data-sw-path="../sw.js">
+<body data-sw-path="../sw.js" class="chat-page">
 
 <header class="tool-header">
   <a class="back" href="../index.html"><i class="ph ph-arrow-left" aria-hidden="true"></i> <span>All tools</span></a>
   <h1><i class="ph ph-chat-teardrop-text" aria-hidden="true"></i> Private AI Chat</h1>
   <div class="header-actions">
-    <button class="btn btn-sm" type="button" id="newChatBtn" onclick="clearChat()"><i class="ph ph-plus" aria-hidden="true"></i> <span>New chat</span></button>
+    <button class="btn btn-sm" type="button" id="newChatBtn" aria-label="New chat"><i class="ph ph-plus" aria-hidden="true"></i> <span class="label">New chat</span></button>
+    <button class="icon-btn drawer-toggle" type="button" id="drawerBtn" aria-controls="sidePanel" aria-expanded="false" aria-label="Saved chats and model"><i class="ph ph-sidebar-simple" aria-hidden="true"></i></button>
     <button class="icon-btn" type="button" id="themeToggle" aria-label="Toggle theme"></button>
     <a class="icon-btn" href="https://github.com/RehmozAyub/tools-for-everyone" aria-label="Source on GitHub"><i class="ph ph-github-logo" aria-hidden="true"></i></a>
   </div>
 </header>
 
-<div class="tool-layout has-subtool-nav">
-  <nav class="subtool-nav" id="modeList" aria-label="Starting points"></nav>
+<div class="tool-layout chat-layout" data-mobile-controls="after">
+  <aside class="tool-controls side" id="sidePanel" aria-label="Saved chats and model">
+    <div class="drawer-head">
+      <span>Chats and model</span>
+      <button class="icon-btn" type="button" id="drawerClose" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
+    </div>
 
-  <aside class="tool-controls">
-    <details class="panel" open data-mobile-collapsed>
-      <summary><span>Model</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
+    <section class="side-section" aria-labelledby="histHead">
+      <h2 class="side-title" id="histHead">Chats</h2>
+      <div class="hist-search hidden" id="histSearchWrap">
+        <label class="sr-only" for="histSearch">Search chats by title</label>
+        <input type="search" id="histSearch" placeholder="Search chats" autocomplete="off" data-no-remember>
+      </div>
+      <ul class="history" id="historyList"></ul>
+    </section>
+
+    <section class="side-section" aria-labelledby="modelHead">
+      <h2 class="side-title" id="modelHead">Model</h2>
       <div id="modelList"></div>
-      <button class="btn btn-export mt-2" type="button" onclick="openLibrary()"><i class="ph ph-books" aria-hidden="true"></i> Browse models</button>
-      <p class="muted xsmall mt-3">Downloads once, then stays in this browser. Coming back is instant and works with the internet off.</p>
-    </details>
+      <button class="btn btn-export" type="button" id="browseBtn"><i class="ph ph-books" aria-hidden="true"></i> Browse models</button>
+    </section>
 
-    <details class="panel" open data-mobile-collapsed>
-      <summary><span>Conversation</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
-      <button class="btn btn-export" type="button" onclick="downloadChat()"><i class="ph ph-download-simple" aria-hidden="true"></i> Download conversation</button>
-      <button class="btn btn-export mt-2" type="button" onclick="clearChat()"><i class="ph ph-trash" aria-hidden="true"></i> Start a new one</button>
-    </details>
-
-    <details class="panel" open data-mobile-collapsed>
-      <summary><span>Keep the model</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
-      <p class="muted xsmall mb-3">Save it as a file you keep, then load it back later, here or on another machine, with no download at all.</p>
-      <button class="btn btn-export" type="button" onclick="exportModel(this)"><i class="ph ph-download-simple" aria-hidden="true"></i> Save model to a file</button>
-      <button class="btn btn-export mt-2" type="button" onclick="document.getElementById('modelFileInput').click()"><i class="ph ph-folder-open" aria-hidden="true"></i> Browse for a saved model</button>
-      <input type="file" id="modelFileInput" accept=".zip" class="hidden">
-      <div id="modelManageResult"></div>
-    </details>
-
+    <section class="side-section" aria-labelledby="filesHead">
+      <h2 class="side-title" id="filesHead">Files</h2>
+      <div class="menu">
+        <div class="menu-row" role="group" aria-labelledby="dlConvLabel">
+          <span id="dlConvLabel"><i class="ph ph-download-simple" aria-hidden="true"></i> Download chat</span>
+          <span class="fmt">
+            <button class="btn btn-sm" type="button" data-export="md">Markdown</button>
+            <button class="btn btn-sm" type="button" data-export="json">JSON</button>
+            <button class="btn btn-sm" type="button" data-export="txt">Text</button>
+          </span>
+        </div>
+        <button class="menu-item" type="button" id="exportModelBtn"><i class="ph ph-file-zip" aria-hidden="true"></i> Save model to a file</button>
+        <p class="menu-note hidden" id="exportNote"></p>
+        <button class="menu-item" type="button" id="importModelBtn"><i class="ph ph-folder-open" aria-hidden="true"></i> Load a saved model</button>
+        <input type="file" id="modelFileInput" accept=".zip,application/zip" class="hidden" data-no-remember>
+      </div>
+      <div id="modelManageResult" aria-live="polite"></div>
+    </section>
   </aside>
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
 
-  <main class="tool-main">
-    <p class="tool-intro">A real AI chat with nothing behind it. The model is downloaded once and then runs inside your browser, so every word you type stays on your machine, and the whole thing keeps working with the internet switched off.</p>
+  <main class="tool-main" id="main">
+    <p class="tool-intro">Chat with an AI model that runs in this browser. Ask questions, or paste some text to rewrite, summarise or tidy it.</p>
 
-    <div class="chat" id="chat" role="log"></div>
-    <p class="hidden" id="liveStatus" role="status" aria-live="polite"></p>
+    <div class="chat" id="chat" role="log" aria-live="off" aria-label="Conversation"></div>
+    <p class="sr-only" id="liveStatus" role="status" aria-live="polite"></p>
 
     <div id="statusArea"></div>
 
     <div class="composer">
-      <label class="hidden" for="message">Your message</label>
-      <textarea id="message" rows="2" placeholder="Ask anything, or paste some text and say what to do with it."></textarea>
+      <div class="chip-row modes" id="modeChips" role="group" aria-label="Starting points"></div>
+      <div class="edit-bar hidden" id="editBar">
+        <i class="ph ph-pencil-simple" aria-hidden="true"></i>
+        <span>Editing your last message. Sending replaces it and the reply after it.</span>
+        <button class="btn btn-sm" type="button" id="cancelEditBtn">Cancel</button>
+      </div>
+      <label class="sr-only" for="message">Your message</label>
+      <textarea id="message" rows="2" placeholder="Ask anything, or paste some text and say what to do with it." data-no-remember></textarea>
       <div class="composer-row">
-        <span class="hint" id="composerHint">Enter sends, Shift and Enter makes a new line</span>
-        <button class="btn btn-stop hidden" type="button" id="stopBtn" onclick="stopReply()"><i class="ph ph-stop-circle" aria-hidden="true"></i> Stop</button>
-        <button class="btn btn-primary" type="button" id="sendBtn" onclick="send(this)"><i class="ph ph-paper-plane-tilt" aria-hidden="true"></i> Send</button>
+        <span class="hint" id="composerHint">Enter sends, Shift and Enter makes a new line, Esc stops</span>
+        <button class="model-chip" type="button" id="modelChip" aria-haspopup="dialog"><i class="ph ph-cpu" aria-hidden="true"></i> <span class="chip-text">Checking this browser</span></button>
+        <button class="btn btn-primary send-btn" type="button" id="sendBtn" disabled><span class="spinner" aria-hidden="true"></span> <span class="send-label">Checking</span></button>
       </div>
     </div>
   </main>
 </div>
 
-<button class="btn btn-sm jump hidden" type="button" id="jumpBtn" onclick="jumpToLatest()"><i class="ph ph-arrow-down" aria-hidden="true"></i> Jump to latest</button>
+<button class="btn btn-sm jump hidden" type="button" id="jumpBtn"><i class="ph ph-arrow-down" aria-hidden="true"></i> Jump to latest</button>
 
-<dialog id="libraryDialog" class="library" aria-label="Model library">
+<dialog id="libraryDialog" class="library" aria-labelledby="libraryTitle">
   <div class="library-head">
-    <h2>Model library</h2>
-    <button class="btn" type="button" onclick="closeLibrary()"><i class="ph ph-x" aria-hidden="true"></i> Close</button>
+    <h2 id="libraryTitle">Model library</h2>
+    <button class="btn" type="button" id="closeLibraryBtn"><i class="ph ph-x" aria-hidden="true"></i> Close</button>
   </div>
   <div class="library-body">
-    <p class="muted small">Bigger models write better, hold more of the conversation, and answer at greater length. They also cost a longer download and a slower reply. Longest reply is how much a model can write in one go before it has to stop, which is the usual reason an answer ends early. Each model is kept after its first download.</p>
+    <div class="storage-line hidden" id="storageLine"></div>
+    <p class="muted small">Bigger models write better, hold more of the conversation, and answer at greater length. They also cost a longer download and a slower reply. Longest reply is how much a model can write in one go before it has to stop, which is the usual reason an answer ends early. Each model is kept after its first download, and Download now fetches one ahead of time, on Wi-Fi for example.</p>
     <div id="libraryBody"></div>
 
     <h3 class="lib-group">Everything else<span>Any model that runs in a browser, not just the few picked here.</span></h3>
-    <p class="muted xsmall mb-3">Searching asks huggingface.co for its list of browser ready models, which is the one thing on this page that talks to anyone else. It sends what you type in the box and nothing more, never your conversation. None of what comes back has been tried here, so expect some of it to be poor.</p>
+    <p class="muted xsmall mb-3">Searching asks huggingface.co for its list of browser ready models, which is the one thing on this page that talks to anyone else apart from the model download itself. It sends what you type in the box and nothing more, never your conversation. None of what comes back has been tried here, so expect some of it to be poor.</p>
     <div class="lib-search">
-      <label class="hidden" for="modelSearch">Search for a model</label>
-      <input type="text" id="modelSearch" placeholder="A name, for example smol, llama, or qwen">
-      <button class="btn" type="button" id="searchBtn" onclick="searchModels(this)"><i class="ph ph-magnifying-glass" aria-hidden="true"></i> Search</button>
+      <label class="sr-only" for="modelSearch">Search for a model</label>
+      <input type="text" id="modelSearch" placeholder="A name, for example smol, llama, or qwen" data-no-remember>
+      <button class="btn" type="button" id="searchBtn"><i class="ph ph-magnifying-glass" aria-hidden="true"></i> Search</button>
     </div>
     <div id="searchResults"></div>
   </div>
@@ -449,6 +834,11 @@ const MODES = [
   },
 ];
 
+// The ids a link can name in the address (#paraphrase and so on). "chat" is plain
+// chat with no starting point. Bullet points has no link of its own.
+const HASH_MODES = ['paraphrase', 'summarise', 'grammar', 'polite', 'simplify'];
+const HASH_IDS = HASH_MODES.concat(['chat']);
+
 const DEFAULT_OPTIONS = { do_sample: true, temperature: 0.7, top_p: 0.95, repetition_penalty: 1.2 };
 
 /* How a chat model is asked to write. Plain greedy decoding, which this used to use,
@@ -468,30 +858,48 @@ const CHAT_OPTIONS = {
 /* Every model here has been run and read before it was listed, which is how the two
    Qwen2.5 builds that used to be on this list came off it: held as 4 bit weights with
    16 bit activations they answered "tell me a joke" with the same sentence over and
-   over, and "Sure!!!!!!!!!!" at the larger size. The same weights at full precision
-   activations were fine, but at 750MB and 1.7GB they are a worse deal than Llama 3.2
-   1B, which is smaller and better.
+   over, and "Sure!!!!!!!!!!" at the larger size.
 
-   Sizes are the real download measured from the files themselves, and context comes
-   from each model's own config. Longest reply is this page's own budget for one
-   answer, chosen so a small model is not left running for several minutes: it is a
-   real ceiling, and the chat says so when an answer hits it. The chat models need
-   WebGPU, so they are marked and switched off when the browser lacks it. */
+   `files` is exactly what transformers.js 4.3.0 asks for when it starts each one
+   (ModelRegistry.get_pipeline_files with the same dtype and device), with the sizes
+   Hugging Face reports. A model counts as saved only when every one of these is held
+   at its full size, which is what stops a cut off download passing as complete: the
+   3B model keeps 260KB in model_q4f16.onnx and 2.4GB in the data files beside it.
+
+   `gpuNeed` is a rough size for the largest single piece the model puts on the
+   graphics chip (the word table), compared with the chip's own limits. */
 const LIBRARY = [
   {
     group: 'Small', note: 'A few hundred megabytes. Runs anywhere, including phones.',
     models: [
       {
         id: 'Xenova/LaMini-Flan-T5-248M', name: 'LaMini Flan T5',
-        params: '248M', context: '512 tokens', ctx: 512, size: '262 MB',
+        params: '248M', context: '512 tokens', ctx: 512,
         kind: 'text2text-generation', maxNew: 512,
+        goodAt: 'Good at one short rewrite at a time: paraphrase, fix grammar, simplify. It forgets each message once it has answered.',
         blurb: 'Built for following one short written instruction at a time, and the only one here that needs no WebGPU. Good at plain rewriting, no use at conversation: it answers each message on its own and remembers nothing.',
+        files: [
+          { path: 'config.json', size: 1541 },
+          { path: 'onnx/encoder_model_quantized.onnx', size: 110502358 },
+          { path: 'onnx/decoder_model_merged_quantized.onnx', size: 164739632 },
+          { path: 'generation_config.json', size: 147 },
+          { path: 'tokenizer.json', size: 2422262 },
+          { path: 'tokenizer_config.json', size: 2457 },
+        ],
       },
       {
         id: 'HuggingFaceTB/SmolLM2-360M-Instruct', name: 'SmolLM2 360M',
-        params: '360M', context: '8K tokens', ctx: 8192, size: '260 MB',
-        kind: 'text-generation', dtype: 'q4f16', webgpu: true, maxNew: 1024,
+        params: '360M', context: '8K tokens', ctx: 8192,
+        kind: 'text-generation', dtype: 'q4f16', webgpu: true, maxNew: 1024, gpuNeed: 96 * 1024 * 1024,
+        goodAt: 'Good for quick questions and short rewrites. It gets facts wrong and repeats itself on anything long.',
         blurb: 'The smallest real chat model here, and it behaves like it. Fine for a short rewrite or a one line question, but it repeats itself on anything longer and gets facts wrong. Worth it only if a gigabyte is too much to download.',
+        files: [
+          { path: 'config.json', size: 846 },
+          { path: 'onnx/model_q4f16.onnx', size: 272737275 },
+          { path: 'generation_config.json', size: 132 },
+          { path: 'tokenizer.json', size: 2104556 },
+          { path: 'tokenizer_config.json', size: 3764 },
+        ],
       },
     ],
   },
@@ -500,10 +908,19 @@ const LIBRARY = [
     models: [
       {
         id: 'onnx-community/Llama-3.2-1B-Instruct-ONNX', name: 'Llama 3.2 1B',
-        params: '1B', context: '128K tokens', ctx: 131072, size: '1.0 GB',
-        kind: 'text-generation', dtype: 'q4f16', webgpu: true, maxNew: 2048,
+        params: '1B', context: '128K tokens', ctx: 131072,
+        kind: 'text-generation', dtype: 'q4f16', webgpu: true, maxNew: 2048, gpuNeed: 256 * 1024 * 1024,
         recommended: true,
+        goodAt: 'Good at real conversation, drafting, explaining and rewriting. The best balance of download and quality here.',
         blurb: 'The smallest one here that holds a proper conversation without falling apart. If you can spare the download, start with this.',
+        files: [
+          { path: 'config.json', size: 1161 },
+          { path: 'onnx/model_q4f16.onnx', size: 149790 },
+          { path: 'onnx/model_q4f16.onnx_data', size: 1089605632 },
+          { path: 'generation_config.json', size: 188 },
+          { path: 'tokenizer.json', size: 11574638 },
+          { path: 'tokenizer_config.json', size: 54557 },
+        ],
       },
     ],
   },
@@ -512,9 +929,19 @@ const LIBRARY = [
     models: [
       {
         id: 'onnx-community/Llama-3.2-3B-Instruct-ONNX', name: 'Llama 3.2 3B',
-        params: '3B', context: '128K tokens', ctx: 131072, size: '2.3 GB',
-        kind: 'text-generation', dtype: 'q4f16', webgpu: true, maxNew: 2048,
+        params: '3B', context: '128K tokens', ctx: 131072,
+        kind: 'text-generation', dtype: 'q4f16', webgpu: true, maxNew: 2048, gpuNeed: 400 * 1024 * 1024,
+        goodAt: 'The best writing here, for longer drafts and harder questions. Slow to download and to answer.',
         blurb: 'The best writing available here, and the slowest to download and to answer. It will not fit on a phone.',
+        files: [
+          { path: 'config.json', size: 1162 },
+          { path: 'onnx/model_q4f16.onnx', size: 260899 },
+          { path: 'onnx/model_q4f16.onnx_data', size: 2095929344 },
+          { path: 'onnx/model_q4f16.onnx_data_1', size: 311427072 },
+          { path: 'generation_config.json', size: 218 },
+          { path: 'tokenizer.json', size: 11574638 },
+          { path: 'tokenizer_config.json', size: 54557 },
+        ],
       },
     ],
   },
@@ -545,19 +972,32 @@ let ALL_MODELS = [];
 
 function refreshModels() {
   ALL_MODELS = LIBRARY.reduce((acc, g) => acc.concat(g.models), []).concat(customModels);
+  for (const m of ALL_MODELS) {
+    const bytes = expectedBytes(m);
+    if (bytes) m.size = readableBytes(bytes);
+  }
+}
+
+function expectedBytes(model) {
+  if (Array.isArray(model.files) && model.files.length) {
+    return model.files.reduce((sum, f) => sum + (f.size || 0), 0);
+  }
+  return model.bytes || 0;
 }
 refreshModels();
 
 // The instruction only model is the one that runs everywhere, so it is what somebody
 // falls back to. A browser with WebGPU gets a chat model instead. Nobody arriving for
 // the first time should be landed with a gigabyte without asking, so that is the small
-// one, unless the better one is already sitting on the machine.
+// one, unless the better one is already sitting on the machine. Either way nothing is
+// downloaded until they say so.
 const DEFAULT_MODEL = 'Xenova/LaMini-Flan-T5-248M';
 const PREFERRED_MODEL = 'HuggingFaceTB/SmolLM2-360M-Instruct';
 const BEST_MODEL = 'onnx-community/Llama-3.2-1B-Instruct-ONNX';
 
 const HF_BASE = 'https://huggingface.co/';
 const HF_API = 'https://huggingface.co/api/models';
+const WORKER_URL = '../assets/chat-worker.js?v=3';
 
 /* The builds worth offering, best first. A model is usually published in several
    precisions: 4 bit weights with 16 bit activations is much the smallest but needs
@@ -570,8 +1010,174 @@ const PRECISIONS = [
   { file: 'model_quantized.onnx', dtype: 'quantized', label: 'older build, runs anywhere', webgpu: false },
 ];
 
+// Above this, a zip is only offered where it can be written straight to disk.
+const EXPORT_IN_MEMORY_LIMIT = 1.5 * 1024 * 1024 * 1024;
+
+/* ---------- Shell helpers, each safe without the shell ---------- */
+
+function tfe() { return window.TFE || null; }
+
+function prefs() {
+  try { return (window.TFE && window.TFE.prefs) ? window.TFE.prefs('chat') : null; } catch (e) { return null; }
+}
+
+function getPref(key, fallback) {
+  const p = prefs();
+  if (p) { try { return p.get(key, fallback); } catch (e) { /* fall through */ } }
+  return fallback;
+}
+
+function setPref(key, value) {
+  const p = prefs();
+  if (p) { try { p.set(key, value); } catch (e) { /* not kept */ } }
+}
+
+function startJob(label) {
+  try {
+    if (window.TFE && window.TFE.job) return window.TFE.job(label);
+  } catch (e) { /* no shell */ }
+  return () => {};
+}
+
+let lastDirty = null;
+function updateDirty() {
+  // A starting point's wording on its own is not something anybody would miss.
+  const typed = document.getElementById('message').value.trim();
+  const bare = MODES.some((m) => m.prefill.trim() === typed);
+  const dirty = messages.length > 0 || (!!typed && !bare);
+  if (dirty === lastDirty) return;
+  lastDirty = dirty;
+  try { if (window.TFE && window.TFE.setDirty) window.TFE.setDirty(dirty); } catch (e) {}
+}
+
+function announce(text) {
+  try {
+    if (window.TFE && window.TFE.announce) { window.TFE.announce(text); return; }
+  } catch (e) { /* fall through */ }
+  const el = document.getElementById('liveStatus');
+  if (!el) return;
+  el.textContent = '';
+  setTimeout(() => { el.textContent = text; }, 50);
+}
+
+function toast(message, kind, opts) {
+  if (typeof showToast === 'function') showToast(message, kind, opts);
+}
+
+// The shell's inline confirmation, or a small one of the same shape without it.
+function confirmInline(button, options) {
+  try {
+    if (window.TFE && window.TFE.confirmInline) return window.TFE.confirmInline(button, options);
+  } catch (e) { /* fall through */ }
+  return new Promise((resolve) => {
+    if (!button || !button.parentNode) { resolve(false); return; }
+    const strip = document.createElement('span');
+    strip.className = 'inline-confirm' + (options.danger === false ? ' is-neutral' : '');
+    strip.setAttribute('role', 'group');
+    const msg = document.createElement('span');
+    msg.className = 'inline-confirm-msg';
+    msg.textContent = options.message || 'Are you sure?';
+    const yes = document.createElement('button');
+    yes.type = 'button';
+    yes.className = 'btn btn-sm inline-confirm-yes';
+    yes.textContent = options.confirmLabel || 'Delete';
+    const no = document.createElement('button');
+    no.type = 'button';
+    no.className = 'btn btn-sm';
+    no.textContent = options.cancelLabel || 'Cancel';
+    strip.append(msg, yes, no);
+    button.style.display = 'none';
+    button.insertAdjacentElement('afterend', strip);
+    no.focus();
+    const done = (answer) => {
+      strip.remove();
+      button.style.display = '';
+      if (document.contains(button)) button.focus();
+      resolve(answer);
+    };
+    yes.addEventListener('click', (e) => { e.stopPropagation(); done(true); });
+    no.addEventListener('click', (e) => { e.stopPropagation(); done(false); });
+    strip.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(false); } });
+  });
+}
+
+/* ---------- Small formatting helpers ---------- */
+
+function escapeHTML(str) {
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML;
+}
+
+function escapeAttr(str) {
+  return escapeHTML(str).replace(/"/g, '&quot;');
+}
+
+// Whole megabytes under a gigabyte and one decimal above, so a size or a progress
+// line reads the same wherever it appears on this page.
+function readableBytes(bytes) {
+  if (!bytes || bytes < 0) return '0 MB';
+  const mb = bytes / (1024 * 1024);
+  if (mb >= 1024) return (mb / 1024).toFixed(1) + ' GB';
+  if (mb >= 1) return Math.round(mb) + ' MB';
+  return Math.max(1, Math.round(bytes / 1024)) + ' KB';
+}
+
+function readableDuration(seconds) {
+  if (!isFinite(seconds) || seconds <= 0) return '';
+  if (seconds < 50) return 'under a minute';
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return 'about ' + minutes + ' min';
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return 'about ' + hours + ' h' + (rest ? ' ' + rest + ' min' : '');
+}
+
+function countWords(text) {
+  const t = (text || '').trim();
+  return t ? t.split(/\s+/).length : 0;
+}
+
+function isCoarse() {
+  try { return window.matchMedia('(pointer: coarse)').matches; } catch (e) { return false; }
+}
+
+// A phone, as opposed to a tablet or a laptop with a touch screen.
+function isPhone() {
+  try {
+    if (navigator.userAgentData && typeof navigator.userAgentData.mobile === 'boolean' && navigator.userAgentData.mobile) return true;
+  } catch (e) { /* not offered */ }
+  if (/Android.+Mobile|iPhone|iPod|Windows Phone/i.test(navigator.userAgent || '')) return true;
+  const longest = Math.max(screen.width || 0, screen.height || 0);
+  return isCoarse() && longest > 0 && longest < 1000;
+}
+
+/* ---------- State ---------- */
+
 let selectedModelId = DEFAULT_MODEL;
-let webgpuReady = false;
+let pickedBefore = false;
+const gpu = { checked: false, ok: false, f16: false, limits: null };
+
+// idle, checking (the graphics check has not come back), download, load (reading the
+// model into memory), think (waiting for the first word) and stream.
+let phase = 'checking';
+let messages = [];
+let conv = freshConversation();
+let stickToBottom = true;
+let worker = null;
+let workerKey = null;
+let loading = null;
+let jobId = 0;
+let editingIndex = -1;
+let draftBeforeEdit = '';
+let pendingText = null;
+let lastPaused = null;
+const overrides = new Set();
+const statusCache = new Map();
+
+function busy() {
+  return phase !== 'idle' && phase !== 'checking';
+}
 
 function currentModel() {
   return ALL_MODELS.find((m) => m.id === selectedModelId) || ALL_MODELS[0];
@@ -587,11 +1193,198 @@ function isChatModel(model) {
   return model.kind === 'text-generation';
 }
 
-let pickedBefore = false;
-try {
-  const saved = localStorage.getItem('rewriterModel');
-  if (saved && ALL_MODELS.some((m) => m.id === saved)) { selectedModelId = saved; pickedBefore = true; }
-} catch (e) {}
+function prefixOf(repo) {
+  return `${HF_BASE}${repo}/resolve/main/`;
+}
+
+function modelUrl(repo, file) {
+  return prefixOf(repo) + file;
+}
+
+// Filled in by the module above. Everything that reads a model waits on it.
+let modelStore = null;
+const storeReady = new Promise((resolve) => {
+  window.__modelStoreReady = (api) => { modelStore = api; resolve(api); };
+});
+
+// The model chosen last time, from the shell's remembered settings or, before those
+// existed, the key this page used to keep it under.
+function rememberedModel() {
+  let saved = getPref('model', null);
+  if (!saved) { try { saved = localStorage.getItem('rewriterModel'); } catch (e) { saved = null; } }
+  return saved && ALL_MODELS.some((m) => m.id === saved) ? saved : null;
+}
+
+function rememberModel(id) {
+  setPref('model', id);
+  try { localStorage.setItem('rewriterModel', id); } catch (e) {}
+}
+
+/* ---------- What is on this device ---------- */
+
+async function cachedFiles(repo) {
+  const store = await storeReady;
+  try { return await store.filesFor(prefixOf(repo)); } catch (e) { return []; }
+}
+
+/* Whether a model is whole. The list of files is the one the worker stored the last
+   time it fetched this model, which is the most exact, or the one this page carries
+   for its own models. A model added from the search before this check existed has
+   neither, and then all there is to go on is whether its settings and some weights
+   are here. */
+async function refreshStatus(model) {
+  const store = await storeReady;
+  const prefix = prefixOf(model.id);
+  let st;
+  try {
+    const stored = await store.getManifest(prefix);
+    st = await store.modelStatus(prefix, stored || model.files || null);
+    if (!st.known) {
+      const files = await cachedFiles(model.id);
+      const looksWhole = files.some((f) => f.path === 'config.json') && files.some((f) => /\.onnx$/.test(f.path));
+      st.complete = looksWhole;
+      st.total = looksWhole ? st.held : expectedBytes(model);
+    }
+  } catch (e) {
+    st = { known: false, complete: false, held: 0, total: expectedBytes(model), missing: [] };
+  }
+  if (!st.total) st.total = expectedBytes(model);
+  statusCache.set(model.id, st);
+  return st;
+}
+
+function statusOf(model) {
+  return statusCache.get(model.id) || { known: false, complete: false, held: 0, total: expectedBytes(model), missing: [] };
+}
+
+async function refreshAllStatus() {
+  await Promise.all(ALL_MODELS.map(refreshStatus));
+}
+
+function stateLine(model) {
+  const st = statusOf(model);
+  if (model.webgpu && gpu.checked && !gpu.ok) return { text: 'Needs WebGPU, which this browser does not have', cls: '' };
+  if (st.complete) return { text: 'Saved on this device, ' + readableBytes(st.held || st.total), cls: 'ready' };
+  if (st.held > 0) return { text: 'Incomplete, ' + readableBytes(st.held) + ' of ' + readableBytes(st.total), cls: 'partial' };
+  return { text: 'Not downloaded yet', cls: '' };
+}
+
+/* ---------- Will it fit ---------- */
+
+/* A guess from what the browser will say about the machine: its memory (Chrome
+   reports up to 8GB and no more, others report nothing), the graphics chip's largest
+   buffer, and whether this is a phone. It is a guide, not a promise, so the too big
+   case can still be overridden. */
+function fitFor(model) {
+  const bytes = expectedBytes(model) || 0;
+  const GB = 1024 * 1024 * 1024;
+  if (model.webgpu && gpu.checked && !gpu.ok) {
+    return { level: 'blocked', label: 'Needs WebGPU', pill: 'pill-danger', why: 'This browser has no WebGPU, which this model needs. Chrome or Edge on a computer has it.' };
+  }
+  const phone = isPhone();
+  const mem = Number(navigator.deviceMemory) || 0;
+  const limits = gpu.limits || {};
+  const gpuLimit = Math.min(limits.maxBufferSize || Infinity, limits.maxStorageBufferBindingSize || Infinity);
+  if (model.webgpu && model.gpuNeed && isFinite(gpuLimit) && gpuLimit < model.gpuNeed) {
+    return { level: 'too-big', label: 'Too big for this device', pill: 'pill-danger', why: 'The graphics chip here takes at most ' + readableBytes(gpuLimit) + ' in one piece, and this model needs about ' + readableBytes(model.gpuNeed) + '.' };
+  }
+  if (phone && bytes > 1.5 * GB) {
+    return { level: 'too-big', label: 'Too big for this device', pill: 'pill-danger', why: 'At ' + readableBytes(bytes) + ' this is more than a phone can hold in memory. The tab would most likely be closed part way.' };
+  }
+  if (mem && bytes > mem * GB * 0.5) {
+    return { level: 'too-big', label: 'Too big for this device', pill: 'pill-danger', why: 'This device reports about ' + mem + ' GB of memory, and the model needs ' + readableBytes(bytes) + ' of it on top of everything else.' };
+  }
+  if ((mem && bytes > mem * GB * 0.3) || (phone && bytes > 0.6 * GB)) {
+    return { level: 'slow', label: 'May be slow', pill: 'pill-warning', why: 'It should run, but slowly, and the browser may close other tabs to make room.' };
+  }
+  if (model.webgpu && gpu.ok && !gpu.f16 && model.dtype === 'q4f16') {
+    return { level: 'slow', label: 'May be slow', pill: 'pill-warning', why: 'The graphics chip here does not report 16 bit maths, which this build uses, so it may not start.' };
+  }
+  return { level: 'fits', label: 'Fits', pill: 'pill-success', why: 'Should run comfortably here.' };
+}
+
+function fitBadge(model) {
+  const fit = fitFor(model);
+  return `<span class="pill ${fit.pill}">${escapeHTML(fit.label)}</span>`;
+}
+
+async function detectGPU() {
+  if (!navigator.gpu) return { ok: false };
+  try {
+    // A request that never answers would leave the page waiting, so it gets a few
+    // seconds and counts as no WebGPU after that.
+    const adapter = await Promise.race([
+      navigator.gpu.requestAdapter(),
+      new Promise((resolve) => setTimeout(() => resolve(null), 4000)),
+    ]);
+    if (!adapter) return { ok: false };
+    const limits = adapter.limits || {};
+    return {
+      ok: true,
+      f16: !!(adapter.features && adapter.features.has && adapter.features.has('shader-f16')),
+      limits: { maxBufferSize: limits.maxBufferSize || 0, maxStorageBufferBindingSize: limits.maxStorageBufferBindingSize || 0 },
+    };
+  } catch (e) {
+    return { ok: false };
+  }
+}
+
+/* ---------- Starting points ---------- */
+
+let activeMode = null;
+
+function renderModeChips() {
+  document.getElementById('modeChips').innerHTML = MODES.map((m) =>
+    `<button class="chip" type="button" data-mode="${m.id}" aria-pressed="${activeMode === m.id}"><i class="ph ph-${m.icon}" aria-hidden="true"></i> ${escapeHTML(m.name)}</button>`
+  ).join('');
+}
+
+function markMode(id) {
+  activeMode = id || null;
+  document.querySelectorAll('#modeChips .chip').forEach((b) => {
+    b.setAttribute('aria-pressed', String(b.dataset.mode === activeMode));
+  });
+}
+
+function setSubtool(id) {
+  const label = id === 'chat' ? 'Chat' : (MODES.find((m) => m.id === id) || {}).name;
+  try { if (window.TFE && window.TFE.subtool) window.TFE.subtool.set(id, label); } catch (e) {}
+}
+
+function useMode(id, opts) {
+  opts = opts || {};
+  const box = document.getElementById('message');
+  const existing = box.value.trim();
+  const already = MODES.find((m) => existing.startsWith(m.prefill.trim()));
+  const body = already ? existing.slice(already.prefill.trim().length).replace(/^[:\s]+/, '') : existing;
+  // Pressing the chip that is already on turns it off again and leaves the text.
+  if (activeMode === id && already && already.id === id && !opts.force) {
+    box.value = body;
+    markMode(null);
+    setPref('mode', '');
+    setSubtool('chat');
+  } else {
+    const mode = MODES.find((m) => m.id === id);
+    if (!mode) return;
+    box.value = mode.prefill + body;
+    markMode(id);
+    setPref('mode', id);
+    setSubtool(HASH_MODES.includes(id) ? id : 'chat');
+  }
+  growComposer();
+  updateDirty();
+  if (opts.focus !== false) {
+    box.focus();
+    box.setSelectionRange(box.value.length, box.value.length);
+  }
+}
+
+function matchMode(text) {
+  const t = text.trim().toLowerCase();
+  return MODES.find((m) => t.startsWith(m.prefill.trim().toLowerCase()));
+}
+
+/* ---------- The instruction only model ---------- */
 
 // The instruction only model reads 512 tokens at a time. Splitting on sentence ends
 // near this many characters keeps each piece inside that without cutting mid sentence.
@@ -605,91 +1398,9 @@ const CHUNK_CHARS = 900;
 const FOLLOW_UP_WORDS = 12;
 const FOLLOW_UP_START = /^(make|keep|try|now|again|shorter|longer|more|less|rewrite|redo|reword|simplify|shorten|expand|summari[sz]e|translate|fix|tidy|polish|formal|casual|friendlier|politer)\b/i;
 
-let messages = [];
-let busy = false;
-let stickToBottom = true;
-let worker = null;
-let workerKey = null;
-let jobId = 0;
-
-function modelUrl(repo, file) {
-  return `${HF_BASE}${repo}/resolve/main/${file}`;
-}
-
-// Filled in by the module above. Everything that reads a model waits on it.
-let modelStore = null;
-const storeReady = new Promise((resolve) => {
-  window.__modelStoreReady = (api) => { modelStore = api; resolve(api); };
-});
-
-// Each family ships a different set of files, so rather than hardcoding a list the
-// store is asked what it actually holds for a given model.
-async function cachedFiles(repo) {
-  const store = await storeReady;
-  try {
-    return await store.filesFor(`${HF_BASE}${repo}/resolve/main/`);
-  } catch (e) {
-    return [];
-  }
-}
-
-// A model counts as here when its settings and at least one weights file are held.
-async function isModelDownloaded(repo) {
-  const files = await cachedFiles(repo || selectedModelId);
-  return files.some((f) => f.path === 'config.json') && files.some((f) => f.path.endsWith('.onnx'));
-}
-
-async function bytesHeld(repo) {
-  const store = await storeReady;
-  try {
-    return await store.bytesFor(`${HF_BASE}${repo}/resolve/main/`);
-  } catch (e) {
-    return 0;
-  }
-}
-
-function readableBytes(bytes) {
-  if (!bytes) return '';
-  const mb = bytes / (1024 * 1024);
-  return mb >= 1024 ? (mb / 1024).toFixed(1) + ' GB' : Math.round(mb) + ' MB';
-}
-
-/* ---------- Starting points ---------- */
-
-function initModeList() {
-  document.getElementById('modeList').innerHTML = MODES.map((m) =>
-    `<button class="tool-item" type="button" onclick="useMode('${m.id}', this)"><i class="ph ph-${m.icon}" aria-hidden="true"></i> ${m.name}</button>`
-  ).join('');
-}
-
-function useMode(id, el) {
-  const mode = MODES.find((m) => m.id === id);
-  if (!mode) return;
-  document.querySelectorAll('#modeList .tool-item').forEach((b) => b.classList.remove('active'));
-  if (el) el.classList.add('active');
-  const box = document.getElementById('message');
-  const existing = box.value.trim();
-  const alreadyPrefilled = MODES.find((m) => existing.startsWith(m.prefill.trim()));
-  const body = alreadyPrefilled ? existing.slice(alreadyPrefilled.prefill.trim().length).replace(/^[:\s]+/, '') : existing;
-  box.value = mode.prefill + body;
-  box.focus();
-  box.setSelectionRange(box.value.length, box.value.length);
-  growComposer();
-}
-
-function countWords(text) {
-  const t = (text || '').trim();
-  return t ? t.split(/\s+/).length : 0;
-}
-
-function matchMode(text) {
-  const t = text.trim().toLowerCase();
-  return MODES.find((m) => t.startsWith(m.prefill.trim().toLowerCase()));
-}
-
 function lastReply() {
   for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === 'bot' && messages[i].text) return messages[i].text;
+    if (messages[i].role === 'bot' && messages[i].text && !messages[i].error) return messages[i].text;
   }
   return '';
 }
@@ -749,7 +1460,7 @@ function conversationTurns(model) {
   let used = 0;
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i];
-    if (!m.text) continue;
+    if (!m.text || m.error) continue;
     used += m.text.length;
     if (used > budget && turns.length) break;
     turns.unshift({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text });
@@ -757,112 +1468,373 @@ function conversationTurns(model) {
   return turns;
 }
 
-/* ---------- Drawing the conversation ---------- */
+// These models like to wrap a rewrite in quote marks, which is noise unless the
+// original was quoted too.
+function tidy(text, source) {
+  let t = (text || '').trim();
+  if (!/^["']/.test(source.trim())) {
+    t = t.replace(/^["']+/, '').replace(/["']+$/, '');
+  }
+  return t.trim();
+}
 
-// Escaped first, so nothing in a reply can become markup. These models write the
-// occasional bit of markdown, and leaving the asterisks on screen looks like a fault.
-function formatReply(text) {
+/* ---------- Markdown ----------
+
+   Replies are markdown, and models write a lot of it: lists, headings, and code in
+   fenced blocks. marked turns it into HTML and DOMPurify strips anything that could
+   run or load something, including images, which would otherwise let a reply fetch a
+   picture from anywhere. Both load in the background; until they arrive a reply is
+   shown as plain text with its code and bold picked out. */
+
+const MARKED_URL = 'https://cdn.jsdelivr.net/npm/marked@18.0.14/lib/marked.umd.js';
+const PURIFY_URL = 'https://cdn.jsdelivr.net/npm/dompurify@3.4.16/dist/purify.min.js';
+const HLJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.2/highlight.min.js';
+
+let markdownReady = false;
+let markdownLoading = null;
+let hljsLoading = null;
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('Could not load ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+function loadMarkdown() {
+  if (markdownLoading) return markdownLoading;
+  markdownLoading = Promise.all([loadScript(MARKED_URL), loadScript(PURIFY_URL)]).then(() => {
+    if (!window.marked || !window.DOMPurify) throw new Error('Markdown did not load.');
+    window.DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+      if (node.tagName === 'A') {
+        node.setAttribute('target', '_blank');
+        node.setAttribute('rel', 'noopener noreferrer');
+      }
+    });
+    markdownReady = true;
+    for (const m of messages) delete m._html;
+    renderChat();
+  }).catch(() => { /* plain text it is */ });
+  return markdownLoading;
+}
+
+// A fence that has been opened and not yet closed would swallow everything after it
+// as code while a reply streams in, so it is closed for the moment.
+function closeOpenFence(text) {
+  const fences = text.match(/^ {0,3}(```|~~~)/gm);
+  return fences && fences.length % 2 === 1 ? text + '\n```' : text;
+}
+
+const PURIFY_OPTIONS = {
+  FORBID_TAGS: ['img', 'picture', 'source', 'video', 'audio', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'textarea', 'select', 'style', 'svg', 'math', 'link', 'meta'],
+  FORBID_ATTR: ['style', 'id'],
+};
+
+// Plain text with only inline code and bold, for when markdown has not loaded.
+function formatPlain(text) {
   return escapeHTML(text)
     .replace(/`([^`\n]+)`/g, '<code>$1</code>')
     .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
 }
 
+function renderMarkdown(text, streaming) {
+  if (!markdownReady) return null;
+  let html;
+  try {
+    const source = streaming ? closeOpenFence(text) : text;
+    html = window.marked.parse(source, { gfm: true, breaks: true, async: false });
+  } catch (e) {
+    return null;
+  }
+  const clean = window.DOMPurify.sanitize(html, PURIFY_OPTIONS);
+  const box = document.createElement('div');
+  box.innerHTML = clean;
+  // Only a code block's language survives of any class a reply carries, so a reply
+  // cannot borrow the page's own styles.
+  box.querySelectorAll('[class]').forEach((el) => {
+    const keep = Array.from(el.classList).filter((c) => /^language-/.test(c));
+    if (keep.length) el.className = keep.join(' '); else el.removeAttribute('class');
+  });
+  // Each code block gets a header with its language and a copy button.
+  box.querySelectorAll('pre').forEach((pre) => {
+    const code = pre.querySelector('code');
+    const langMatch = code && /(?:^|\s)language-([\w+#.-]+)/.exec(code.getAttribute('class') || '');
+    const lang = langMatch ? langMatch[1] : '';
+    const wrap = document.createElement('div');
+    wrap.className = 'code-block';
+    wrap.innerHTML = `<div class="code-head"><span>${escapeHTML(lang || 'code')}</span><button class="code-copy" type="button" aria-label="Copy ${escapeAttr(lang || 'the')} code"><i class="ph ph-copy" aria-hidden="true"></i> <span>Copy</span></button></div>`;
+    pre.replaceWith(wrap);
+    wrap.appendChild(pre);
+    if (lang && code) code.setAttribute('data-lang', lang);
+  });
+  return box.innerHTML;
+}
+
+// Colouring code is a nicety, so it waits until a reply has finished and a block with
+// a named language is actually on screen.
+function highlightCode(root) {
+  const blocks = Array.from((root || document).querySelectorAll('.code-block code[data-lang]:not([data-done])'));
+  if (!blocks.length) return;
+  if (!hljsLoading) {
+    hljsLoading = loadScript(HLJS_URL).then(() => {
+      if (window.hljs) window.hljs.configure({ ignoreUnescapedHTML: true });
+    }).catch(() => {});
+  }
+  hljsLoading.then(() => {
+    const hljs = window.hljs;
+    if (!hljs) return;
+    for (const code of blocks) {
+      if (!code.isConnected) continue;
+      code.setAttribute('data-done', '1');
+      const lang = code.getAttribute('data-lang');
+      if (!hljs.getLanguage(lang)) continue;
+      try {
+        const out = hljs.highlight(code.textContent, { language: lang, ignoreIllegals: true });
+        code.innerHTML = window.DOMPurify ? window.DOMPurify.sanitize(out.value, { ALLOWED_TAGS: ['span'], ALLOWED_ATTR: ['class'] }) : escapeHTML(code.textContent);
+      } catch (e) { /* leave it plain */ }
+    }
+  });
+}
+
+function replyHTML(m, streaming) {
+  if (!streaming && m._html && m._htmlFor === m.text) return { html: m._html, md: true };
+  const md = renderMarkdown(m.text, streaming);
+  if (md == null) return { html: formatPlain(m.text), md: false };
+  if (!streaming) { m._html = md; m._htmlFor = m.text; }
+  return { html: md, md: true };
+}
+
+/* ---------- Drawing the conversation ---------- */
+
+function speedLine(stats) {
+  if (!stats || !stats.tokens) return '';
+  const parts = [];
+  if (stats.tps) parts.push(Math.round(stats.tps) + ' tok/s');
+  if (stats.firstMs) parts.push('first word after ' + (stats.firstMs / 1000).toFixed(1) + ' s');
+  return parts.join(' · ');
+}
+
+function lastIndexOf(role) {
+  for (let i = messages.length - 1; i >= 0; i--) if (messages[i].role === role) return i;
+  return -1;
+}
+
+function emptyStateHTML() {
+  const model = currentModel();
+  const st = statusOf(model);
+  if (phase === 'checking') {
+    return `<div class="empty-chat"><i class="ph ph-chat-teardrop-text" aria-hidden="true"></i><p>Checking what this browser can run.</p></div>`;
+  }
+  if (busy() && !messages.length) {
+    return `<div class="empty-chat"><i class="ph ph-download-simple" aria-hidden="true"></i><p>Getting ${escapeHTML(model.name)} ready. You can type your first message while it downloads.</p></div>`;
+  }
+  if (!st.complete) {
+    return consentHTML(model);
+  }
+  return `<div class="empty-chat">
+      <i class="ph ph-chat-teardrop-text" aria-hidden="true"></i>
+      <p>Ask a question, or paste some text and pick a starting point below.</p>
+      <p class="small">${escapeHTML(model.name)} is saved on this device, so this works with the internet off.</p>
+    </div>`;
+}
+
+/* Nothing large is downloaded without being asked. The card says what the model is,
+   how big, what it is good at and whether it suits this device, and the download
+   starts from its button, not from pressing Send. */
+function consentHTML(model) {
+  const st = statusOf(model);
+  const fit = fitFor(model);
+  const left = Math.max(0, (st.total || expectedBytes(model)) - (st.held || 0));
+  const size = readableBytes(st.total || expectedBytes(model));
+  const partial = st.held > 0 && !st.complete;
+  const primaryLabel = partial
+    ? `Resume download, ${readableBytes(left)} left`
+    : `Download ${size} and start`;
+  const space = spaceWarning(left);
+  let actions;
+  if (fit.level === 'blocked') {
+    actions = `<button class="btn btn-primary" type="button" data-act="choose"><i class="ph ph-books" aria-hidden="true"></i> Choose another model</button>`;
+  } else if (fit.level === 'too-big' && !overrides.has(model.id)) {
+    actions = `<button class="btn btn-primary" type="button" data-act="choose"><i class="ph ph-books" aria-hidden="true"></i> Choose another model</button>
+      <button class="btn" type="button" data-act="override">Download anyway</button>`;
+  } else {
+    actions = `<button class="btn btn-primary" type="button" data-act="consent"><i class="ph ph-download-simple" aria-hidden="true"></i> ${escapeHTML(primaryLabel)}</button>
+      <button class="btn" type="button" data-act="choose">Choose another model</button>`;
+  }
+  return `<div class="consent" id="consentCard" role="region" aria-labelledby="consentTitle">
+      <p class="consent-kicker">${partial ? 'Part of this model is already here' : 'The model downloads once, then stays in this browser'}</p>
+      <div class="consent-head">
+        <h2 id="consentTitle">${escapeHTML(model.name)}</h2>
+        ${fitBadge(model)}
+        <span class="consent-size">${partial ? escapeHTML(readableBytes(st.held) + ' of ' + size) : escapeHTML(size)}</span>
+      </div>
+      <p>${escapeHTML(model.goodAt || model.blurb || '')}</p>
+      <p class="why">${escapeHTML(fit.why)} After the download it works with the internet off.</p>
+      ${space}
+      ${pendingText ? '<p class="why">Your message is kept, and is sent once the model is ready.</p>' : ''}
+      <div class="consent-actions">${actions}</div>
+    </div>`;
+}
+
+let storageInfo = null;
+
+function spaceWarning(needed) {
+  if (!storageInfo || !storageInfo.quota || !needed) return '';
+  const free = Math.max(0, storageInfo.quota - storageInfo.usage);
+  if (free >= needed * 1.05) return '';
+  return `<div class="warning-msg"><i class="ph ph-warning" aria-hidden="true"></i> <span>This needs ${escapeHTML(readableBytes(needed))} and this browser has ${escapeHTML(readableBytes(free))} free. Remove other models in the library to make room.</span></div>`;
+}
+
+function failureHTML(m, i) {
+  const kind = m.errorKind || 'other';
+  const extra = kind === 'quota'
+    ? `<button class="btn btn-sm" type="button" data-act="library" data-i="${i}"><i class="ph ph-broom" aria-hidden="true"></i> Free up space</button>`
+    : `<button class="btn btn-sm" type="button" data-act="smaller" data-i="${i}"><i class="ph ph-arrow-down" aria-hidden="true"></i> Try a smaller model</button>`;
+  return `<div class="fail-text"><i class="ph ph-warning-circle" aria-hidden="true"></i><span>${escapeHTML(m.error)}</span></div>
+    <div class="fail-actions">
+      <button class="btn btn-sm" type="button" data-act="retry-failed" data-i="${i}"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i> Retry</button>
+      ${extra}
+    </div>`;
+}
+
+function messageHTML(m, i, lastBot, lastUser) {
+  if (m.role === 'user') {
+    const canEdit = i === lastUser && !busy() && editingIndex < 0;
+    const edit = canEdit
+      ? `<div class="bubble-actions on-hover"><button class="btn btn-sm" type="button" data-act="edit" data-i="${i}" aria-label="Edit your last message"><i class="ph ph-pencil-simple" aria-hidden="true"></i> Edit</button></div>`
+      : '';
+    return `<div class="msg user" data-i="${i}"><span class="who">You</span><div class="bubble">${escapeHTML(m.text)}</div>${edit}</div>`;
+  }
+
+  const who = `<span class="who">${escapeHTML(m.from || currentModel().name)}</span>`;
+  if (m.error) {
+    return `<div class="msg bot failed" data-i="${i}">${who}<div class="bubble" role="alert">${failureHTML(m, i)}</div></div>`;
+  }
+
+  const streaming = !!m.pending;
+  const note = m.applied ? '<span class="applied">Applied to the previous reply</span>' : '';
+  const dots = m.pending && !m.text
+    ? '<span class="dots" aria-label="Writing a reply"><i></i><i></i><i></i></span>' : '';
+  const rendered = m.text ? replyHTML(m, streaming) : { html: '', md: markdownReady };
+  const body = `<div class="text${rendered.md ? ' md' : ''}">${rendered.html}</div>${dots}`;
+
+  let extra = '';
+  if (!m.pending && m.text) {
+    if (m.stopped) {
+      extra += '<div class="cut-note"><i class="ph ph-hand-palm" aria-hidden="true"></i> <span>You stopped this reply.</span></div>';
+    } else if (m.looped) {
+      extra += `<div class="cut-note">
+          <i class="ph ph-repeat" aria-hidden="true"></i>
+          <span>This model started repeating itself, so the reply was cut short. Small models do this. A larger one from the library holds up better.</span>
+        </div>`;
+    } else if (m.truncated) {
+      const model = ALL_MODELS.find((x) => x.name === m.from) || currentModel();
+      extra += `<div class="cut-note">
+          <i class="ph ph-scissors" aria-hidden="true"></i>
+          <span>This model stopped at its limit of about ${replyWords(model)} words for one reply.</span>
+          ${isChatModel(currentModel()) && i === lastBot
+            ? `<button class="btn btn-sm" type="button" data-act="continue" data-i="${i}"><i class="ph ph-arrow-bend-down-right" aria-hidden="true"></i> Carry on</button>`
+            : (isChatModel(currentModel()) ? '' : '<span>A larger model from the library writes longer answers.</span>')}
+        </div>`;
+    }
+  }
+
+  let after = '';
+  if (!m.pending && m.text) {
+    const speed = speedLine(m.stats);
+    if (speed) after += `<div class="reply-meta">${escapeHTML(speed)}</div>`;
+    after += `<div class="bubble-actions${i === lastBot ? '' : ' on-hover'}">
+        <button class="btn btn-sm" type="button" data-act="copy" data-i="${i}" aria-label="Copy this reply"><i class="ph ph-copy" aria-hidden="true"></i> <span>Copy</span></button>
+        ${busy() ? '' : `<button class="btn btn-sm" type="button" data-act="retry" data-i="${i}" aria-label="Try this reply again"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i> Try again</button>`}
+      </div>`;
+  }
+
+  return `<div class="msg bot" data-i="${i}">${who}<div class="bubble${rendered.md ? '' : ' plain'}"${streaming ? ' aria-busy="true"' : ''}>${note}${body}${extra}</div>${after}</div>`;
+}
+
 function renderChat() {
   const chat = document.getElementById('chat');
   if (!messages.length) {
-    chat.innerHTML = `<div class="empty-chat">
-      <i class="ph ph-chat-teardrop-text" aria-hidden="true"></i>
-      <p>Ask a question, or paste some text and say what you want done with it. Nothing you type leaves this device.</p>
-      <div class="suggestions">${MODES.map((m) =>
-        `<button class="chip" type="button" onclick="useMode('${m.id}')">${m.name}</button>`
-      ).join('')}</div>
-    </div>`;
+    chat.innerHTML = emptyStateHTML();
     updateJump();
     return;
   }
-
-  const lastBot = messages.reduce((acc, m, i) => (m.role === 'bot' ? i : acc), -1);
-
-  chat.innerHTML = messages.map((m, i) => {
-    if (m.role === 'user') {
-      return `<div class="msg user"><span class="who">You</span><div class="bubble">${escapeHTML(m.text)}</div></div>`;
-    }
-
-    const note = m.applied ? '<span class="applied">Applied to the previous reply</span>' : '';
-    const dots = m.pending && !m.text
-      ? '<span class="dots" aria-label="Writing a reply"><i></i><i></i><i></i></span>' : '';
-    const body = `<span class="text">${m.text ? formatReply(m.text) : ''}</span>${dots}`;
-
-    let extra = '';
-    if (!m.pending && m.text) {
-      if (m.stopped) {
-        extra += '<div class="cut-note"><i class="ph ph-hand-palm" aria-hidden="true"></i> <span>You stopped this reply.</span></div>';
-      } else if (m.looped) {
-        extra += `<div class="cut-note">
-            <i class="ph ph-repeat" aria-hidden="true"></i>
-            <span>This model started repeating itself, so the reply was cut short. Small models do this. A larger one from the library holds up better.</span>
-          </div>`;
-      } else if (m.truncated) {
-        const model = currentModel();
-        extra += `<div class="cut-note">
-            <i class="ph ph-scissors" aria-hidden="true"></i>
-            <span>This model stopped at its limit of about ${replyWords(model)} words for one reply.</span>
-            ${isChatModel(model)
-              ? `<button class="btn btn-sm" type="button" onclick="continueReply(${i}, this)"><i class="ph ph-arrow-bend-down-right" aria-hidden="true"></i> Carry on</button>`
-              : '<span>A larger model from the library writes longer answers.</span>'}
-          </div>`;
-      }
-      extra += `<div class="bubble-actions">
-          <button class="btn btn-sm" type="button" onclick="copyMessage(${i})"><i class="ph ph-copy" aria-hidden="true"></i> Copy</button>
-          ${i === lastBot ? '<button class="btn btn-sm" type="button" onclick="regenerate(this)"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i> Try again</button>' : ''}
-        </div>`;
-    }
-
-    return `<div class="msg bot"><span class="who">${escapeHTML(m.from || currentModel().name)}</span><div class="bubble">${note}${body}${extra}</div></div>`;
-  }).join('');
-
+  const lastBot = lastIndexOf('bot');
+  const lastUser = lastIndexOf('user');
+  chat.innerHTML = messages.map((m, i) => messageHTML(m, i, lastBot, lastUser)).join('');
+  highlightCode(chat);
   if (stickToBottom) scrollToLatest();
   updateJump();
 }
 
-// Streaming rewrites one text node rather than the whole conversation. Rebuilding the
-// list on every token would throw away any text the reader had selected, and would
-// spend more time in layout than the model spends thinking.
+/* Streaming redraws only the reply being written, at most every 60ms. Rebuilding the
+   whole conversation on every token would throw away any text the reader had
+   selected, and would spend more time in layout than the model spends thinking. */
+let paintTimer = null;
+let paintIndex = -1;
+
 function paintStreaming(index) {
-  const node = document.querySelectorAll('#chat .msg')[index];
+  paintIndex = index;
+  if (paintTimer) return;
+  paintTimer = setTimeout(() => {
+    paintTimer = null;
+    paintNow(paintIndex);
+  }, 60);
+}
+
+function paintNow(index) {
+  const node = document.querySelector(`#chat .msg[data-i="${index}"]`);
   const text = node && node.querySelector('.text');
-  if (!text) { renderChat(); return; }
-  text.innerHTML = formatReply(messages[index].text);
+  const m = messages[index];
+  if (!text || !m) { renderChat(); return; }
+  const rendered = replyHTML(m, true);
+  text.innerHTML = rendered.html;
+  text.classList.toggle('md', rendered.md);
+  const bubble = node.querySelector('.bubble');
+  if (bubble) bubble.classList.toggle('plain', !rendered.md);
   const dots = node.querySelector('.dots');
-  if (dots && messages[index].text) dots.remove();
+  if (dots && m.text) dots.remove();
   if (stickToBottom) scrollToLatest();
+}
+
+function flushPaint() {
+  if (paintTimer) { clearTimeout(paintTimer); paintTimer = null; }
 }
 
 // The composer is stuck to the bottom of the window, so scrolling the last message
 // fully into view would park it underneath. The page is what scrolls here, not the
-// chat box, so the sum has to place the end of the conversation just above the
-// composer rather than at the bottom of the document, where the footer lives.
+// chat box, so the sum places the end of the conversation just above the composer
+// rather than at the bottom of the document, where the footer lives.
 function scrollToLatest() {
   const chat = document.getElementById('chat');
   const composer = document.querySelector('.composer');
   if (!chat || !chat.lastElementChild) return;
   const composerHeight = composer ? composer.getBoundingClientRect().height : 0;
+  const status = document.getElementById('statusArea');
+  const statusHeight = status ? status.getBoundingClientRect().height : 0;
   const chatBottom = chat.getBoundingClientRect().bottom + window.scrollY;
-  const target = chatBottom - (window.innerHeight - composerHeight) + 24;
+  const target = chatBottom + statusHeight - (window.innerHeight - composerHeight) + 24;
   // Instant, not smooth. A smooth scroll is silently dropped while the tab is not
   // being painted, and during a streaming reply successive animations fight each
   // other, so the view can end up parked on an older message either way.
   window.scrollTo({ top: Math.max(0, target), behavior: 'auto' });
 }
 
-// Someone who has scrolled up to reread something should not be yanked back down by a
-// reply arriving, so following the conversation is switched off until they come back
-// to the bottom, by scrolling or with the button that appears while they are away.
+/* Someone who has scrolled up to reread something should not be yanked back down by a
+   reply arriving. Whether they are "at the bottom" is measured from the end of the
+   last message to the top of the composer, not to the end of the document, which on
+   a phone includes the footer below the chat and switched following off too easily. */
 function nearBottom() {
+  const chat = document.getElementById('chat');
   const composer = document.querySelector('.composer');
-  const composerHeight = composer ? composer.getBoundingClientRect().height : 0;
-  const fromBottom = document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
-  return fromBottom <= composerHeight + 180;
+  const last = chat && chat.lastElementChild;
+  if (!last || !composer) return true;
+  const gap = last.getBoundingClientRect().bottom - composer.getBoundingClientRect().top;
+  return gap <= 160;
 }
 
 function updateJump() {
@@ -882,68 +1854,1284 @@ window.addEventListener('scroll', () => {
   updateJump();
 }, { passive: true });
 
-function announce(text) {
-  const el = document.getElementById('liveStatus');
-  if (el) el.textContent = text;
-}
+/* ---------- Copying ---------- */
 
-/* ---------- Conversation actions ---------- */
-
-function copyMessage(index) {
-  const m = messages[index];
-  if (!m || !m.text) return;
-  navigator.clipboard.writeText(m.text).then(() => showToast('Copied to clipboard', 'success'));
-}
-
-function clearChat() {
-  if (busy) return;
-  messages = [];
-  stickToBottom = true;
-  renderChat();
-  document.querySelectorAll('#modeList .tool-item').forEach((b) => b.classList.remove('active'));
-}
-
-function regenerate(btn) {
-  if (busy) return;
-  let lastUser = -1;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === 'user') { lastUser = i; break; }
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (e) { /* try the older way */ }
+  try {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand('copy');
+    area.remove();
+    return ok;
+  } catch (e) {
+    return false;
   }
-  if (lastUser < 0) return;
-  const text = messages[lastUser].text;
-  messages = messages.slice(0, lastUser);
-  renderChat();
-  run(text, btn);
 }
 
-function downloadChat() {
-  if (!messages.length) {
-    showToast('There is no conversation to save yet', 'info');
+async function copyWithFeedback(text, button, what) {
+  const ok = await copyText(text);
+  if (!ok) {
+    toast('Copying did not work in this browser. Select the text and copy it by hand.', 'error');
     return;
   }
-  const name = currentModel().name;
-  const text = messages.map((m) => (m.role === 'user' ? 'You: ' : (m.from || name) + ': ') + m.text).join('\n\n');
-  const blob = new Blob([text], { type: 'text/plain' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `chat_${new Date().toISOString().slice(0, 10)}.txt`;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  announce(what + ' copied');
+  if (button) {
+    const label = button.querySelector('span') || button;
+    const before = label.textContent;
+    label.textContent = 'Copied';
+    setTimeout(() => { if (label.isConnected) label.textContent = before; }, 1500);
+  } else {
+    toast(what + ' copied', 'success');
+  }
 }
 
-/* ---------- Model panel and library ---------- */
+/* ---------- Saved conversations ----------
 
-async function renderModelList() {
+   Kept in their own IndexedDB database, apart from the models, so nothing here can
+   touch a model download and the model store never needs a new version for this.
+   A conversation is saved once it has a message in it, after every reply. */
+
+const CHAT_DB = 'tfe-chats';
+const CHAT_STORE = 'conversations';
+const OPEN_KEY = 'tfe-chat-open';
+let chatDbPromise = null;
+let conversations = [];
+
+function freshConversation() {
+  return { id: null, title: '', titleSet: false, created: 0, updated: 0 };
+}
+
+function openChatDb() {
+  if (chatDbPromise) return chatDbPromise;
+  chatDbPromise = new Promise((resolve, reject) => {
+    let request;
+    try { request = indexedDB.open(CHAT_DB, 1); } catch (e) { reject(e); return; }
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(CHAT_STORE)) {
+        const os = db.createObjectStore(CHAT_STORE, { keyPath: 'id' });
+        os.createIndex('updated', 'updated');
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  chatDbPromise.catch(() => { chatDbPromise = null; });
+  return chatDbPromise;
+}
+
+function chatTx(mode, work) {
+  return openChatDb().then((db) => new Promise((resolve, reject) => {
+    const tx = db.transaction(CHAT_STORE, mode);
+    const out = work(tx.objectStore(CHAT_STORE));
+    tx.oncomplete = () => resolve(out && 'result' in out ? out.result : out);
+    tx.onerror = (ev) => reject((ev && ev.target && ev.target.error) || tx.error || new Error('The chat could not be saved.'));
+    tx.onabort = () => reject(tx.error || new Error('The save was rolled back.'));
+  }));
+}
+
+const chatStore = {
+  all: () => chatTx('readonly', (s) => s.getAll()).then((list) => (list || []).sort((a, b) => b.updated - a.updated)),
+  get: (id) => chatTx('readonly', (s) => s.get(id)),
+  put: (record) => chatTx('readwrite', (s) => s.put(record)),
+  remove: (id) => chatTx('readwrite', (s) => s.delete(id)),
+};
+
+function newId() {
+  return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+// The first thing somebody asked, without a starting point's wording in front of it,
+// cut at a word near 48 characters.
+function autoTitle() {
+  const first = messages.find((m) => m.role === 'user' && m.text);
+  if (!first) return 'New chat';
+  let text = first.text.trim();
+  const mode = matchMode(text);
+  if (mode) {
+    const body = text.slice(mode.prefill.trim().length).replace(/^[:\s]+/, '');
+    text = mode.name + (body ? ': ' + body : '');
+  }
+  text = text.replace(/\s+/g, ' ');
+  if (text.length <= 48) return text;
+  const cut = text.slice(0, 48);
+  const space = cut.lastIndexOf(' ');
+  return (space > 24 ? cut.slice(0, space) : cut) + '…';
+}
+
+// Only what is worth keeping: finished replies, not the one being written or one
+// that failed.
+function savableMessages() {
+  return messages
+    .filter((m) => !m.pending && !m.error && (m.text || '').trim())
+    .map((m) => {
+      const out = { role: m.role, text: m.text };
+      if (m.role === 'bot') {
+        for (const k of ['from', 'applied', 'truncated', 'stopped', 'looped', 'stats']) if (m[k]) out[k] = m[k];
+      }
+      return out;
+    });
+}
+
+let saveTimer = null;
+function saveSoon() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveConversation, 250);
+}
+
+async function saveConversation() {
+  const list = savableMessages();
+  if (!list.length) return;
+  const now = Date.now();
+  if (!conv.id) { conv.id = newId(); conv.created = now; }
+  conv.updated = now;
+  if (!conv.titleSet) conv.title = autoTitle();
+  const record = {
+    id: conv.id, title: conv.title, titleSet: conv.titleSet,
+    created: conv.created, updated: conv.updated,
+    model: selectedModelId, messages: list,
+  };
+  try {
+    await chatStore.put(record);
+    rememberOpen(conv.id);
+    const at = conversations.findIndex((c) => c.id === record.id);
+    if (at >= 0) conversations.splice(at, 1);
+    conversations.unshift(record);
+    renderHistory();
+  } catch (e) {
+    if (!saveConversation.warned) {
+      saveConversation.warned = true;
+      toast('This chat could not be saved in this browser. It stays on screen until you leave.', 'error');
+    }
+  }
+}
+
+function rememberOpen(id) {
+  try { if (id) sessionStorage.setItem(OPEN_KEY, id); else sessionStorage.removeItem(OPEN_KEY); } catch (e) {}
+}
+
+async function loadConversations() {
+  try {
+    conversations = await chatStore.all();
+  } catch (e) {
+    conversations = [];
+  }
+  renderHistory();
+  // A reload in the same tab comes back to the chat that was open.
+  let open = null;
+  try { open = sessionStorage.getItem(OPEN_KEY); } catch (e) {}
+  if (open && !messages.length) {
+    const found = conversations.find((c) => c.id === open);
+    if (found) applyConversation(found);
+  }
+}
+
+function applyConversation(record) {
+  messages = (record.messages || []).map((m) => Object.assign({}, m));
+  conv = { id: record.id, title: record.title, titleSet: !!record.titleSet, created: record.created, updated: record.updated };
+  editingIndex = -1;
+  document.getElementById('editBar').classList.add('hidden');
+  stickToBottom = true;
+  rememberOpen(record.id);
+  renderChat();
+  renderHistory();
+  updateDirty();
+}
+
+async function switchTo(id) {
+  if (id === conv.id) { closeDrawer(); return; }
+  if (busy()) {
+    toast('Stop the reply first, then switch chats.', 'info');
+    return;
+  }
+  let record = conversations.find((c) => c.id === id);
+  try { record = (await chatStore.get(id)) || record; } catch (e) { /* use the list copy */ }
+  if (!record) return;
+  pendingText = null;
+  applyConversation(record);
+  closeDrawer();
+  document.getElementById('statusArea').innerHTML = '';
+  announce('Opened ' + record.title);
+  focusComposer();
+}
+
+function newChat() {
+  if (busy()) {
+    toast('Stop the reply first, then start a new chat.', 'info');
+    return;
+  }
+  // Nothing is lost: the chat on screen was saved after its last reply.
+  if (messages.length) saveConversation();
+  messages = [];
+  conv = freshConversation();
+  pendingText = null;
+  cancelEdit(true);
+  rememberOpen(null);
+  stickToBottom = true;
+  document.getElementById('statusArea').innerHTML = '';
+  markMode(null);
+  setSubtool('chat');
+  renderChat();
+  renderHistory();
+  updateDirty();
+  closeDrawer();
+  focusComposer();
+}
+
+function historyDate(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const today = new Date();
+  if (d.toDateString() === today.toDateString()) {
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+  return d.toLocaleDateString([], { day: 'numeric', month: 'short', year: d.getFullYear() === today.getFullYear() ? undefined : 'numeric' });
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  const search = document.getElementById('histSearch');
+  const wrap = document.getElementById('histSearchWrap');
+  wrap.classList.toggle('hidden', conversations.length < 2);
+  const q = (search.value || '').trim().toLowerCase();
+  const shown = q ? conversations.filter((c) => (c.title || '').toLowerCase().includes(q)) : conversations;
+  if (!conversations.length) {
+    list.innerHTML = '<li class="hist-empty">Chats you have are kept here, in this browser.</li>';
+    return;
+  }
+  if (!shown.length) {
+    list.innerHTML = '<li class="hist-empty">No chat title has that in it.</li>';
+    return;
+  }
+  list.innerHTML = shown.map((c) => `<li class="hist-item${c.id === conv.id ? ' active' : ''}" data-id="${escapeAttr(c.id)}">
+      <button class="hist-open" type="button" data-hist="open"${c.id === conv.id ? ' aria-current="true"' : ''}>
+        <span class="hist-title">${escapeHTML(c.title || 'New chat')}</span>
+        <span class="hist-date">${escapeHTML(historyDate(c.updated))}</span>
+      </button>
+      <button class="icon-btn" type="button" data-hist="rename" aria-label="Rename ${escapeAttr(c.title || 'chat')}"><i class="ph ph-pencil-simple" aria-hidden="true"></i></button>
+      <button class="icon-btn" type="button" data-hist="delete" aria-label="Delete ${escapeAttr(c.title || 'chat')}"><i class="ph ph-trash" aria-hidden="true"></i></button>
+    </li>`).join('');
+}
+
+function startRename(item) {
+  const id = item.dataset.id;
+  const record = conversations.find((c) => c.id === id);
+  if (!record) return;
+  const open = item.querySelector('.hist-open');
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'hist-rename-input';
+  input.value = record.title || '';
+  input.setAttribute('aria-label', 'New name for this chat');
+  input.setAttribute('data-no-remember', '');
+  open.replaceWith(input);
+  item.querySelectorAll('.icon-btn').forEach((b) => b.classList.add('hidden'));
+  input.focus();
+  input.select();
+  let done = false;
+  const finish = async (keep) => {
+    if (done) return;
+    done = true;
+    const title = input.value.trim().replace(/\s+/g, ' ').slice(0, 120);
+    if (keep && title && title !== record.title) {
+      record.title = title;
+      record.titleSet = true;
+      if (id === conv.id) { conv.title = title; conv.titleSet = true; }
+      try { await chatStore.put(record); } catch (e) { toast('That name could not be saved.', 'error'); }
+      announce('Renamed to ' + title);
+    }
+    renderHistory();
+    const again = document.querySelector(`.hist-item[data-id="${CSS.escape(id)}"] [data-hist="rename"]`);
+    if (again) again.focus();
+  };
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(false); }
+  });
+  input.addEventListener('blur', () => finish(true));
+}
+
+async function deleteConversation(item, button) {
+  const id = item.dataset.id;
+  const record = conversations.find((c) => c.id === id);
+  if (!record) return;
+  if (id === conv.id && busy()) { toast('Stop the reply first.', 'info'); return; }
+  // With the shell there is an Undo on the toast, which is kinder than asking first.
+  // Without it, the button asks inline.
+  const canUndo = !!(window.TFE && window.TFE.toast);
+  if (!canUndo) {
+    const ok = await confirmInline(button, { message: 'Delete this chat?', confirmLabel: 'Delete' });
+    if (!ok) return;
+  }
+  try {
+    await chatStore.remove(id);
+  } catch (e) {
+    toast('That chat could not be deleted.', 'error');
+    return;
+  }
+  conversations = conversations.filter((c) => c.id !== id);
+  const wasOpen = id === conv.id;
+  if (wasOpen) {
+    messages = [];
+    conv = freshConversation();
+    rememberOpen(null);
+    renderChat();
+    updateDirty();
+  }
+  renderHistory();
+  const restore = async () => {
+    try { await chatStore.put(record); } catch (e) { return; }
+    conversations = [record].concat(conversations.filter((c) => c.id !== id)).sort((a, b) => b.updated - a.updated);
+    if (wasOpen && !messages.length && !busy()) applyConversation(record); else renderHistory();
+    announce('Chat restored');
+  };
+  if (canUndo) {
+    toast('Deleted "' + (record.title || 'chat') + '"', 'info', { duration: 7000, action: { label: 'Undo', onClick: restore } });
+  } else {
+    announce('Chat deleted');
+  }
+}
+
+/* ---------- Downloading a conversation ---------- */
+
+function exportConversation(format) {
+  const list = savableMessages();
+  if (!list.length) {
+    toast('There is no conversation to save yet', 'info');
+    return;
+  }
+  const title = conv.titleSet ? conv.title : autoTitle();
+  const fallbackName = currentModel().name;
+  let body, type, ext;
+  if (format === 'json') {
+    body = JSON.stringify({
+      title: title,
+      created: new Date(conv.created || Date.now()).toISOString(),
+      exported: new Date().toISOString(),
+      messages: list.map((m) => ({
+        role: m.role === 'user' ? 'user' : 'assistant',
+        content: m.text,
+        model: m.role === 'bot' ? (m.from || fallbackName) : undefined,
+      })),
+    }, null, 2);
+    type = 'application/json';
+    ext = 'json';
+  } else if (format === 'md') {
+    body = '# ' + title + '\n\n' + list.map((m) =>
+      '**' + (m.role === 'user' ? 'You' : (m.from || fallbackName)) + ':**\n\n' + m.text
+    ).join('\n\n---\n\n') + '\n';
+    type = 'text/markdown';
+    ext = 'md';
+  } else {
+    body = list.map((m) => (m.role === 'user' ? 'You: ' : (m.from || fallbackName) + ': ') + m.text).join('\n\n') + '\n';
+    type = 'text/plain';
+    ext = 'txt';
+  }
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'chat';
+  saveBlob(new Blob([body], { type: type + ';charset=utf-8' }), `${slug}_${new Date().toISOString().slice(0, 10)}.${ext}`);
+}
+
+function saveBlob(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+}
+
+/* ---------- The drawer on phones ---------- */
+
+let drawerReturn = null;
+
+function openDrawer() {
+  drawerReturn = document.activeElement;
+  document.body.classList.add('drawer-open');
+  setBehindDrawer(true);
+  document.getElementById('drawerBtn').setAttribute('aria-expanded', 'true');
+  const first = document.querySelector('#sidePanel .hist-open, #sidePanel #drawerClose');
+  setTimeout(() => { const c = document.getElementById('drawerClose'); if (c) c.focus(); }, 30);
+  return first;
+}
+
+function closeDrawer() {
+  if (!document.body.classList.contains('drawer-open')) return;
+  document.body.classList.remove('drawer-open');
+  setBehindDrawer(false);
+  document.getElementById('drawerBtn').setAttribute('aria-expanded', 'false');
+  if (drawerReturn && document.contains(drawerReturn) && drawerReturn.offsetParent !== null) drawerReturn.focus();
+  drawerReturn = null;
+}
+
+// While the drawer covers the page on a phone, what is behind it cannot be reached by
+// Tab or a screen reader, as with any dialog.
+function setBehindDrawer(on) {
+  const modal = on && window.matchMedia('(max-width: 900px)').matches;
+  for (const sel of ['#main', '.tool-header', '.tool-footer']) {
+    const el = document.querySelector(sel);
+    if (el) el.inert = modal;
+  }
+}
+
+function drawerIsModal() {
+  return document.body.classList.contains('drawer-open') && window.matchMedia('(max-width: 900px)').matches;
+}
+
+/* ---------- The send button and the busy states ----------
+
+   One button, in one place. It reads Send when idle, Downloading or Loading while a
+   model is being fetched or read into memory, and turns into Stop once the model is
+   answering, so stopping is where the hand already is. */
+
+function updateSendButton() {
+  const btn = document.getElementById('sendBtn');
+  let html, disabled = false, stop = false, busyAttr = false;
+  if (phase === 'checking') {
+    html = '<span class="spinner" aria-hidden="true"></span> <span class="send-label">Checking</span>';
+    disabled = true; busyAttr = true;
+  } else if (phase === 'download') {
+    html = '<span class="spinner" aria-hidden="true"></span> <span class="send-label">Downloading…</span>';
+    disabled = true; busyAttr = true;
+  } else if (phase === 'load') {
+    html = '<span class="spinner" aria-hidden="true"></span> <span class="send-label">Loading…</span>';
+    disabled = true; busyAttr = true;
+  } else if (phase === 'think' || phase === 'stream') {
+    html = '<i class="ph ph-stop-circle" aria-hidden="true"></i> <span class="send-label">Stop</span>';
+    stop = true;
+  } else {
+    html = '<i class="ph ph-paper-plane-tilt" aria-hidden="true"></i> <span class="send-label">Send</span>';
+  }
+  btn.innerHTML = html;
+  btn.disabled = disabled;
+  btn.classList.toggle('is-stop', stop);
+  btn.classList.toggle('btn-primary', !stop);
+  btn.setAttribute('aria-label', stop ? 'Stop the reply' : (disabled ? btn.textContent.trim() : 'Send'));
+  if (busyAttr && phase !== 'checking') btn.setAttribute('aria-busy', 'true'); else btn.removeAttribute('aria-busy');
+}
+
+function setPhase(next) {
+  const before = phase;
+  phase = next;
+  updateSendButton();
+  renderModelChip();
+  // Buttons that change what is on screen (Edit, Try again) come and go with it.
+  if ((before === 'idle') !== (next === 'idle')) {
+    renderChat();
+    if (next === 'idle' && before !== 'checking') renderModelList();
+  }
+}
+
+function sendOrStop() {
+  if (phase === 'think' || phase === 'stream') { stopReply(); return; }
+  if (phase === 'idle') send();
+}
+
+/* ---------- Download progress ---------- */
+
+const dl = { modelId: null, loaded: 0, total: 0, rate: 0, lastT: 0, lastLoaded: 0, kind: 'download', pct: 0 };
+
+function resetProgress(model, kind) {
+  dl.modelId = model.id;
+  dl.loaded = 0;
+  dl.total = 0;
+  dl.rate = 0;
+  dl.lastT = 0;
+  dl.lastLoaded = 0;
+  dl.kind = kind;
+  dl.pct = 0;
+}
+
+// The rate is smoothed so the time left does not jump about with every network read.
+function noteBytes(loaded, total) {
+  const now = performance.now();
+  if (total) dl.total = total;
+  if (dl.lastT && loaded >= dl.lastLoaded) {
+    const dt = (now - dl.lastT) / 1000;
+    if (dt >= 0.25) {
+      const instant = (loaded - dl.lastLoaded) / dt;
+      dl.rate = dl.rate ? dl.rate * 0.8 + instant * 0.2 : instant;
+      dl.lastT = now;
+      dl.lastLoaded = loaded;
+    }
+  } else {
+    dl.lastT = now;
+    dl.lastLoaded = loaded;
+  }
+  dl.loaded = loaded;
+}
+
+function progressText() {
+  if (dl.kind === 'load') return 'Reading the model into memory';
+  if (!dl.total) return 'Starting the download';
+  let text = readableBytes(dl.loaded) + ' of ' + readableBytes(dl.total);
+  if (dl.rate > 1024) {
+    text += ' · ' + (dl.rate / (1024 * 1024)).toFixed(1) + ' MB/s';
+    const left = readableDuration((dl.total - dl.loaded) / dl.rate);
+    if (left) text += ' · ' + left + ' left';
+  }
+  return text;
+}
+
+function progressCardHTML(model) {
+  const pct = dl.kind === 'load'
+    ? dl.pct
+    : (dl.total ? Math.min(100, (dl.loaded / dl.total) * 100) : 0);
+  const title = dl.kind === 'load'
+    ? `Loading ${escapeHTML(model.name)}`
+    : `Downloading ${escapeHTML(model.name)}`;
+  const indeterminate = dl.kind === 'load' && !dl.pct;
+  return `<div class="dl-card" data-progress-for="${escapeAttr(model.id)}">
+      <div class="dl-main">
+        <div class="dl-title">${title}</div>
+        <div class="dl-bar${indeterminate ? ' indeterminate' : ''}" role="progressbar" aria-label="${escapeAttr(title)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}"><div class="dl-fill" style="width:${indeterminate ? 30 : pct.toFixed(1)}%"></div></div>
+        <div class="dl-text">${escapeHTML(progressText())}</div>
+      </div>
+      <button class="btn btn-sm" type="button" data-act="cancel-load">${dl.kind === 'load' ? 'Cancel' : 'Stop download'}</button>
+    </div>`;
+}
+
+function renderProgress() {
+  const model = ALL_MODELS.find((m) => m.id === dl.modelId);
+  if (!model) return;
+  const area = document.getElementById('statusArea');
+  const existing = area.querySelector('.dl-card');
+  if (existing && existing.dataset.progressFor === model.id && existing.dataset.kind === dl.kind) {
+    // Only the numbers change, so the Stop button keeps its focus.
+    updateProgressCard(existing);
+  } else {
+    area.innerHTML = progressCardHTML(model);
+    area.querySelector('.dl-card').dataset.kind = dl.kind;
+  }
+  document.querySelectorAll('#libraryBody .dl-card').forEach(updateProgressCard);
+  renderModelChip();
+}
+
+function updateProgressCard(card) {
+  const pct = dl.kind === 'load' ? dl.pct : (dl.total ? Math.min(100, (dl.loaded / dl.total) * 100) : 0);
+  const bar = card.querySelector('.dl-bar');
+  const fill = card.querySelector('.dl-fill');
+  const indeterminate = dl.kind === 'load' && !dl.pct;
+  bar.classList.toggle('indeterminate', indeterminate);
+  bar.setAttribute('aria-valuenow', String(Math.round(pct)));
+  fill.style.width = (indeterminate ? 30 : pct.toFixed(1)) + '%';
+  card.querySelector('.dl-text').textContent = progressText();
+}
+
+function clearProgressCard() {
+  const area = document.getElementById('statusArea');
+  const card = area.querySelector('.dl-card');
+  if (card) card.remove();
+}
+
+/* ---------- The worker that holds the model ---------- */
+
+function releaseWorker() {
+  if (worker) { try { worker.terminate(); } catch (e) {} }
+  worker = null;
+  workerKey = null;
+}
+
+function workerKeyFor(model) {
+  return model.id + '|' + (model.webgpu && gpu.ok ? 'webgpu' : 'cpu');
+}
+
+function loadMessage(model, type) {
+  return {
+    type: type,
+    model: model.id,
+    kind: model.kind,
+    dtype: model.dtype || null,
+    device: model.webgpu && gpu.ok ? 'webgpu' : null,
+    files: model.files || null,
+  };
+}
+
+function cancelledError() {
+  const err = new Error('Cancelled');
+  err.cancelled = true;
+  return err;
+}
+
+/* Starts the model, downloading whatever is missing first. The worker being loaded
+   is kept here, not only once it is ready, so Stop can end a download: terminating
+   it is the only way to stop a fetch that is in the middle of a file, and the
+   downloader has stored every whole piece before that, so Resume carries on. */
+function startWorker(model, type) {
+  const key = workerKeyFor(model);
+  if (type === 'load' && worker && workerKey === key) return Promise.resolve({ worker: worker, fetched: false });
+  if (type === 'load') releaseWorker();
+
+  return new Promise((resolve, reject) => {
+    let started;
+    try {
+      started = new Worker(WORKER_URL, { type: 'module' });
+    } catch (e) {
+      reject(e);
+      return;
+    }
+    let settled = false;
+    const finish = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      if (loading && loading.worker === started) loading = null;
+      fn(value);
+    };
+    loading = {
+      worker: started,
+      model: model,
+      type: type,
+      cancel: () => {
+        try { started.terminate(); } catch (e) {}
+        finish(reject, cancelledError());
+      },
+    };
+    const fail = (err) => {
+      try { started.terminate(); } catch (e) {}
+      finish(reject, err instanceof Error ? err : new Error((err && err.message) || 'The model could not start.'));
+    };
+    const onMessage = (ev) => {
+      const m = ev.data || {};
+      if (m.type === 'phase') {
+        if (m.phase === 'download') {
+          dl.kind = 'download';
+          if (m.total) noteBytes(m.loaded || 0, m.total);
+          setPhase('download');
+        } else if (m.phase === 'load') {
+          if (type === 'prefetch') return;
+          dl.kind = 'load';
+          dl.pct = 0;
+          setPhase('load');
+        }
+        renderProgress();
+        return;
+      }
+      if (m.type === 'download') {
+        if (m.total) {
+          dl.kind = 'download';
+          if (phase !== 'download') setPhase('download');
+          noteBytes(m.loaded || 0, m.total);
+        } else if (typeof m.progress === 'number') {
+          dl.pct = m.progress;
+        }
+        renderProgress();
+        return;
+      }
+      if (m.type === 'loading') {
+        dl.kind = 'load';
+        dl.pct = m.progress || 0;
+        renderProgress();
+        return;
+      }
+      if (m.type === 'ready' && type === 'load') {
+        started.removeEventListener('message', onMessage);
+        started.removeEventListener('error', fail);
+        worker = started;
+        workerKey = key;
+        finish(resolve, { worker: started, fetched: !!m.fetched });
+        return;
+      }
+      if (m.type === 'fetched' && type === 'prefetch') {
+        try { started.terminate(); } catch (e) {}
+        finish(resolve, { worker: null, fetched: !!m.fetched });
+        return;
+      }
+      if (m.type === 'error' && !m.id) fail(new Error(m.message));
+    };
+    started.addEventListener('message', onMessage);
+    started.addEventListener('error', (ev) => {
+      if (ev && ev.preventDefault) ev.preventDefault();
+      fail(new Error((ev && ev.message) || 'The model could not start in this browser.'));
+    });
+    started.postMessage(loadMessage(model, type));
+  });
+}
+
+function cancelLoad() {
+  if (loading) loading.cancel();
+}
+
+// After the first download, the browser is asked to keep the site's storage rather
+// than clear it when space runs low. Browsers decide for themselves; asking is free.
+let persistAsked = false;
+async function keepStorage() {
+  if (persistAsked) return;
+  persistAsked = true;
+  try {
+    if (navigator.storage && navigator.storage.persist) {
+      const already = navigator.storage.persisted ? await navigator.storage.persisted() : false;
+      if (!already) await navigator.storage.persist();
+    }
+  } catch (e) { /* not offered here */ }
+}
+
+async function afterDownload(model) {
+  await refreshStatus(model);
+  keepStorage();
+  refreshStorageInfo();
+  renderModelList();
+  if (document.getElementById('libraryDialog').open) renderLibrary();
+}
+
+/* Everything that gets the model onto the device and into memory, with the progress
+   card, the leave guard and the pause message if it is stopped. Returns the worker. */
+async function ensureReady(model, type) {
+  type = type || 'load';
+  if (type === 'load' && worker && workerKey === workerKeyFor(model)) return worker;
+  resetProgress(model, 'load');
+  const done = startJob(type === 'prefetch' ? 'Downloading ' + model.name : 'Getting ' + model.name + ' ready');
+  lastPaused = null;
+  try {
+    setPhase(type === 'prefetch' ? 'download' : 'load');
+    renderProgress();
+    // The library, if open, shows the progress on the model's own card too.
+    if (document.getElementById('libraryDialog').open) renderLibrary();
+    const result = await startWorker(model, type);
+    if (result.fetched) await afterDownload(model);
+    else await refreshStatus(model);
+    return result.worker;
+  } catch (e) {
+    await refreshStatus(model);
+    if (e && e.cancelled) {
+      const st = statusOf(model);
+      lastPaused = { modelId: model.id, type: type };
+      showPaused(model, st);
+    }
+    throw e;
+  } finally {
+    clearProgressCard();
+    done();
+    renderModelList();
+    renderModelChip();
+  }
+}
+
+function showPaused(model, st) {
+  const area = document.getElementById('statusArea');
+  const kept = st.held > 0 && !st.complete;
+  area.innerHTML = `<div class="info-msg status-note">
+      <i class="ph ph-pause-circle" aria-hidden="true"></i>
+      <span>${kept
+        ? `Download stopped. ${escapeHTML(readableBytes(st.held))} of ${escapeHTML(readableBytes(st.total))} is kept on this device, and Resume carries on from there.`
+        : 'Stopped. Nothing was lost.'}</span>
+      ${kept ? `<button class="btn btn-sm" type="button" data-act="resume" data-model="${escapeAttr(model.id)}"><i class="ph ph-play" aria-hidden="true"></i> Resume</button>` : ''}
+    </div>`;
+  announce(kept ? 'Download stopped. Resume carries on from where it stopped.' : 'Stopped');
+}
+
+/* ---------- One answer ---------- */
+
+// Tokens arrive as they are produced and go straight to the bubble, so a long reply
+// reads as it is written instead of landing in one lump at the end.
+function generate(activeWorker, payload, onDelta) {
+  return new Promise((resolve, reject) => {
+    const id = ++jobId;
+    const cleanup = () => {
+      activeWorker.removeEventListener('message', onMessage);
+      activeWorker.removeEventListener('error', onError);
+    };
+    const onMessage = (ev) => {
+      const m = ev.data || {};
+      if (m.id && m.id !== id) return;
+      if (m.type === 'delta') { onDelta(m.text); return; }
+      if (m.type === 'done') { cleanup(); resolve(m); return; }
+      if (m.type === 'error') { cleanup(); reject(new Error(m.message)); }
+    };
+    const onError = () => { cleanup(); reject(new Error('The model stopped part way through.')); };
+    activeWorker.addEventListener('message', onMessage);
+    activeWorker.addEventListener('error', onError);
+    activeWorker.postMessage(Object.assign({ type: 'generate', id: id }, payload));
+  });
+}
+
+function stopReply() {
+  if ((phase === 'think' || phase === 'stream') && worker) {
+    worker.postMessage({ type: 'stop' });
+    return true;
+  }
+  if (phase === 'download' || phase === 'load') {
+    cancelLoad();
+    return true;
+  }
+  return false;
+}
+
+function addStats(total, done) {
+  const out = Object.assign({ tokens: 0, writeMs: 0, firstMs: 0 }, total || {});
+  out.tokens += done.produced || 0;
+  out.writeMs += done.writeMs || 0;
+  if (!out.firstMs && done.firstMs) out.firstMs = done.firstMs;
+  out.tps = out.writeMs > 0 ? out.tokens / (out.writeMs / 1000) : 0;
+  return out;
+}
+
+function failureKind(e) {
+  const message = (e && e.message) || String(e);
+  if (/QuotaExceeded|quota|not enough (disk )?space|storage.*full/i.test(message)) return 'quota';
+  if (/allocat|out of memory|Array buffer|OOM/i.test(message)) return 'memory';
+  if (/fetch|network|Failed to load|download failed|ended early|could not be reached|NetworkError/i.test(message)) return 'network';
+  return 'other';
+}
+
+function describeFailure(e) {
+  const message = (e && e.message) || String(e);
+  const kind = failureKind(e);
+  if (kind === 'quota') {
+    return 'There is not enough free space in this browser to keep the model. Free up space by removing models you no longer use from the library, or pick a smaller one.';
+  }
+  if (kind === 'memory') {
+    return 'This browser ran out of memory loading the model. Closing other tabs usually frees enough, or a smaller model will fit.';
+  }
+  if (kind === 'network') {
+    return 'The model could not be downloaded. Check the connection and press Retry: the download carries on from where it stopped.';
+  }
+  return message;
+}
+
+function focusComposer() {
+  const box = document.getElementById('message');
+  try { box.focus({ preventScroll: true }); } catch (e) { box.focus(); }
+}
+
+/* ---------- Sending ---------- */
+
+function send() {
+  if (busy() || phase === 'checking') return;
+  const box = document.getElementById('message');
+  const text = box.value.trim();
+  const btn = document.getElementById('sendBtn');
+  if (!text) {
+    showInlineError(btn.parentNode, 'Type or paste something first.');
+    return;
+  }
   const model = currentModel();
-  const ready = await isModelDownloaded(model.id);
-  const held = ready ? readableBytes(await bytesHeld(model.id)) : '';
-  const blocked = model.webgpu && !webgpuReady;
+  const st = statusOf(model);
+  const loaded = worker && workerKey === workerKeyFor(model);
+  // The first message never starts a download on its own; the card asks first.
+  if (!st.complete && !loaded) {
+    pendingText = text;
+    showConsent(true);
+    return;
+  }
+  dispatch(text);
+}
+
+// Everything that goes from a typed message to a reply, after any question of
+// downloading has been settled.
+function dispatch(text) {
+  const box = document.getElementById('message');
+  if (editingIndex >= 0) {
+    messages = messages.slice(0, editingIndex);
+    cancelEdit(true);
+  }
+  dropFailedTail();
+  if (box.value.trim() === text.trim()) { box.value = ''; growComposer(); }
+  pendingText = null;
+  if (!matchMode(text)) { setPref('mode', ''); markMode(null); }
+  run(text);
+}
+
+// A reply that failed is not part of the conversation; sending again replaces it.
+function dropFailedTail() {
+  const last = messages[messages.length - 1];
+  if (last && last.role === 'bot' && last.error) {
+    messages.pop();
+    const user = messages[messages.length - 1];
+    if (user && user.role === 'user') messages.pop();
+  }
+}
+
+async function run(text) {
+  const model = currentModel();
+  const chat = isChatModel(model);
+  const request = chat ? null : splitRequest(text);
+  const mode = matchMode(text);
+
+  messages.push({ role: 'user', text: text });
+  const botIndex = messages.push({
+    role: 'bot', text: '', pending: true, applied: request ? request.applied : false, from: model.name,
+  }) - 1;
+  stickToBottom = true;
+  document.getElementById('statusArea').innerHTML = '';
+  renderChat();
+  updateDirty();
+  saveSoon();
+
+  const finishJob = startJob('Writing a reply');
+  announce('Working on a reply');
+  let stats = null;
+
+  try {
+    const active = await ensureReady(model, 'load');
+    setPhase('think');
+
+    const onFirst = () => {
+      messages[botIndex].pending = true;
+      if (phase === 'think') setPhase('stream');
+    };
+
+    if (chat) {
+      // A chat model is given the conversation and answers the last turn itself, so
+      // none of the splitting below applies to it. Feeding it a lone instruction
+      // instead was what made a new question come back as a rewrite of the last reply.
+      const turns = conversationTurns(model);
+      const done = await generate(active, {
+        kind: model.kind,
+        turns: turns,
+        maxNew: model.maxNew,
+        options: CHAT_OPTIONS,
+      }, (delta) => {
+        onFirst();
+        messages[botIndex].text += delta;
+        paintStreaming(botIndex);
+      });
+      messages[botIndex].text = (done.text || messages[botIndex].text).trim();
+      messages[botIndex].truncated = done.truncated;
+      messages[botIndex].stopped = done.stopped;
+      messages[botIndex].looped = done.looped;
+      stats = addStats(stats, done);
+    } else {
+      const chunks = splitIntoChunks(request.body);
+      const options = Object.assign({}, mode ? mode.options : DEFAULT_OPTIONS);
+      const factor = mode && mode.lengthFactor ? mode.lengthFactor : 1.6;
+      const pieces = [];
+
+      for (let i = 0; i < chunks.length; i++) {
+        if (chunks.length > 1) {
+          document.getElementById('statusArea').innerHTML =
+            `<div class="status-bar"><span class="spinner" aria-hidden="true"></span> Working on part ${i + 1} of ${chunks.length}</div>`;
+        }
+        const budget = Math.round(countWords(chunks[i]) * factor) + 24;
+        const carried = pieces.join('\n\n');
+        // The pieces already finished, plus what is arriving now. Each delta is one
+        // fragment rather than the whole answer so far, so it is added up here.
+        let streamed = '';
+        const done = await generate(active, {
+          kind: model.kind,
+          prompt: joinPrompt(request.instruction, chunks[i]),
+          maxNew: Math.max(48, Math.min(model.maxNew, budget)),
+          options: options,
+        }, (delta) => {
+          onFirst();
+          streamed += delta;
+          messages[botIndex].text = (carried ? carried + '\n\n' : '') + streamed;
+          paintStreaming(botIndex);
+        });
+        pieces.push(tidy(done.text, chunks[i]));
+        messages[botIndex].text = pieces.join('\n\n');
+        messages[botIndex].truncated = done.truncated;
+        messages[botIndex].stopped = done.stopped;
+        stats = addStats(stats, done);
+        if (done.stopped) break;
+      }
+      document.getElementById('statusArea').innerHTML = '';
+    }
+
+    flushPaint();
+    messages[botIndex].pending = false;
+    messages[botIndex].stats = stats;
+    if (!messages[botIndex].text) {
+      messages[botIndex].text = 'Nothing came back for that. A shorter passage, or wording it as an instruction, usually helps.';
+    }
+    phase = 'idle';
+    updateSendButton();
+    renderChat();
+    const reply = messages[botIndex];
+    announce('Reply finished. ' + reply.text.replace(/\s+/g, ' ').slice(0, 280));
+    saveSoon();
+  } catch (e) {
+    flushPaint();
+    if (e && e.cancelled) {
+      // Stopped while downloading: the message goes back where it came from.
+      messages.splice(botIndex - 1, 2);
+      restoreComposer(text);
+    } else {
+      messages[botIndex] = {
+        role: 'bot', from: model.name, error: describeFailure(e), errorKind: failureKind(e), failedText: text,
+      };
+      restoreComposer(text);
+      announce('The reply failed. ' + messages[botIndex].error);
+    }
+    phase = 'idle';
+    updateSendButton();
+    renderChat();
+    saveSoon();
+  } finally {
+    finishJob();
+    flushPaint();
+    if (phase !== 'idle') setPhase('idle');
+    renderModelList();
+    updateDirty();
+  }
+}
+
+// Whatever was sent goes back into the composer when it fails, unless something new
+// has been typed there since.
+function restoreComposer(text) {
+  const box = document.getElementById('message');
+  if (!box.value.trim()) {
+    box.value = text;
+    growComposer();
+  }
+}
+
+// Picking up an answer that ran out of room. The half written reply is still the
+// model's own last turn, so it carries on from the word it stopped at.
+async function continueReply(index) {
+  if (busy()) return;
+  const model = currentModel();
+  if (!isChatModel(model)) return;
+  const m = messages[index];
+  if (!m) return;
+  const finishJob = startJob('Writing a reply');
+  try {
+    const active = await ensureReady(model, 'load');
+    setPhase('think');
+    const turns = conversationTurns(model).concat([
+      { role: 'user', content: 'Carry on from exactly where you stopped. Do not repeat anything you have already written.' },
+    ]);
+    const before = m.text;
+    m.pending = true;
+    m.truncated = false;
+    renderChat();
+    const done = await generate(active, {
+      kind: model.kind,
+      turns: turns,
+      maxNew: model.maxNew,
+      options: CHAT_OPTIONS,
+    }, (delta) => {
+      if (phase === 'think') setPhase('stream');
+      m.text += delta;
+      paintStreaming(index);
+    });
+    flushPaint();
+    const added = (done.text || m.text.slice(before.length)).trim();
+    m.text = (before + (/\s$/.test(before) ? '' : ' ') + added).trim();
+    m.truncated = done.truncated;
+    m.stopped = done.stopped;
+    m.stats = addStats(m.stats && { tokens: m.stats.tokens, writeMs: m.stats.writeMs, firstMs: m.stats.firstMs }, done);
+    m.pending = false;
+    announce('Reply finished');
+  } catch (e) {
+    m.pending = false;
+    if (!(e && e.cancelled)) toast(describeFailure(e), 'error');
+  } finally {
+    finishJob();
+    flushPaint();
+    phase = 'idle';
+    updateSendButton();
+    renderChat();
+    saveSoon();
+  }
+}
+
+// "Try again" on any reply: everything from that reply on is dropped, and the
+// question before it is asked again.
+function retryAt(index) {
+  if (busy()) return;
+  let userIdx = -1;
+  for (let i = index - 1; i >= 0; i--) {
+    if (messages[i].role === 'user') { userIdx = i; break; }
+  }
+  if (userIdx < 0) return;
+  const text = messages[userIdx].text;
+  const model = currentModel();
+  const st = statusOf(model);
+  const loaded = worker && workerKey === workerKeyFor(model);
+  if (!st.complete && !loaded) {
+    pendingText = null;
+    showConsent(true);
+    return;
+  }
+  messages = messages.slice(0, userIdx);
+  cancelEdit(true);
+  focusComposer();
+  run(text);
+}
+
+function retryFailed(index) {
+  const m = messages[index];
+  if (!m || !m.error || busy()) return;
+  const text = m.failedText || (messages[index - 1] && messages[index - 1].text) || '';
+  const box = document.getElementById('message');
+  if (box.value.trim() === text.trim()) { box.value = ''; growComposer(); }
+  messages.splice(index - 1, 2);
+  const model = currentModel();
+  if (!statusOf(model).complete && !(worker && workerKey === workerKeyFor(model))) {
+    pendingText = text;
+    restoreComposer(text);
+    renderChat();
+    showConsent(true);
+    return;
+  }
+  focusComposer();
+  run(text);
+}
+
+/* ---------- Editing the last message ---------- */
+
+function startEdit(index) {
+  if (busy()) return;
+  const m = messages[index];
+  if (!m || m.role !== 'user') return;
+  const box = document.getElementById('message');
+  draftBeforeEdit = box.value;
+  editingIndex = index;
+  box.value = m.text;
+  growComposer();
+  document.getElementById('editBar').classList.remove('hidden');
+  renderChat();
+  box.focus();
+  box.setSelectionRange(box.value.length, box.value.length);
+}
+
+function cancelEdit(silent) {
+  if (editingIndex < 0) return;
+  editingIndex = -1;
+  document.getElementById('editBar').classList.add('hidden');
+  if (!silent) {
+    const box = document.getElementById('message');
+    box.value = draftBeforeEdit;
+    growComposer();
+    renderChat();
+    focusComposer();
+  }
+  draftBeforeEdit = '';
+}
+
+/* ---------- Asking before a download ---------- */
+
+function showConsent(attention) {
+  if (!messages.length) {
+    renderChat();
+  } else {
+    document.getElementById('statusArea').innerHTML = consentHTML(currentModel());
+  }
+  const card = document.getElementById('consentCard');
+  if (!card) return;
+  if (attention) {
+    card.classList.add('attention');
+    card.scrollIntoView({ block: 'nearest' });
+    const primary = card.querySelector('.btn-primary');
+    if (primary) primary.focus({ preventScroll: true });
+    announce(currentModel().name + ' needs to be downloaded first. ' + (pendingText ? 'Your message is kept.' : ''));
+  }
+}
+
+async function consentDownload() {
+  const model = currentModel();
+  const text = pendingText;
+  const card = document.getElementById('consentCard');
+  if (card && card.parentNode && card.parentNode.id === 'statusArea') card.remove();
+  if (text) {
+    dispatch(text);
+    return;
+  }
+  try {
+    await ensureReady(model, 'load');
+    announce(model.name + ' is ready');
+    toast(model.name + ' is ready', 'success');
+  } catch (e) {
+    if (!(e && e.cancelled)) showStatusError(e);
+  } finally {
+    setPhase('idle');
+    renderChat();
+    focusComposer();
+  }
+}
+
+function showStatusError(e) {
+  const kind = failureKind(e);
+  document.getElementById('statusArea').innerHTML = `<div class="error-msg status-note" role="alert">
+      <i class="ph ph-warning-circle" aria-hidden="true"></i>
+      <span>${escapeHTML(describeFailure(e))}</span>
+      ${kind === 'quota' ? '<button class="btn btn-sm" type="button" data-act="library">Free up space</button>' : ''}
+    </div>`;
+}
+
+// "Download now" in the library, and Resume: fetches the files and nothing else.
+async function prefetchModel(id) {
+  if (busy()) { toast('Wait for the current download or reply to finish.', 'info'); return; }
+  const model = ALL_MODELS.find((m) => m.id === id);
+  if (!model) return;
+  try {
+    await ensureReady(model, 'prefetch');
+    toast(model.name + ' is saved on this device', 'success');
+    announce(model.name + ' downloaded');
+  } catch (e) {
+    if (!(e && e.cancelled)) showStatusError(e);
+  } finally {
+    setPhase('idle');
+    await refreshStatus(model);
+    renderModelList();
+    renderChat();
+    if (document.getElementById('libraryDialog').open) renderLibrary();
+  }
+}
+
+/* ---------- Model panel, chip and library ---------- */
+
+function renderModelChip() {
+  const chip = document.getElementById('modelChip');
+  if (!chip) return;
+  const model = currentModel();
+  const st = statusOf(model);
+  let state;
+  if (phase === 'checking') state = 'checking';
+  else if ((phase === 'download' || phase === 'load') && dl.modelId === model.id) {
+    state = phase === 'download' && dl.total ? readableBytes(dl.loaded) + ' of ' + readableBytes(dl.total) : 'loading';
+  } else if (model.webgpu && gpu.checked && !gpu.ok) state = 'needs WebGPU';
+  else if (worker && workerKey === workerKeyFor(model)) state = 'ready';
+  else if (st.complete) state = 'saved';
+  else if (st.held > 0) state = readableBytes(st.held) + ' of ' + readableBytes(st.total);
+  else state = 'not downloaded';
+  chip.innerHTML = `<i class="ph ph-cpu" aria-hidden="true"></i> <span class="chip-text">${escapeHTML(model.name)} <span class="chip-state">· ${escapeHTML(state)}</span></span>`;
+  chip.setAttribute('aria-label', `Model: ${model.name}, ${state}. Open the model library`);
+}
+
+function modelActionsHTML(model, where) {
+  const st = statusOf(model);
+  const fit = fitFor(model);
+  const downloading = busy() && dl.modelId === model.id && (phase === 'download' || phase === 'load');
+  const parts = [];
+  if (downloading) return '';
+  if (!st.complete && fit.level !== 'blocked') {
+    const label = st.held > 0 ? 'Resume' : 'Download now';
+    const icon = st.held > 0 ? 'play' : 'download-simple';
+    parts.push(`<button class="btn btn-sm" type="button" data-act="prefetch" data-model="${escapeAttr(model.id)}"${busy() ? ' disabled' : ''}><i class="ph ph-${icon}" aria-hidden="true"></i> ${label}</button>`);
+  }
+  if (st.held > 0) {
+    parts.push(`<button class="btn btn-sm" type="button" data-act="remove" data-model="${escapeAttr(model.id)}"${busy() ? ' disabled' : ''}><i class="ph ph-trash" aria-hidden="true"></i> Remove</button>`);
+  }
+  return parts.join('');
+}
+
+function renderModelList() {
+  const model = currentModel();
+  const line = stateLine(model);
+  const fit = fitFor(model);
   document.getElementById('modelList').innerHTML = `<div class="model-row">
       <span class="name">${escapeHTML(model.name)}</span>
-      <span class="size">${model.size}</span>
-      <span class="model-specs">${model.params} parameters, ${model.context} of context, replies up to about ${replyWords(model)} words</span>
-      <span class="model-state${ready ? ' ready' : ''}">${blocked ? 'Needs WebGPU, which this browser does not have' : (ready ? 'Saved on this device' + (held ? ', ' + held : '') : 'Downloads on first use')}</span>
+      <span class="size">${escapeHTML(model.size || '')}</span>
+      <span class="model-fit">${fitBadge(model)}</span>
+      <span class="model-specs">${escapeHTML(model.params)} parameters, ${escapeHTML(model.context)} of context, replies up to about ${replyWords(model)} words</span>
+      <span class="model-state ${line.cls}">${escapeHTML(line.text)}</span>
+      ${fit.level !== 'fits' ? `<span class="model-specs">${escapeHTML(fit.why)}</span>` : ''}
+      <span class="model-actions">${modelActionsHTML(model, 'panel')}</span>
     </div>`;
+  renderModelChip();
+  renderExportState();
 }
 
 function libraryGroups() {
@@ -958,22 +3146,22 @@ function libraryGroups() {
   return groups;
 }
 
-function libraryCard(model, ready, held, blocked, chosen) {
-  const state = blocked
-    ? 'This browser has no WebGPU'
-    : (ready ? 'Saved on this device' + (held ? ', ' + held : '') : 'Not downloaded');
+function libraryCard(model) {
+  const chosen = model.id === selectedModelId;
+  const fit = fitFor(model);
+  const blocked = fit.level === 'blocked';
+  const line = stateLine(model);
+  const downloading = busy() && dl.modelId === model.id && (phase === 'download' || phase === 'load');
   const drop = model.custom
-    ? `<button class="btn btn-sm" type="button" onclick="dropCustom('${model.id}', this)"><i class="ph ph-x" aria-hidden="true"></i> Take off the list</button>`
+    ? `<button class="btn btn-sm" type="button" data-act="drop" data-model="${escapeAttr(model.id)}"><i class="ph ph-x" aria-hidden="true"></i> Take off the list</button>`
     : '';
-  const remove = ready
-    ? `<button class="btn btn-sm" type="button" onclick="forgetModel('${model.id}', this)"><i class="ph ph-trash" aria-hidden="true"></i> Remove</button>`
-    : '';
-  return `<div class="lib-card${chosen ? ' chosen' : ''}${blocked ? ' blocked' : ''}">
+  return `<div class="lib-card${chosen ? ' chosen' : ''}${blocked ? ' blocked' : ''}" data-model="${escapeAttr(model.id)}">
     <div class="lib-head">
       <span class="lib-name">${escapeHTML(model.name)}</span>
-      ${model.recommended ? '<span class="lib-pick">Start here</span>' : ''}
+      ${model.recommended ? '<span class="pill pill-accent">Start here</span>' : ''}
       ${model.custom ? '<span class="lib-note">not tested here</span>' : ''}
-      <span class="lib-size">${escapeHTML(model.size)}</span>
+      ${fitBadge(model)}
+      <span class="lib-size">${escapeHTML(model.size || '')}</span>
     </div>
     <dl class="lib-specs">
       <div><dt>Parameters</dt><dd>${escapeHTML(model.params)}</dd></div>
@@ -983,30 +3171,55 @@ function libraryCard(model, ready, held, blocked, chosen) {
       <div><dt>Runs on</dt><dd>${model.webgpu ? 'WebGPU' : 'Any browser'}</dd></div>
     </dl>
     <p class="lib-blurb">${escapeHTML(model.blurb)}</p>
+    ${fit.level !== 'fits' ? `<p class="lib-why">${escapeHTML(fit.why)}</p>` : ''}
     <div class="lib-foot">
-      <span class="model-state${ready ? ' ready' : ''}">${state}</span>
-      <span class="lib-buttons">${drop}${remove}
-        <button class="btn btn-sm${chosen ? '' : ' btn-download'}" type="button" ${blocked || chosen ? 'disabled' : ''} onclick="chooseModel('${model.id}')">${chosen ? 'In use' : 'Use this one'}</button>
+      <span class="model-state ${line.cls}">${escapeHTML(line.text)}</span>
+      <span class="lib-buttons">${drop}${modelActionsHTML(model, 'library')}
+        <button class="btn btn-sm${chosen ? '' : ' btn-download'}" type="button" data-act="use" data-model="${escapeAttr(model.id)}" ${blocked || chosen || busy() ? 'disabled' : ''}>${chosen ? 'In use' : 'Use this one'}</button>
       </span>
     </div>
+    ${downloading ? progressCardHTML(model) : ''}
   </div>`;
+}
+
+async function refreshStorageInfo() {
+  try {
+    if (navigator.storage && navigator.storage.estimate) {
+      const est = await navigator.storage.estimate();
+      storageInfo = { quota: est.quota || 0, usage: est.usage || 0 };
+    }
+  } catch (e) { storageInfo = null; }
+  return storageInfo;
+}
+
+async function renderStorageLine() {
+  const el = document.getElementById('storageLine');
+  const info = await refreshStorageInfo();
+  let used = 0;
+  try { used = await (await storeReady).totalBytes(); } catch (e) { used = 0; }
+  if (!info || !info.quota) {
+    el.classList.toggle('hidden', !used);
+    el.innerHTML = `<i class="ph ph-hard-drives" aria-hidden="true"></i> <span>Models use ${escapeHTML(readableBytes(used))}</span>`;
+    return;
+  }
+  const free = Math.max(0, info.quota - info.usage);
+  let persisted = false;
+  try { persisted = navigator.storage.persisted ? await navigator.storage.persisted() : false; } catch (e) {}
+  el.classList.remove('hidden');
+  el.innerHTML = `<i class="ph ph-hard-drives" aria-hidden="true"></i> <span>Models use ${escapeHTML(readableBytes(used))}, ${escapeHTML(readableBytes(free))} free${persisted ? '. The browser keeps them even when space runs low.' : ''}</span>`;
 }
 
 async function renderLibrary() {
   const body = document.getElementById('libraryBody');
+  await refreshAllStatus();
   const rows = [];
   for (const group of libraryGroups()) {
     rows.push(`<h3 class="lib-group">${escapeHTML(group.group)}<span>${escapeHTML(group.note)}</span></h3>`);
-    for (const model of group.models) {
-      const ready = await isModelDownloaded(model.id);
-      const held = ready ? readableBytes(await bytesHeld(model.id)) : '';
-      const blocked = model.webgpu && !webgpuReady;
-      rows.push(libraryCard(model, ready, held, blocked, model.id === selectedModelId));
-    }
+    for (const model of group.models) rows.push(libraryCard(model));
   }
   body.innerHTML = rows.join('');
+  renderStorageLine();
 }
-
 
 /* ---------- Looking beyond the few that were picked ---------- */
 
@@ -1037,31 +3250,45 @@ function candidate(entry) {
   const builds = PRECISIONS.filter((p) => files.has('onnx/' + p.file)).map((p) => Object.assign({}, p));
   if (!builds.length) return null;
   if (ALL_MODELS.some((m) => m.id === entry.id)) return null;
-  return { id: entry.id, name: prettyName(entry.id), downloads: entry.downloads || 0, builds: builds, ctx: 0 };
+  return { id: entry.id, name: prettyName(entry.id), downloads: entry.downloads || 0, builds: builds, ctx: 0, sizes: {} };
 }
 
-// One call for the file sizes, one for the settings that hold the context length.
-// External data files sit beside the model file they belong to and count towards it.
+// One call for every file and its size, one for the settings that hold the context
+// length. External data files sit beside the model file they belong to and count
+// towards it, and the list is kept so the model can be checked for completeness.
 async function candidateDetails(model) {
   const [tree, config] = await Promise.all([
-    fetch(`${HF_API}/${model.id}/tree/main/onnx`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+    fetch(`${HF_API}/${model.id}/tree/main?recursive=true`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
     fetch(`${HF_BASE}${model.id}/resolve/main/config.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
   ]);
   const sizes = {};
   for (const file of tree) {
-    const name = String(file.path || '').replace('onnx/', '');
-    sizes[name] = (file.lfs && file.lfs.size) || file.size || 0;
+    if (file && file.type === 'file') sizes[String(file.path)] = (file.lfs && file.lfs.size) || file.size || 0;
   }
+  model.sizes = sizes;
   for (const build of model.builds) {
-    let total = sizes[build.file] || 0;
+    let total = sizes['onnx/' + build.file] || 0;
     for (const name of Object.keys(sizes)) {
-      if (name.startsWith(build.file + '_data')) total += sizes[name];
+      if (name.startsWith('onnx/' + build.file + '_data')) total += sizes[name];
     }
     build.bytes = total;
   }
   model.builds = model.builds.filter((b) => b.bytes > 0);
   model.ctx = config.max_position_embeddings || 0;
   return model;
+}
+
+// What transformers.js asks for when it starts a text model with this build: its
+// settings, the tokenizer, the weights and any data files beside them.
+function filesForBuild(sizes, build) {
+  const files = [];
+  const add = (path) => { if (path in sizes) files.push({ path: path, size: sizes[path] }); };
+  add('config.json');
+  add('onnx/' + build.file);
+  Object.keys(sizes).filter((p) => p.startsWith('onnx/' + build.file + '_data')).sort().forEach(add);
+  add('generation_config.json');
+  if ('tokenizer_config.json' in sizes) { add('tokenizer.json'); add('tokenizer_config.json'); }
+  return files;
 }
 
 async function searchModels(btn) {
@@ -1100,8 +3327,8 @@ function renderResults() {
     results.innerHTML = '<p class="muted small">Nothing came back that runs in a browser. A shorter word usually finds more.</p>';
     return;
   }
-  results.innerHTML = searchFound.map((model) => {
-    const usable = model.builds.filter((b) => !b.webgpu || webgpuReady);
+  results.innerHTML = searchFound.map((model, n) => {
+    const usable = model.builds.filter((b) => !b.webgpu || gpu.ok);
     const offer = usable.length ? usable : model.builds;
     const choices = offer.map((b) => `<option value="${b.dtype}">${readableBytes(b.bytes)}, ${b.label}</option>`).join('');
     return `<div class="lib-card">
@@ -1115,10 +3342,10 @@ function renderResults() {
         <div><dt>Published by</dt><dd>${escapeHTML(model.id.split('/')[0])}</dd></div>
       </dl>
       <div class="lib-foot">
-        <label class="lib-note" for="dtype-${escapeHTML(model.id)}">Which build to use</label>
+        <label class="lib-note" for="dtype-${n}">Which build to use</label>
         <span class="lib-buttons">
-          <select id="dtype-${escapeHTML(model.id)}">${choices}</select>
-          <button class="btn btn-sm btn-download" type="button" ${usable.length ? '' : 'disabled'} onclick="addCandidate('${model.id}')">Add to the list</button>
+          <select id="dtype-${n}" data-no-remember>${choices}</select>
+          <button class="btn btn-sm btn-download" type="button" ${usable.length ? '' : 'disabled'} data-act="add" data-n="${n}">Add to the list</button>
         </span>
       </div>
     </div>`;
@@ -1126,12 +3353,14 @@ function renderResults() {
 }
 
 // Adding is only a note kept in this browser. Nothing is downloaded until the model
-// is actually used, which is how the ones that came with the page work too.
-async function addCandidate(id) {
-  const found = searchFound.find((m) => m.id === id);
+// is asked for, which is how the ones that came with the page work too.
+async function addCandidate(n) {
+  const found = searchFound[n];
   if (!found) return;
-  const picked = document.getElementById('dtype-' + id);
+  const id = found.id;
+  const picked = document.getElementById('dtype-' + n);
   const build = found.builds.find((b) => b.dtype === (picked && picked.value)) || found.builds[0];
+  const files = filesForBuild(found.sizes || {}, build);
   customModels = customModels.filter((m) => m.id !== id).concat([{
     id: found.id,
     name: found.name,
@@ -1139,11 +3368,14 @@ async function addCandidate(id) {
     context: readableTokens(found.ctx),
     ctx: found.ctx || 4096,
     size: readableBytes(build.bytes),
+    bytes: build.bytes,
+    files: files.length ? files : undefined,
     kind: 'text-generation',
     dtype: build.dtype,
     webgpu: build.webgpu,
     maxNew: 1024,
     custom: true,
+    goodAt: 'Added by you from Hugging Face, and not tried here.',
     blurb: 'Added by you from Hugging Face, and not tried here. It may repeat itself or answer badly, and if it does, the other build of it is worth a go before giving up on it.',
   }]);
   writeCustom();
@@ -1151,80 +3383,108 @@ async function addCandidate(id) {
   searchFound = searchFound.filter((m) => m.id !== id);
   renderResults();
   await renderLibrary();
-  showToast(prettyName(id) + ' added to your list', 'success');
+  toast(prettyName(id) + ' added to your list', 'success');
 }
 
-async function dropCustom(id, btn) {
-  if (busy) return;
+async function dropCustom(id) {
+  if (busy()) return;
   const model = customModels.find((m) => m.id === id);
   if (!model) return;
-  setBusy(btn, true, 'Removing...');
-  if (id === selectedModelId) { releaseWorker(); selectedModelId = DEFAULT_MODEL; }
+  if (id === selectedModelId) { releaseWorker(); selectedModelId = DEFAULT_MODEL; rememberModel(DEFAULT_MODEL); }
   customModels = customModels.filter((m) => m.id !== id);
   writeCustom();
   refreshModels();
   try {
     const store = await storeReady;
-    await store.removeAll(`${HF_BASE}${id}/resolve/main/`);
+    await store.removeAll(prefixOf(id));
   } catch (e) { /* nothing had been downloaded */ }
-  await renderModelList();
+  statusCache.delete(id);
+  renderModelList();
   await renderLibrary();
-  showToast(model.name + ' taken off your list', 'success');
+  renderChat();
+  toast(model.name + ' taken off your list', 'success');
 }
 
 /* A model that is no longer on the list cannot be chosen, used, or removed through
    the library, so its weights would sit on the disk forever with nothing able to
-   reach them. This clears those when the page opens. Anything somebody added
-   themselves counts as on the list, which is why it runs after those are read back. */
+   reach them. This clears those when the page opens, along with pieces of any
+   download an older version of this page left behind with no way to resume it. */
 async function sweepUnlisted() {
   try {
     const store = await storeReady;
-    const known = new Set(ALL_MODELS.map((m) => `${HF_BASE}${m.id}/resolve/main/`));
+    const known = new Set(ALL_MODELS.map((m) => prefixOf(m.id)));
     let freed = 0;
     for (const prefix of await store.listModels()) {
       if (known.has(prefix)) continue;
-      freed += await store.bytesFor(prefix);
+      freed += (await store.bytesFor(prefix)) + (await store.partialBytesFor(prefix));
       await store.removeAll(prefix);
     }
-    if (freed > 1024 * 1024 && typeof showToast === 'function') {
-      showToast('Cleared ' + readableBytes(freed) + ' of models no longer offered', 'info');
+    freed += await store.sweepOrphans();
+    if (freed > 1024 * 1024) {
+      toast('Cleared ' + readableBytes(freed) + ' of unused model files', 'info');
     }
   } catch (e) { /* nothing to clear */ }
 }
-// A two gigabyte download deserves a way out that is not buried in browser settings.
+
+// A two gigabyte download deserves a way out that is not buried in browser settings,
+// and one that asks first, naming what it frees.
 async function forgetModel(id, btn) {
-  if (busy) return;
+  if (busy()) return;
   const model = ALL_MODELS.find((m) => m.id === id);
   if (!model) return;
-  setBusy(btn, true, 'Removing...');
+  const st = statusOf(model);
+  const size = readableBytes(st.held || st.total);
+  const ok = await confirmInline(btn, { message: `Remove ${model.name}, ${size}?`, confirmLabel: 'Remove' });
+  if (!ok) return;
   try {
     if (id === selectedModelId) releaseWorker();
     const store = await storeReady;
-    await store.removeAll(`${HF_BASE}${id}/resolve/main/`);
-    await renderModelList();
-    await renderLibrary();
-    showToast(model.name + ' removed from this device', 'success');
+    await store.removeAll(prefixOf(id));
+    await refreshStatus(model);
+    renderModelList();
+    if (document.getElementById('libraryDialog').open) await renderLibrary();
+    renderChat();
+    toast(model.name + ' removed from this device, ' + size + ' freed', 'success');
+    announce(model.name + ' removed');
   } catch (err) {
-    showToast('That model could not be removed.', 'error');
-    setBusy(btn, false);
+    toast('That model could not be removed.', 'error');
   }
 }
 
-async function chooseModel(id) {
-  if (busy) return;
+async function chooseModel(id, btn) {
+  if (busy()) return;
+  const model = ALL_MODELS.find((m) => m.id === id);
+  if (!model) return;
+  const fit = fitFor(model);
+  if (fit.level === 'too-big' && !overrides.has(id) && btn) {
+    const ok = await confirmInline(btn, {
+      message: fit.why + ' Use it anyway?',
+      confirmLabel: 'Use anyway',
+      danger: true,
+    });
+    if (!ok) return;
+    overrides.add(id);
+  }
   selectedModelId = id;
-  try { localStorage.setItem('rewriterModel', id); } catch (e) {}
+  rememberModel(id);
   releaseWorker();
-  await renderModelList();
+  pendingText = pendingText || null;
+  await refreshStatus(model);
+  renderModelList();
   await renderLibrary();
   renderChat();
-  showToast(currentModel().name + ' selected', 'success');
+  if (messages.length && document.getElementById('consentCard')) showConsent(false);
+  toast(model.name + ' selected', 'success');
 }
 
+let libraryReturn = null;
+
 function openLibrary() {
+  libraryReturn = document.activeElement;
+  closeDrawer();
   renderLibrary();
   const dialog = document.getElementById('libraryDialog');
-  if (dialog.showModal) dialog.showModal(); else dialog.setAttribute('open', '');
+  if (dialog.showModal) { if (!dialog.open) dialog.showModal(); } else dialog.setAttribute('open', '');
 }
 
 function closeLibrary() {
@@ -1232,268 +3492,323 @@ function closeLibrary() {
   if (dialog.close) dialog.close(); else dialog.removeAttribute('open');
 }
 
-// Clicking the darkened area around a dialog is the other half of how people expect to
-// get out of one, alongside the button and the escape key.
-document.getElementById('libraryDialog').addEventListener('click', (e) => {
-  if (e.target === e.currentTarget) closeLibrary();
-});
+/* ---------- Keeping the model as a file ----------
 
-/* ---------- The model itself ---------- */
+   The zip is written as it is read: each stored piece of a file goes out to the file
+   and is gone from memory before the next is read, with the checksum worked out on
+   the way. A 2.4GB model built in memory, as this used to, simply fails. Where the
+   browser can write to a file directly (Chrome and Edge on a computer) any size
+   works. Elsewhere the zip is assembled as a blob from the stored pieces, which the
+   browser keeps on disk, and that is only offered up to 1.5GB. The format is a plain
+   stored zip, which is what earlier versions of this page produced too. */
 
-function releaseWorker() {
-  if (worker) { try { worker.terminate(); } catch (e) {} }
-  worker = null;
-  workerKey = null;
-}
-
-// The model is loaded once and kept for the rest of the conversation. Starting a
-// worker per message meant reading the whole thing back out of the cache every time
-// somebody pressed send, which for a gigabyte is most of the wait.
-function getWorker(onDownload) {
-  const model = currentModel();
-  const key = model.id + '|' + (model.webgpu && webgpuReady ? 'webgpu' : 'cpu');
-  if (worker && workerKey === key) return Promise.resolve(worker);
-  releaseWorker();
-
-  return new Promise((resolve, reject) => {
-    let started;
-    try {
-      started = new Worker('../assets/chat-worker.js?v=2', { type: 'module' });
-    } catch (e) {
-      reject(e);
-      return;
-    }
-    const fail = (err) => {
-      try { started.terminate(); } catch (e) {}
-      reject(err instanceof Error ? err : new Error('The model could not start.'));
-    };
-    const onMessage = (ev) => {
-      const m = ev.data || {};
-      if (m.type === 'download') { onDownload(m.progress); return; }
-      if (m.type === 'ready') {
-        started.removeEventListener('message', onMessage);
-        started.removeEventListener('error', fail);
-        worker = started;
-        workerKey = key;
-        resolve(started);
-        return;
-      }
-      if (m.type === 'error') fail(new Error(m.message));
-    };
-    started.addEventListener('message', onMessage);
-    started.addEventListener('error', fail);
-    started.postMessage({
-      type: 'load',
-      model: model.id,
-      kind: model.kind,
-      dtype: model.dtype || null,
-      device: model.webgpu && webgpuReady ? 'webgpu' : null,
-    });
-  });
-}
-
-// One answer. Tokens arrive as they are produced and go straight to the bubble, so a
-// long reply reads as it is written instead of landing in one lump at the end.
-function generate(activeWorker, payload, onDelta) {
-  return new Promise((resolve, reject) => {
-    const id = ++jobId;
-    const cleanup = () => {
-      activeWorker.removeEventListener('message', onMessage);
-      activeWorker.removeEventListener('error', onError);
-    };
-    const onMessage = (ev) => {
-      const m = ev.data || {};
-      if (m.id && m.id !== id) return;
-      if (m.type === 'delta') { onDelta(m.text); return; }
-      if (m.type === 'done') { cleanup(); resolve(m); return; }
-      if (m.type === 'error') { cleanup(); reject(new Error(m.message)); }
-    };
-    const onError = () => { cleanup(); reject(new Error('The model stopped part way through.')); };
-    activeWorker.addEventListener('message', onMessage);
-    activeWorker.addEventListener('error', onError);
-    activeWorker.postMessage(Object.assign({ type: 'generate', id: id }, payload));
-  });
-}
-
-function stopReply() {
-  if (!busy || !worker) return;
-  worker.postMessage({ type: 'stop' });
-}
-
-// These models like to wrap a rewrite in quote marks, which is noise unless the
-// original was quoted too.
-function tidy(text, source) {
-  let t = (text || '').trim();
-  if (!/^["']/.test(source.trim())) {
-    t = t.replace(/^["']+/, '').replace(/["']+$/, '');
+const CRC_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+    table[n] = c >>> 0;
   }
-  return t.trim();
+  return table;
+})();
+
+function crc32(crc, bytes) {
+  let c = crc ^ 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
 }
 
-function setSending(sending) {
-  busy = sending;
-  document.getElementById('stopBtn').classList.toggle('hidden', !sending);
-  setBusy(document.getElementById('sendBtn'), sending, 'Thinking...');
+function dosTime(date) {
+  const time = (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2);
+  const day = ((date.getFullYear() - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate();
+  return { time: time & 0xFFFF, date: day & 0xFFFF };
 }
 
-function send(btn) {
-  if (busy) return;
-  const box = document.getElementById('message');
-  const text = box.value.trim();
-  if (!text) {
-    showInlineError(btn, 'Type or paste something first.');
+async function writeZip(entries, sink, onProgress) {
+  const encoder = new TextEncoder();
+  const stamp = dosTime(new Date());
+  const central = [];
+  let offset = 0;
+  let written = 0;
+  const LIMIT = 0xFFFFFFFE;
+
+  for (const entry of entries) {
+    const name = encoder.encode(entry.name);
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034b50, true);
+    local.setUint16(4, 20, true);
+    local.setUint16(6, 0x0808, true);   // sizes follow the data; names are UTF-8
+    local.setUint16(8, 0, true);        // stored
+    local.setUint16(10, stamp.time, true);
+    local.setUint16(12, stamp.date, true);
+    local.setUint16(26, name.length, true);
+    const localOffset = offset;
+    await sink.write(new Blob([local.buffer, name]));
+    offset += 30 + name.length;
+
+    let crc = 0;
+    let size = 0;
+    for await (const piece of entry.pieces()) {
+      const bytes = new Uint8Array(await piece.arrayBuffer());
+      crc = crc32(crc, bytes);
+      await sink.write(piece);
+      size += bytes.length;
+      written += bytes.length;
+      onProgress(written);
+    }
+    if (size > LIMIT || offset + size > LIMIT) throw new Error('This model is too big for a zip file, which stops at 4GB.');
+
+    const desc = new DataView(new ArrayBuffer(16));
+    desc.setUint32(0, 0x08074b50, true);
+    desc.setUint32(4, crc, true);
+    desc.setUint32(8, size, true);
+    desc.setUint32(12, size, true);
+    await sink.write(new Blob([desc.buffer]));
+    offset += size + 16;
+    central.push({ name: name, crc: crc, size: size, offset: localOffset });
+  }
+
+  const cdStart = offset;
+  const parts = [];
+  for (const c of central) {
+    const h = new DataView(new ArrayBuffer(46));
+    h.setUint32(0, 0x02014b50, true);
+    h.setUint16(4, 20, true);
+    h.setUint16(6, 20, true);
+    h.setUint16(8, 0x0808, true);
+    h.setUint16(10, 0, true);
+    h.setUint16(12, stamp.time, true);
+    h.setUint16(14, stamp.date, true);
+    h.setUint32(16, c.crc, true);
+    h.setUint32(20, c.size, true);
+    h.setUint32(24, c.size, true);
+    h.setUint16(28, c.name.length, true);
+    h.setUint32(42, c.offset, true);
+    parts.push(h.buffer, c.name);
+    offset += 46 + c.name.length;
+  }
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true);
+  end.setUint16(8, central.length, true);
+  end.setUint16(10, central.length, true);
+  end.setUint32(12, offset - cdStart, true);
+  end.setUint32(16, cdStart, true);
+  parts.push(end.buffer);
+  await sink.write(new Blob(parts));
+  await sink.close();
+}
+
+function canWriteToDisk() {
+  return typeof window.showSaveFilePicker === 'function';
+}
+
+async function renderExportState() {
+  const btn = document.getElementById('exportModelBtn');
+  const note = document.getElementById('exportNote');
+  if (!btn || !note) return;
+  const model = currentModel();
+  const st = statusOf(model);
+  const bytes = st.total || expectedBytes(model);
+  if (!canWriteToDisk() && bytes > EXPORT_IN_MEMORY_LIMIT) {
+    btn.classList.add('hidden');
+    note.classList.remove('hidden');
+    note.textContent = `At ${readableBytes(bytes)}, saving ${model.name} to a file needs Chrome or Edge on a computer, which can write it straight to disk.`;
     return;
   }
-  box.value = '';
-  growComposer();
-  run(text, btn);
+  btn.classList.remove('hidden');
+  if (!st.complete) {
+    note.classList.remove('hidden');
+    note.textContent = st.held > 0
+      ? 'Finish the download first, so the saved file holds the whole model.'
+      : 'Download this model first, then it can be saved to a file.';
+  } else {
+    note.classList.add('hidden');
+    note.textContent = '';
+  }
 }
 
-async function run(text, btn) {
+async function exportModel(btn) {
   const model = currentModel();
-  const chat = isChatModel(model);
-  const request = chat ? null : splitRequest(text);
-  const mode = matchMode(text);
+  const result = document.getElementById('modelManageResult');
+  const st = await refreshStatus(model);
+  if (!st.complete) {
+    showInlineError(btn, st.held > 0
+      ? 'Only part of this model is here. Resume the download first, so the file holds all of it.'
+      : 'Download this model first, then it can be saved to a file.');
+    return;
+  }
+  const store = await storeReady;
+  const files = await cachedFiles(model.id);
+  const total = files.reduce((sum, f) => sum + (f.size || 0), 0);
+  const name = model.id.split('/').pop() + '.zip';
 
-  messages.push({ role: 'user', text: text });
-  const botIndex = messages.push({
-    role: 'bot', text: '', pending: true, applied: request ? request.applied : false, from: model.name,
-  }) - 1;
-  stickToBottom = true;
-  renderChat();
-
-  setSending(true);
-  announce('Working on a reply');
-
-  try {
-    // Reading a gigabyte back off the disk also takes a moment, and calling that a
-    // download would be a lie to somebody who is offline and watching it work.
-    const here = await isModelDownloaded(model.id);
-    const loading = here ? 'Reading the model off this device' : 'Downloading the model, this happens once';
-    setProgress(document.getElementById('statusArea'), 0, loading);
-
-    const active = await getWorker((p) => {
-      setProgress(document.getElementById('statusArea'), p, loading);
-    });
-    document.getElementById('statusArea').innerHTML = '';
-
-    if (chat) {
-      // A chat model is given the conversation and answers the last turn itself, so
-      // none of the splitting below applies to it. Feeding it a lone instruction
-      // instead was what made a new question come back as a rewrite of the last reply.
-      const done = await generate(active, {
-        kind: model.kind,
-        turns: conversationTurns(model),
-        maxNew: model.maxNew,
-        options: CHAT_OPTIONS,
-      }, (delta) => {
-        messages[botIndex].pending = false;
-        messages[botIndex].text += delta;
-        paintStreaming(botIndex);
+  let sink;
+  let handleWritable = null;
+  const parts = [];
+  if (canWriteToDisk()) {
+    let handle;
+    try {
+      handle = await window.showSaveFilePicker({
+        suggestedName: name,
+        types: [{ description: 'Zip file', accept: { 'application/zip': ['.zip'] } }],
       });
-      messages[botIndex].text = (done.text || messages[botIndex].text).trim();
-      messages[botIndex].truncated = done.truncated;
-      messages[botIndex].stopped = done.stopped;
-      messages[botIndex].looped = done.looped;
-    } else {
-      const chunks = splitIntoChunks(request.body);
-      const options = Object.assign({}, mode ? mode.options : DEFAULT_OPTIONS);
-      const factor = mode && mode.lengthFactor ? mode.lengthFactor : 1.6;
-      const pieces = [];
-
-      for (let i = 0; i < chunks.length; i++) {
-        if (chunks.length > 1) {
-          setProgress(document.getElementById('statusArea'),
-            (i / chunks.length) * 100, `Working on part ${i + 1} of ${chunks.length}`);
-        }
-        const budget = Math.round(countWords(chunks[i]) * factor) + 24;
-        const carried = pieces.join('\n\n');
-        // The pieces already finished, plus what is arriving now. Each delta is one
-        // fragment rather than the whole answer so far, so it is added up here.
-        let streamed = '';
-        const done = await generate(active, {
-          kind: model.kind,
-          prompt: joinPrompt(request.instruction, chunks[i]),
-          maxNew: Math.max(48, Math.min(model.maxNew, budget)),
-          options: options,
-        }, (delta) => {
-          messages[botIndex].pending = false;
-          streamed += delta;
-          messages[botIndex].text = (carried ? carried + '\n\n' : '') + streamed;
-          paintStreaming(botIndex);
-        });
-        pieces.push(tidy(done.text, chunks[i]));
-        messages[botIndex].text = pieces.join('\n\n');
-        messages[botIndex].truncated = done.truncated;
-        messages[botIndex].stopped = done.stopped;
-        paintStreaming(botIndex);
-        if (done.stopped) break;
-      }
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+      throw e;
     }
-
-    messages[botIndex].pending = false;
-    document.getElementById('statusArea').innerHTML = '';
-    if (!messages[botIndex].text) {
-      messages[botIndex].text = 'Nothing came back for that. A shorter passage, or wording it as an instruction, usually helps.';
+    handleWritable = await handle.createWritable();
+    sink = { write: (chunk) => handleWritable.write(chunk), close: () => handleWritable.close() };
+  } else {
+    if (total > EXPORT_IN_MEMORY_LIMIT) {
+      showInlineError(btn, 'This model is too big to save to a file in this browser. Chrome or Edge on a computer can do it.');
+      return;
     }
-    renderChat();
-    announce('Reply finished');
-    await renderModelList();
-  } catch (e) {
-    messages.splice(botIndex, 1);
-    renderChat();
-    document.getElementById('statusArea').innerHTML =
-      `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>${escapeHTML(describeFailure(e))}</span></div>`;
-    announce('The reply failed');
-  } finally {
-    setSending(false);
+    sink = { write: async (chunk) => { parts.push(chunk); }, close: async () => {} };
   }
-}
 
-// Picking up an answer that ran out of room. The half written reply is still the
-// model's own last turn, so it carries on from the word it stopped at.
-async function continueReply(index, btn) {
-  if (busy || !worker) return;
-  const model = currentModel();
-  if (!isChatModel(model)) return;
+  const entries = [{ name: 'model.txt', pieces: async function* () { yield new Blob([model.id]); } }]
+    .concat(files.map((f) => ({ name: f.path, pieces: () => store.piecesOf(f.url) })));
 
-  setSending(true);
-  setBusy(btn, true, 'Carrying on...');
+  btn.disabled = true;
+  const done = startJob('Saving ' + model.name + ' to a file');
   try {
-    const turns = conversationTurns(model).concat([
-      { role: 'user', content: 'Carry on from exactly where you stopped. Do not repeat anything you have already written.' },
-    ]);
-    const before = messages[index].text;
-    const done = await generate(worker, {
-      kind: model.kind,
-      turns: turns,
-      maxNew: model.maxNew,
-      options: CHAT_OPTIONS,
-    }, (delta) => {
-      messages[index].text += delta;
-      paintStreaming(index);
-    });
-    const added = (done.text || messages[index].text.slice(before.length)).trim();
-    messages[index].text = (before + (/\s$/.test(before) ? '' : ' ') + added).trim();
-    messages[index].truncated = done.truncated;
-    messages[index].stopped = done.stopped;
-    renderChat();
+    result.innerHTML = '<div class="progress"><div class="progress-track"><div class="progress-fill"></div></div><div class="progress-label"><span class="text"></span><span class="pct"></span></div></div>';
+    const show = (n) => {
+      const pct = total ? Math.min(100, (n / total) * 100) : 0;
+      const fill = result.querySelector('.progress-fill');
+      if (!fill) return;
+      fill.style.width = pct.toFixed(1) + '%';
+      result.querySelector('.text').textContent = 'Saving ' + readableBytes(n) + ' of ' + readableBytes(total);
+      result.querySelector('.pct').textContent = Math.round(pct) + '%';
+    };
+    show(0);
+    await writeZip(entries, sink, show);
+    if (!handleWritable) saveBlob(new Blob(parts, { type: 'application/zip' }), name);
+    result.innerHTML = '<div class="success-msg"><i class="ph ph-check-circle" aria-hidden="true"></i> <span>Saved. Keep the file somewhere safe and load it back with Load a saved model whenever you need it.</span></div>';
+    announce(model.name + ' saved to a file');
   } catch (e) {
-    showToast(describeFailure(e), 'error');
+    try { if (handleWritable) await handleWritable.abort(); } catch (err) { /* already closed */ }
+    result.innerHTML = `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>${escapeHTML(failureKind(e) === 'quota' ? 'There is not enough free space on the disk for that file.' : (e.message || String(e)))}</span></div>`;
   } finally {
-    setSending(false);
+    btn.disabled = false;
+    done();
   }
 }
 
-function describeFailure(e) {
-  const message = (e && e.message) || String(e);
-  if (/allocat|out of memory|Array buffer/i.test(message)) {
-    return 'This browser ran out of memory loading the model. Closing other tabs usually frees enough.';
+/* Reading a saved model back without reading the whole file into memory: the zip's
+   directory is at its end, so that is read first, and then each file inside is
+   handed to the store as a slice of the original, which the browser copies straight
+   across. Stored entries (what this page writes) go in as they are; a deflated one,
+   from a zip made some other way, is inflated as a stream. */
+
+async function readZipDirectory(file) {
+  const tailSize = Math.min(file.size, 65557 + 20);
+  const tailStart = file.size - tailSize;
+  const tail = new DataView(await file.slice(tailStart).arrayBuffer());
+  let at = -1;
+  for (let i = tail.byteLength - 22; i >= 0; i--) {
+    if (tail.getUint32(i, true) === 0x06054b50) { at = i; break; }
   }
-  if (/fetch|network|Failed to load/i.test(message)) {
-    return 'The model could not be downloaded. Check the connection, or load a saved model from a file.';
+  if (at < 0) throw new Error('That file is not a zip, or it is damaged.');
+  let count = tail.getUint16(at + 10, true);
+  let cdSize = tail.getUint32(at + 12, true);
+  let cdOffset = tail.getUint32(at + 16, true);
+  if (cdOffset === 0xFFFFFFFF || count === 0xFFFF || cdSize === 0xFFFFFFFF) {
+    const loc = at - 20;
+    if (loc < 0 || tail.getUint32(loc, true) !== 0x07064b50) throw new Error('That zip could not be read.');
+    const eocd64At = Number(tail.getBigUint64(loc + 8, true));
+    const z = new DataView(await file.slice(eocd64At, eocd64At + 56).arrayBuffer());
+    count = Number(z.getBigUint64(32, true));
+    cdSize = Number(z.getBigUint64(40, true));
+    cdOffset = Number(z.getBigUint64(48, true));
   }
-  return message;
+  const cd = new DataView(await file.slice(cdOffset, cdOffset + cdSize).arrayBuffer());
+  const decoder = new TextDecoder();
+  const entries = [];
+  let p = 0;
+  for (let n = 0; n < count && p + 46 <= cd.byteLength; n++) {
+    if (cd.getUint32(p, true) !== 0x02014b50) break;
+    const method = cd.getUint16(p + 10, true);
+    let csize = cd.getUint32(p + 20, true);
+    let usize = cd.getUint32(p + 24, true);
+    const nameLen = cd.getUint16(p + 28, true);
+    const extraLen = cd.getUint16(p + 30, true);
+    const commentLen = cd.getUint16(p + 32, true);
+    let localOffset = cd.getUint32(p + 42, true);
+    const name = decoder.decode(new Uint8Array(cd.buffer, p + 46, nameLen));
+    // Zip64 keeps the real numbers in an extra field when they do not fit.
+    let e = p + 46 + nameLen;
+    const extraEnd = e + extraLen;
+    while (e + 4 <= extraEnd) {
+      const id = cd.getUint16(e, true);
+      const len = cd.getUint16(e + 2, true);
+      if (id === 0x0001) {
+        let q = e + 4;
+        if (usize === 0xFFFFFFFF) { usize = Number(cd.getBigUint64(q, true)); q += 8; }
+        if (csize === 0xFFFFFFFF) { csize = Number(cd.getBigUint64(q, true)); q += 8; }
+        if (localOffset === 0xFFFFFFFF) { localOffset = Number(cd.getBigUint64(q, true)); q += 8; }
+      }
+      e += 4 + len;
+    }
+    entries.push({ name: name, method: method, csize: csize, usize: usize, localOffset: localOffset });
+    p = extraEnd + commentLen;
+  }
+  return entries;
+}
+
+async function entryBlob(file, entry) {
+  const head = new DataView(await file.slice(entry.localOffset, entry.localOffset + 30).arrayBuffer());
+  if (head.getUint32(0, true) !== 0x04034b50) throw new Error('That zip is damaged.');
+  const start = entry.localOffset + 30 + head.getUint16(26, true) + head.getUint16(28, true);
+  return file.slice(start, start + entry.csize);
+}
+
+async function importModel(file) {
+  const result = document.getElementById('modelManageResult');
+  result.innerHTML = '<div class="status-bar"><span class="spinner" aria-hidden="true"></span> Reading the file</div>';
+  const done = startJob('Loading a saved model');
+  try {
+    const entries = await readZipDirectory(file);
+    const nameEntry = entries.find((e) => e.name === 'model.txt');
+    if (!nameEntry) throw new Error('That zip was not saved by this tool.');
+    const nameBlob = await entryBlob(file, nameEntry);
+    const modelId = (nameEntry.method === 8
+      ? await new Response(nameBlob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).text()
+      : await nameBlob.text()).trim();
+    const known = ALL_MODELS.find((m) => m.id === modelId);
+    if (!known) throw new Error('That file holds a model this tool does not offer.');
+
+    const store = await storeReady;
+    const files = entries.filter((e) => e.name !== 'model.txt' && !e.name.endsWith('/'));
+    if (!files.length) throw new Error('That zip has no model files in it.');
+    const total = files.reduce((sum, e) => sum + e.usize, 0);
+    let copied = 0;
+    for (const e of files) {
+      if (e.method !== 0 && e.method !== 8) throw new Error('That zip uses a kind of compression this page cannot read.');
+      result.innerHTML = `<div class="status-bar"><span class="spinner" aria-hidden="true"></span> Copying ${escapeHTML(readableBytes(copied))} of ${escapeHTML(readableBytes(total))} into this browser</div>`;
+      const type = e.name.endsWith('.json') ? 'application/json' : 'application/octet-stream';
+      const blob = await entryBlob(file, e);
+      if (e.method === 0) await store.writeFile(modelUrl(modelId, e.name), blob, type);
+      else await store.writeFromStream(modelUrl(modelId, e.name), blob.stream().pipeThrough(new DecompressionStream('deflate-raw')), type);
+      copied += e.usize;
+    }
+    selectedModelId = modelId;
+    rememberModel(modelId);
+    releaseWorker();
+    const st = await refreshStatus(known);
+    renderModelList();
+    renderChat();
+    if (st.complete || !st.known) {
+      result.innerHTML = `<div class="success-msg"><i class="ph ph-check-circle" aria-hidden="true"></i> <span>${escapeHTML(known.name)} loaded from your file. It runs without downloading anything.</span></div>`;
+    } else {
+      result.innerHTML = `<div class="warning-msg"><i class="ph ph-warning" aria-hidden="true"></i> <span>That file held only ${escapeHTML(readableBytes(st.held))} of ${escapeHTML(readableBytes(st.total))} of ${escapeHTML(known.name)}. Resume downloads the rest.</span></div>`;
+    }
+    announce(known.name + ' loaded from a file');
+  } catch (err) {
+    result.innerHTML = `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>${escapeHTML(failureKind(err) === 'quota' ? describeFailure(err) : (err.message || String(err)))}</span></div>`;
+  } finally {
+    done();
+  }
 }
 
 /* ---------- Composer ---------- */
@@ -1506,125 +3821,255 @@ function growComposer() {
   box.style.height = Math.min(box.scrollHeight, 240) + 'px';
 }
 
+function updateHint() {
+  const hint = document.getElementById('composerHint');
+  hint.textContent = isCoarse()
+    ? 'Send with the button; Enter makes a new line'
+    : 'Enter sends, Shift and Enter makes a new line, Esc stops';
+}
+
+/* ---------- Events ---------- */
+
+document.getElementById('sendBtn').addEventListener('click', sendOrStop);
+document.getElementById('newChatBtn').addEventListener('click', newChat);
+document.getElementById('browseBtn').addEventListener('click', openLibrary);
+document.getElementById('modelChip').addEventListener('click', openLibrary);
+document.getElementById('closeLibraryBtn').addEventListener('click', closeLibrary);
+document.getElementById('jumpBtn').addEventListener('click', jumpToLatest);
+document.getElementById('cancelEditBtn').addEventListener('click', () => cancelEdit(false));
+document.getElementById('drawerBtn').addEventListener('click', () => {
+  if (document.body.classList.contains('drawer-open')) closeDrawer(); else openDrawer();
+});
+document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+document.getElementById('drawerBackdrop').addEventListener('click', closeDrawer);
+document.getElementById('exportModelBtn').addEventListener('click', (e) => {
+  const btn = e.currentTarget;
+  exportModel(btn).catch((err) => showInlineError(btn, (err && err.message) || 'The model could not be saved.'));
+});
+document.getElementById('importModelBtn').addEventListener('click', () => document.getElementById('modelFileInput').click());
+document.getElementById('modelFileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (file) await importModel(file);
+});
+document.querySelectorAll('[data-export]').forEach((b) => b.addEventListener('click', () => exportConversation(b.dataset.export)));
+document.getElementById('histSearch').addEventListener('input', renderHistory);
+document.getElementById('searchBtn').addEventListener('click', (e) => searchModels(e.currentTarget));
 document.getElementById('modelSearch').addEventListener('keydown', (e) => {
   if (e.key !== 'Enter') return;
   e.preventDefault();
   searchModels(document.getElementById('searchBtn'));
 });
 
-document.getElementById('message').addEventListener('input', growComposer);
-document.getElementById('message').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    send(document.getElementById('sendBtn'));
+const libraryDialog = document.getElementById('libraryDialog');
+// Clicking the darkened area around a dialog is the other half of how people expect to
+// get out of one, alongside the button and the escape key.
+libraryDialog.addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeLibrary();
+});
+libraryDialog.addEventListener('close', () => {
+  if (libraryReturn && document.contains(libraryReturn)) {
+    try { libraryReturn.focus({ preventScroll: true }); } catch (e) { /* gone */ }
   }
+  libraryReturn = null;
 });
 
-/* ---------- Keeping the model as a file ---------- */
+document.getElementById('modeChips').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-mode]');
+  if (b) useMode(b.dataset.mode);
+});
 
-// The browser already stores every piece it downloaded, so saving is reading them back
-// out and zipping them, and loading is writing them into the same place the library
-// reads from.
-async function exportModel(btn) {
-  const model = currentModel();
-  if (!(await isModelDownloaded(model.id))) {
-    showInlineError(btn, 'Send one message with this model first, so there is something to save.');
+document.getElementById('historyList').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-hist]');
+  if (!b) return;
+  const item = b.closest('.hist-item');
+  if (!item) return;
+  if (b.dataset.hist === 'open') switchTo(item.dataset.id);
+  else if (b.dataset.hist === 'rename') startRename(item);
+  else if (b.dataset.hist === 'delete') deleteConversation(item, b);
+});
+
+// One listener for every button drawn inside the chat, the status area and the
+// library, which are all redrawn often.
+async function onAction(e) {
+  const copyBtn = e.target.closest('.code-copy');
+  if (copyBtn) {
+    const code = copyBtn.closest('.code-block').querySelector('pre code, pre');
+    copyWithFeedback(code ? code.textContent : '', copyBtn, 'Code');
     return;
   }
-  setBusy(btn, true, 'Packing...');
-  try {
-    const store = await storeReady;
-    const zip = new JSZip();
-    zip.file('model.txt', model.id);
-    const files = await cachedFiles(model.id);
-    for (const file of files) {
-      const body = await store.readFile(file.url);
-      if (!body) continue;
-      zip.file(file.path, body);
+  const b = e.target.closest('[data-act]');
+  if (!b || b.disabled) return;
+  const i = Number(b.dataset.i);
+  const id = b.dataset.model;
+  switch (b.dataset.act) {
+    case 'copy': if (messages[i]) copyWithFeedback(messages[i].text, b, 'Reply'); break;
+    case 'retry': retryAt(i); break;
+    case 'retry-failed': retryFailed(i); break;
+    case 'edit': startEdit(i); break;
+    case 'continue': continueReply(i); break;
+    case 'smaller': case 'choose': case 'library': openLibrary(); break;
+    case 'consent': consentDownload(); break;
+    case 'override': {
+      const model = currentModel();
+      const ok = await confirmInline(b, {
+        message: fitFor(model).why + ' Download ' + readableBytes(expectedBytes(model)) + ' anyway?',
+        confirmLabel: 'Download anyway',
+      });
+      if (ok) { overrides.add(model.id); consentDownload(); }
+      break;
     }
-    const blob = await zip.generateAsync({ type: 'blob' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = model.id.split('/').pop() + '.zip';
-    a.click();
-    URL.revokeObjectURL(a.href);
-    document.getElementById('modelManageResult').innerHTML =
-      '<div class="success-msg"><i class="ph ph-check-circle" aria-hidden="true"></i> <span>Saved. Keep the file somewhere safe and load it back with Browse whenever you need it.</span></div>';
-  } catch (e) {
-    document.getElementById('modelManageResult').innerHTML =
-      `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>${escapeHTML(e.message)}</span></div>`;
-  } finally {
-    setBusy(btn, false);
+    case 'cancel-load': cancelLoad(); break;
+    case 'resume': {
+      document.getElementById('statusArea').innerHTML = '';
+      const model = ALL_MODELS.find((m) => m.id === id) || currentModel();
+      if (lastPaused && lastPaused.type === 'load' && model.id === selectedModelId) consentDownload();
+      else prefetchModel(model.id);
+      break;
+    }
+    case 'prefetch': {
+      const model = ALL_MODELS.find((m) => m.id === id);
+      if (!model) break;
+      const fit = fitFor(model);
+      if (fit.level === 'too-big' && !overrides.has(id)) {
+        const ok = await confirmInline(b, { message: fit.why + ' Download anyway?', confirmLabel: 'Download anyway' });
+        if (!ok) break;
+        overrides.add(id);
+      }
+      prefetchModel(id);
+      break;
+    }
+    case 'remove': forgetModel(id, b); break;
+    case 'use': chooseModel(id, b); break;
+    case 'drop': dropCustom(id); break;
+    case 'add': addCandidate(Number(b.dataset.n)); break;
+    default: break;
   }
 }
 
-document.getElementById('modelFileInput').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const result = document.getElementById('modelManageResult');
-  result.innerHTML = '<div class="status-bar"><span class="spinner"></span> Reading the file</div>';
-  try {
-    const zip = await JSZip.loadAsync(file);
-    const nameEntry = zip.file('model.txt');
-    if (!nameEntry) throw new Error('That zip was not saved by this tool.');
-    const model = (await nameEntry.async('string')).trim();
-    const known = ALL_MODELS.find((m) => m.id === model);
-    if (!known) throw new Error('That file holds a model this tool does not offer.');
+['chat', 'statusArea', 'libraryDialog', 'modelList'].forEach((id) => {
+  document.getElementById(id).addEventListener('click', onAction);
+});
 
-    const store = await storeReady;
-    const entries = [];
-    zip.forEach((path, entry) => { if (path !== 'model.txt' && !entry.dir) entries.push(path); });
-    if (!entries.length) throw new Error('That zip has no model files in it.');
-    for (const path of entries) {
-      const type = path.endsWith('.json') ? 'application/json' : 'application/octet-stream';
-      const body = await zip.file(path).async('blob');
-      await store.writeFile(modelUrl(model, path), body, type);
-    }
-    selectedModelId = model;
-    try { localStorage.setItem('rewriterModel', model); } catch (err) {}
-    releaseWorker();
-    await renderModelList();
-    result.innerHTML = `<div class="success-msg"><i class="ph ph-check-circle" aria-hidden="true"></i> <span>${escapeHTML(known.name)} loaded from your file. It will run without downloading anything.</span></div>`;
-  } catch (err) {
-    result.innerHTML = `<div class="error-msg"><i class="ph ph-warning-circle" aria-hidden="true"></i> <span>${escapeHTML(err.message)}</span></div>`;
-  } finally {
-    e.target.value = '';
+const composerBox = document.getElementById('message');
+composerBox.addEventListener('input', () => {
+  growComposer();
+  updateDirty();
+  if (activeMode) {
+    const mode = MODES.find((m) => m.id === activeMode);
+    if (mode && !composerBox.value.trim().startsWith(mode.prefill.trim())) markMode(null);
   }
 });
 
-function escapeHTML(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
+/* Enter sends with a keyboard. It never sends while an input method is still putting
+   a word together (Japanese, Chinese, Korean and others press Enter to accept a
+   word), and on a touch screen Enter is a new line and the Send button sends, since a
+   phone keyboard has no Shift and Enter to reach for. */
+composerBox.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' || e.shiftKey) return;
+  if (e.isComposing || e.keyCode === 229) return;
+  if (isCoarse()) return;
+  e.preventDefault();
+  if (phase === 'idle') send();
+});
 
-async function detectWebGPU() {
-  if (!navigator.gpu) return false;
-  try {
-    const adapter = await navigator.gpu.requestAdapter();
-    return !!adapter;
-  } catch (e) {
-    return false;
+// Esc stops a reply or a download from anywhere on the page, unless something with its
+// own Esc (the library, a rename box, an inline confirmation) is open.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || e.defaultPrevented) return;
+  if (libraryDialog.open) return;
+  if (e.target && e.target.closest && e.target.closest('.inline-confirm, .hist-rename-input')) return;
+  if (drawerIsModal()) { e.preventDefault(); closeDrawer(); return; }
+  if (stopReply()) { e.preventDefault(); announce('Stopping'); return; }
+  if (editingIndex >= 0) { e.preventDefault(); cancelEdit(false); }
+});
+
+/* ---------- Starting up ---------- */
+
+function applyHash(id, fromOutside) {
+  if (HASH_MODES.includes(id)) {
+    const box = document.getElementById('message');
+    const mode = MODES.find((m) => m.id === id);
+    if (activeMode !== id || !box.value.trim().startsWith(mode.prefill.trim())) useMode(id, { focus: fromOutside, force: true });
+  } else if (id === 'chat' && activeMode) {
+    const box = document.getElementById('message');
+    const mode = MODES.find((m) => m.id === activeMode);
+    if (mode && box.value.trim().startsWith(mode.prefill.trim())) {
+      box.value = box.value.trim().slice(mode.prefill.trim().length).replace(/^[:\s]+/, '');
+      growComposer();
+    }
+    markMode(null);
   }
 }
 
-initModeList();
+renderModeChips();
+updateHint();
+updateSendButton();
 renderChat();
-// Drawn straight away rather than waiting on the graphics check, which can take a
-// second and would otherwise leave the panel blank.
-renderModelList();
-sweepUnlisted();
-detectWebGPU().then(async (ok) => {
-  webgpuReady = ok;
-  // Falling back to a model this browser can actually run beats failing on send.
-  if (currentModel().webgpu && !ok) selectedModelId = DEFAULT_MODEL;
-  else if (!pickedBefore && ok) {
-    selectedModelId = (await isModelDownloaded(BEST_MODEL)) ? BEST_MODEL : PREFERRED_MODEL;
+renderHistory();
+{
+  // The address is read straight away, before the shell has loaded, so a link to
+  // #paraphrase shows that starting point from the first paint.
+  const h = decodeURIComponent(location.hash.slice(1));
+  if (HASH_MODES.includes(h)) {
+    const mode = MODES.find((m) => m.id === h);
+    document.getElementById('message').value = mode.prefill;
+    markMode(h);
+    growComposer();
   }
+}
+loadMarkdown();
+
+async function init() {
+  const saved = rememberedModel();
+  if (saved) { selectedModelId = saved; pickedBefore = true; }
+
+  // The address wins over whatever was remembered.
+  const hashId = (() => {
+    const h = decodeURIComponent(location.hash.slice(1));
+    return HASH_IDS.includes(h) ? h : null;
+  })();
+  if (hashId) {
+    applyHash(hashId, false);
+    setSubtool(hashId);
+  } else {
+    const mode = getPref('mode', '');
+    if (mode && MODES.some((m) => m.id === mode) && !document.getElementById('message').value.trim()) {
+      useMode(mode, { focus: false, force: true });
+    }
+  }
+  try {
+    if (window.TFE && window.TFE.subtool) window.TFE.subtool.onChange((id) => applyHash(id, true));
+  } catch (e) {}
+
+  loadConversations();
+  const gpuCheck = detectGPU();
+  await storeReady;
+  await refreshAllStatus();
+  renderModelList();
+
+  // Send stays off until the graphics check is back and the model is settled, so a
+  // quick first message cannot go to the wrong one.
+  const found = await gpuCheck;
+  Object.assign(gpu, found, { checked: true });
+  if (currentModel().webgpu && !gpu.ok) {
+    selectedModelId = DEFAULT_MODEL;
+  } else if (!pickedBefore && gpu.ok) {
+    selectedModelId = statusOf(ALL_MODELS.find((m) => m.id === BEST_MODEL)).complete ? BEST_MODEL : PREFERRED_MODEL;
+  }
+  await refreshStatus(currentModel());
+  refreshStorageInfo().then(() => { if (!messages.length) renderChat(); });
+  phase = 'idle';
+  updateSendButton();
   renderModelList();
   renderChat();
-  if (document.getElementById('libraryDialog').open) renderLibrary();
-});
+  updateDirty();
+  if (libraryDialog.open) renderLibrary();
+  sweepUnlisted();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+window.addEventListener('resize', updateHint);
 </script>
 <script src="../assets/app.js" defer></script>
 </body>

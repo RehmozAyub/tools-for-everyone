@@ -25,6 +25,17 @@ const LEGACY_CACHE = 'transformers-cache';
 // does not throw away much work.
 const CHUNK_BYTES = 64 * 1024 * 1024;
 
+// The resumable downloader below writes smaller pieces, because a piece is also the
+// unit a broken download resumes from: at 16MB an interrupted download loses at most
+// that much. Readers do not care, since each record says how many pieces it has.
+const DOWNLOAD_CHUNK_BYTES = 16 * 1024 * 1024;
+
+// Bookkeeping kept in the chunks store beside the pieces themselves, so removing a
+// model by its address clears these too, and the database needs no new version (a
+// version bump would lock out any other tab still holding the old one open).
+const PARTIAL_MARK = '#partial';
+const MANIFEST_MARK = '#manifest';
+
 let dbPromise = null;
 
 function openDb() {
@@ -54,7 +65,9 @@ function run(store, mode, work) {
       return;
     }
     tx.oncomplete = () => resolve(result && result.value !== undefined ? result.value : result);
-    tx.onerror = () => reject(tx.error);
+    // The failing request carries the real error (QuotaExceededError when the disk is
+    // full); the transaction's own is not always set yet when this fires.
+    tx.onerror = (ev) => reject((ev && ev.target && ev.target.error) || tx.error || new Error('The model store could not be written.'));
     tx.onabort = () => reject(tx.error || new Error('The write was rolled back.'));
   }));
 }
@@ -139,6 +152,12 @@ export async function listModels() {
     const keys = await run(FILES, 'readonly', (store) => asValue(store.getAllKeys()));
     for (const url of keys || []) if (typeof url === 'string') add(url);
   } catch (e) { /* the store may not exist yet */ }
+  // Pieces of a download that never finished have no record yet, and still belong to
+  // a model, so they count here too.
+  try {
+    const keys = await run(CHUNKS, 'readonly', (store) => asValue(store.getAllKeys()));
+    for (const key of keys || []) if (typeof key === 'string') add(key);
+  } catch (e) { /* the store may not exist yet */ }
   try {
     if (typeof caches !== 'undefined') {
       const cache = await caches.open(LEGACY_CACHE);
@@ -174,16 +193,17 @@ export async function writeFile(url, blob, type) {
     await run(CHUNKS, 'readwrite', (store) => store.put(slice, chunkKey(url, i)));
   }
   await finish(url, total, type || blob.type);
+  await run(CHUNKS, 'readwrite', (store) => store.delete(url + PARTIAL_MARK));
 }
 
 // The record is written last, so a download cut off half way leaves orphaned chunks
 // rather than a file that claims to be complete.
-async function finish(url, total, type) {
+async function finish(url, total, type, chunks) {
   await run(FILES, 'readwrite', (store) => store.put({
     url: url,
     size: total,
     type: type || 'application/octet-stream',
-    chunks: Math.max(1, Math.ceil(total / CHUNK_BYTES)),
+    chunks: chunks || Math.max(1, Math.ceil(total / CHUNK_BYTES)),
     saved: Date.now(),
   }));
 }
@@ -221,7 +241,11 @@ async function writeStream(url, body, type) {
     if (pendingBytes >= CHUNK_BYTES) await flush();
   }
   await flush();
-  await finish(url, total, type);
+  if (!index) {
+    await run(CHUNKS, 'readwrite', (store) => store.put(new Blob([]), chunkKey(url, 0)));
+    index = 1;
+  }
+  await finish(url, total, type, index);
 }
 
 export async function removeFile(url) {
@@ -295,3 +319,305 @@ export const cache = {
     await writeFile(url, await response.blob(), type);
   },
 };
+
+/* ---------- Knowing when a model is whole ----------
+
+   A model is several files, and one of them can be tiny while the weights sit in
+   another: Llama 3.2 3B keeps 260KB in model_q4f16.onnx and 2.4GB in the two data
+   files beside it. Counting a model as saved because "some .onnx file is here" let an
+   interrupted download pass as complete. The list of files a model needs, with their
+   sizes, is kept here once it is known, and a model is whole only when every one of
+   them is held at its full size. */
+
+export async function setManifest(prefix, files) {
+  const clean = (files || []).map((f) => ({ path: String(f.path), size: Number(f.size) || 0 }));
+  await run(CHUNKS, 'readwrite', (store) => store.put({ files: clean, saved: Date.now() }, prefix + MANIFEST_MARK));
+}
+
+export async function getManifest(prefix) {
+  try {
+    const value = await run(CHUNKS, 'readonly', (store) => asValue(store.get(prefix + MANIFEST_MARK)));
+    return value && Array.isArray(value.files) && value.files.length ? value.files : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+export async function partialOf(url) {
+  try {
+    const value = await run(CHUNKS, 'readonly', (store) => asValue(store.get(url + PARTIAL_MARK)));
+    return value && typeof value.bytes === 'number' ? value : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function allPartials() {
+  const found = new Map();
+  try {
+    const keys = await run(CHUNKS, 'readonly', (store) => asValue(store.getAllKeys()));
+    for (const key of keys || []) {
+      if (typeof key !== 'string' || !key.endsWith(PARTIAL_MARK)) continue;
+      const url = key.slice(0, -PARTIAL_MARK.length);
+      const value = await partialOf(url);
+      if (value) found.set(url, value);
+    }
+  } catch (e) { /* nothing yet */ }
+  return found;
+}
+
+// Bytes of downloads that were started and not finished, under one model.
+export async function partialBytesFor(prefix) {
+  let total = 0;
+  for (const [url, value] of await allPartials()) {
+    if (url.startsWith(prefix)) total += value.bytes || 0;
+  }
+  return total;
+}
+
+/* How much of a model is here. `expected` is the list of { path, size } it needs;
+   without one, the stored manifest is used, and without either the answer can only
+   say what is held. */
+export async function modelStatus(prefix, expected) {
+  const need = expected && expected.length ? expected : await getManifest(prefix);
+  const files = await filesFor(prefix);
+  const byPath = new Map(files.map((f) => [f.path, f]));
+  const partials = await allPartials();
+  let held = 0;
+  let total = 0;
+  const missing = [];
+  if (need) {
+    for (const want of need) {
+      total += want.size || 0;
+      const have = byPath.get(want.path);
+      // Files in the old Cache Storage report no size; they were whole when stored.
+      const whole = have && (have.where === 'cache' || !want.size || have.size === want.size);
+      if (whole) {
+        held += want.size || have.size || 0;
+      } else {
+        const part = partials.get(prefix + want.path);
+        held += part ? Math.min(part.bytes, want.size || part.bytes) : 0;
+        missing.push(want.path);
+      }
+    }
+  } else {
+    for (const f of files) held += f.size || 0;
+    for (const [url, value] of partials) if (url.startsWith(prefix)) held += value.bytes || 0;
+  }
+  return {
+    known: !!need,
+    complete: !!need && missing.length === 0,
+    held: held,
+    total: total,
+    missing: missing,
+  };
+}
+
+/* ---------- Downloading so that a broken connection is not a restart ----------
+
+   Hugging Face serves model files with byte ranges (Accept-Ranges: bytes, and the
+   CDN it redirects to answers 206 with an open CORS policy), so a download that was
+   cut off asks for the rest rather than starting again. Each piece is stored with a
+   note of how far the file has got, in one transaction, so the note never claims
+   more than what is actually on the disk. */
+
+export async function downloadFile(url, options = {}) {
+  const expected = Number(options.size) || 0;
+  const onBytes = options.onBytes || (() => {});
+  const signal = options.signal;
+  const fetcher = options.fetch || ((u, init) => fetch(u, init));
+  const pieceBytes = Number(options.chunkBytes) || DOWNLOAD_CHUNK_BYTES;
+
+  const record = await entry(url);
+  if (record && (!expected || record.size === expected)) return { skipped: true, size: record.size };
+
+  let attempts = 0;
+  for (;;) {
+    try {
+      return await downloadOnce(url, expected, onBytes, signal, fetcher, pieceBytes);
+    } catch (e) {
+      attempts += 1;
+      const aborted = (signal && signal.aborted) || (e && e.name === 'AbortError');
+      const quota = e && (e.name === 'QuotaExceededError' || /quota/i.test(e.message || ''));
+      if (aborted || quota || attempts > 2 || (e && e.fatal)) throw e;
+      // A dropped connection is worth two more tries from wherever it got to.
+      await new Promise((r) => setTimeout(r, 1500 * attempts));
+    }
+  }
+}
+
+async function downloadOnce(url, expected, onBytes, signal, fetcher, pieceBytes) {
+  let part = await partialOf(url);
+  if (part && expected && part.total && part.total !== expected) {
+    onBytes(-part.bytes);
+    await clearPartial(url);
+    part = null;
+  }
+  let offset = part ? part.bytes : 0;
+  let index = part ? part.chunks : 0;
+
+  const headers = {};
+  if (offset > 0) headers.Range = 'bytes=' + offset + '-';
+  const response = await fetcher(url, { headers: headers, signal: signal, cache: 'no-store' });
+  if (!response.ok) {
+    const err = new Error('The download failed: the server answered ' + response.status + '.');
+    if (response.status === 404 || response.status === 401 || response.status === 403) err.fatal = true;
+    if (response.status === 416 && part) await clearPartial(url);
+    throw err;
+  }
+
+  const etag = response.headers.get('etag') || '';
+  let total = expected;
+  // Only a ranged answer states the full size for certain. A whole file may arrive
+  // compressed, and then its Content-Length is not the size that gets stored.
+  let mustMatch = 0;
+  if (response.status === 206) {
+    const range = /bytes\s+(\d+)-\d+\/(\d+)/.exec(response.headers.get('content-range') || '');
+    const start = range ? Number(range[1]) : -1;
+    const whole = range ? Number(range[2]) : 0;
+    const changed = start !== offset
+      || (part && part.etag && etag && part.etag !== etag)
+      || (expected && whole && whole !== expected);
+    if (changed) {
+      // The file on the server is not the one the stored pieces came from.
+      try { await response.body.cancel(); } catch (e) { /* already closed */ }
+      onBytes(-offset);
+      await clearPartial(url);
+      return downloadOnce(url, expected, onBytes, signal, fetcher, pieceBytes);
+    }
+    total = whole || total;
+    mustMatch = whole;
+  } else {
+    // The server sent the whole file, whatever was asked for, so start from nothing.
+    if (offset > 0) onBytes(-offset);
+    offset = 0;
+    index = 0;
+    // If the file changed since its size was noted, the new one is what gets stored,
+    // and the caller records its new size.
+    const length = Number(response.headers.get('content-length')) || 0;
+    total = expected || length;
+  }
+
+  const type = response.headers.get('content-type') || 'application/octet-stream';
+  const reader = response.body.getReader();
+  let pending = [];
+  let pendingBytes = 0;
+
+  const flush = async () => {
+    if (!pendingBytes) return;
+    const chunk = new Blob(pending, { type: 'application/octet-stream' });
+    const next = { bytes: offset + pendingBytes, chunks: index + 1, total: total, etag: etag, type: type };
+    const at = index;
+    await run(CHUNKS, 'readwrite', (store) => {
+      store.put(chunk, chunkKey(url, at));
+      store.put(next, url + PARTIAL_MARK);
+    });
+    offset += pendingBytes;
+    index += 1;
+    pending = [];
+    pendingBytes = 0;
+  };
+
+  for (;;) {
+    const step = await reader.read();
+    if (step.done) break;
+    pending.push(step.value);
+    pendingBytes += step.value.byteLength;
+    onBytes(step.value.byteLength);
+    if (pendingBytes >= pieceBytes) await flush();
+  }
+  await flush();
+
+  if (mustMatch && offset !== mustMatch) {
+    throw new Error('The download ended early, at ' + offset + ' of ' + total + ' bytes.');
+  }
+  if (!index) {
+    await run(CHUNKS, 'readwrite', (store) => store.put(new Blob([]), chunkKey(url, 0)));
+    index = 1;
+  }
+  await finish(url, offset, type, index);
+  await run(CHUNKS, 'readwrite', (store) => store.delete(url + PARTIAL_MARK));
+  return { skipped: false, size: offset };
+}
+
+async function clearPartial(url) {
+  const part = await partialOf(url);
+  const count = part ? part.chunks : 0;
+  await run(CHUNKS, 'readwrite', (store) => {
+    for (let i = 0; i < count; i++) store.delete(chunkKey(url, i));
+    store.delete(url + PARTIAL_MARK);
+  });
+}
+
+/* Pieces that nothing points at: left by an older version of this page when a
+   download was cut off (it kept no note to resume from), or by a file written again
+   with fewer pieces than before. They can never be read, so they only take up room.
+   Returns the number of bytes freed. */
+export async function sweepOrphans() {
+  let freed = 0;
+  try {
+    const keys = await run(CHUNKS, 'readonly', (store) => asValue(store.getAllKeys()));
+    const records = await run(FILES, 'readonly', (store) => asValue(store.getAll()));
+    const recorded = new Map((records || []).map((r) => [r.url, r.chunks]));
+    const partials = await allPartials();
+    for (const key of keys || []) {
+      if (typeof key !== 'string') continue;
+      if (key.endsWith(PARTIAL_MARK) || key.endsWith(MANIFEST_MARK)) continue;
+      const hash = key.lastIndexOf('#');
+      if (hash < 0) continue;
+      const url = key.slice(0, hash);
+      const n = Number(key.slice(hash + 1));
+      if (!Number.isInteger(n)) continue;
+      const limit = recorded.has(url) ? recorded.get(url) : (partials.has(url) ? partials.get(url).chunks : 0);
+      if (n < limit) continue;
+      // Checked again inside the write, so a download running in another tab that
+      // has just reached this piece keeps it.
+      freed += await run(CHUNKS, 'readwrite', (store) => {
+        const out = { value: 0 };
+        const note = store.get(url + PARTIAL_MARK);
+        note.onsuccess = () => {
+          if (note.result && n < note.result.chunks) return;
+          const piece = store.get(key);
+          piece.onsuccess = () => {
+            out.value = (piece.result && piece.result.size) || 0;
+            store.delete(key);
+          };
+        };
+        return out;
+      }) || 0;
+    }
+  } catch (e) { /* nothing to sweep */ }
+  return freed;
+}
+
+// A stored file one piece at a time, so a large one can be streamed into a zip
+// without ever being held whole.
+export async function* piecesOf(url) {
+  const record = await entry(url);
+  if (record) {
+    for (let i = 0; i < record.chunks; i++) {
+      const part = await run(CHUNKS, 'readonly', (store) => asValue(store.get(chunkKey(url, i))));
+      if (!part) throw new Error('Part of ' + url.split('/').pop() + ' is missing from this device.');
+      yield part;
+    }
+    return;
+  }
+  const legacy = await readFile(url);
+  if (legacy) yield legacy;
+}
+
+// Everything stored, for the "models use" line.
+export async function totalBytes() {
+  let total = 0;
+  try {
+    const records = await run(FILES, 'readonly', (store) => asValue(store.getAll()));
+    for (const r of records || []) total += r.size || 0;
+  } catch (e) { /* nothing yet */ }
+  for (const value of (await allPartials()).values()) total += value.bytes || 0;
+  return total;
+}
+
+// Writing a file from a stream, for loading a saved model without holding it whole.
+export async function writeFromStream(url, stream, type) {
+  await writeStream(url, stream, type);
+}
