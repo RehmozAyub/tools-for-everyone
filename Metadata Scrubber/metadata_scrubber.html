@@ -28,13 +28,15 @@
 </script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <link rel="stylesheet" href="../assets/theme.css">
-<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="scrub-engine.js"></script>
 <style>
+  .file-card { padding: 14px 16px; }
+  .file-card-head { display: flex; align-items: center; gap: 8px; }
   .file-header {
     display: flex; justify-content: space-between; align-items: center;
-    gap: 12px; width: 100%; padding: 0; margin: 0;
+    gap: 12px; flex: 1; min-width: 0; min-height: 40px; padding: 0; margin: 0;
     background: none; border: none; color: var(--text);
     font: inherit; text-align: left; cursor: pointer;
   }
@@ -47,36 +49,120 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 34ch;
   }
   .file-count {
-    color: var(--text-muted); font-size: 0.8125rem;
+    color: var(--text-muted); font-size: 0.8125rem; font-variant-numeric: tabular-nums;
     display: flex; align-items: center; gap: 6px; flex-shrink: 0;
   }
+  .file-count .caret { transition: transform 160ms var(--ease); }
+  .file-header[aria-expanded="true"] .caret { transform: rotate(180deg); }
+  .remove-btn { flex-shrink: 0; }
   .file-body { display: none; padding-top: 12px; }
   .file-body.open { display: block; }
-  .meta-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; margin: 12px 0; }
+  .file-body > * + * { margin-top: 12px; }
+
+  .tag-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: var(--radius);
+    font-size: 0.75rem; font-weight: 500; font-family: var(--font-sans); white-space: nowrap;
+  }
+  .tag-badge.danger { background: var(--danger-tint); color: var(--danger); }
+  .tag-badge.caution { background: var(--warning-tint); color: var(--warning); }
+  .tag-badge.ok { background: var(--success-tint); color: var(--success); }
+  .tag-badge.info { background: var(--surface-2); color: var(--text-muted); }
+  .tag-badge.accent { background: var(--accent-tint); color: var(--accent); }
+
+  .risk-summary h3, .proof h3 { font-size: 0.875rem; margin: 0 0 8px; }
+  .risk-groups { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .risk-groups li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.8125rem; }
+  .risk-groups li > .ph { font-size: 1.125rem; margin-top: 1px; color: var(--text-muted); flex-shrink: 0; }
+  .risk-groups li.g-location > .ph { color: var(--danger); }
+  .risk-groups li.g-device > .ph, .risk-groups li.g-time > .ph, .risk-groups li.g-people > .ph { color: var(--warning); }
+  .risk-groups b { display: block; font-weight: 600; }
+  .risk-groups .what { color: var(--text-muted); }
+  .risk-groups .items { overflow-wrap: anywhere; }
+
+  .gps-block {
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 12px;
+    background: var(--surface-2);
+  }
+  .gps-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 0.8125rem; }
+  .gps-row code { font-family: var(--font-mono); font-variant-numeric: tabular-nums; user-select: all; }
+  .gps-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .gps-note { margin: 8px 0 0; font-size: 0.75rem; color: var(--text-muted); }
+  .map { height: 260px; margin-top: 10px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); }
+
+  .table-wrap { overflow-x: auto; }
+  .meta-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
   .meta-table th {
     text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border-strong);
     color: var(--text-muted); font-weight: 500; font-size: 0.75rem;
   }
+  .meta-table tr.group-row th {
+    padding-top: 14px; color: var(--text); font-weight: 600; font-size: 0.75rem;
+    text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border);
+  }
   .meta-table td {
     padding: 6px 10px; border-bottom: 1px solid var(--border);
-    word-break: break-all; font-family: var(--font-mono);
+    vertical-align: top;
   }
-  .meta-table td:first-child { color: var(--text-muted); white-space: nowrap; font-family: var(--font-sans); }
-  .meta-table td.sensitive { color: var(--danger); }
-  .risk-list { margin: 6px 0 0; padding-left: 18px; }
-  .risk-list li { margin-bottom: 2px; font-size: 0.8125rem; }
-  .tag-badge {
-    display: inline-flex; align-items: center; gap: 4px;
-    padding: 2px 8px; border-radius: var(--radius);
-    font-size: 0.75rem; font-weight: 500;
+  .meta-table td.prop { color: var(--text-muted); min-width: 10ch; }
+  .meta-table td.prop .src { display: block; font-size: 0.6875rem; color: var(--text-faint); }
+  .meta-table td.val { font-family: var(--font-mono); overflow-wrap: anywhere; word-break: break-word; }
+  .meta-table td.val.sensitive { color: var(--danger); }
+  .meta-table td.keep { width: 1%; white-space: nowrap; }
+  .meta-table td.res { width: 1%; white-space: nowrap; font-size: 0.75rem; }
+  .meta-table tr.removed td.val { text-decoration: line-through; color: var(--text-faint); }
+  .keep-label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+  .keep-label input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+  .keep-fixed { font-size: 0.75rem; color: var(--text-muted); }
+  .more-btn { margin-left: 4px; font-family: var(--font-sans); font-size: 0.75rem; }
+
+  .actions-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .proof ul { margin: 6px 0 0; padding-left: 18px; }
+  .proof li { font-size: 0.8125rem; }
+  .card-msg p { margin: 0; }
+  .card-msg p + p { margin-top: 4px; }
+
+  .action-bar { margin: 16px 0; }
+  .action-bar .btn-primary { margin-top: 0; }
+  .action-bar .count { font-size: 0.8125rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .action-bar .spacer { flex: 1; }
+  @media (max-width: 900px) {
+    .action-bar.is-sticky { gap: 8px; }
+    .action-bar.is-sticky .btn-primary { flex: 1 1 100%; }
+    .action-bar.is-sticky .btn:not(.btn-primary) { flex: 1 1 0; }
+    .action-bar.is-sticky .spacer { display: none; }
+    .action-bar.is-sticky .count { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   }
-  .tag-badge.warn { background: var(--danger-tint); color: var(--danger); }
-  .tag-badge.ok { background: var(--success-tint); color: var(--success); }
-  .tag-badge.info { background: var(--surface-2); color: var(--text-muted); }
-  .gps-link {
-    font-size: 0.8125rem; display: inline-flex; align-items: center; gap: 6px;
+  .drop-zone.compact { padding: 16px; }
+  .drop-zone.compact .ph { font-size: 1.25rem; margin-bottom: 4px; }
+  .drop-zone.compact .dz-hint { display: none; }
+
+  .formats { margin-top: 12px; }
+  .formats summary { cursor: pointer; font-weight: 500; }
+  .formats dl { margin: 10px 0 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; font-size: 0.8125rem; }
+  .formats dt { font-weight: 600; }
+  .formats dd { margin: 0; color: var(--text-muted); }
+
+  .preset-set { border: 0; margin: 0 0 14px; padding: 0; }
+  .preset-set legend { font-size: 0.8125rem; font-weight: 600; margin-bottom: 8px; padding: 0; }
+  .preset-opt { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; cursor: pointer; font-size: 0.875rem; }
+  .preset-opt input { accent-color: var(--accent); margin-top: 3px; width: 16px; height: 16px; flex-shrink: 0; }
+  .preset-opt small { display: block; color: var(--text-muted); font-size: 0.75rem; line-height: 1.4; margin-top: 2px; }
+  .opt-hint { font-size: 0.75rem; color: var(--text-muted); margin: -6px 0 12px 24px; line-height: 1.4; }
+  .skipped ul { margin: 4px 0 0; padding-left: 18px; }
+  .mono { font-family: var(--font-mono); font-size: 0.8125rem; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  .batch-list { margin: 6px 0 0; padding-left: 18px; }
+  #batchResult .actions-row { margin-top: 12px; }
+
+  @media (pointer: coarse) {
+    .file-card .btn-sm, .gps-block .btn-sm, #batchResult .btn-sm { min-height: 44px; }
+    .file-card .icon-btn { min-width: 44px; min-height: 44px; }
+    .file-header { min-height: 44px; }
+    .keep-label { min-height: 44px; min-width: 44px; justify-content: center; }
+    .more-btn { min-height: 44px; padding: 0 6px; }
+    .preset-opt { min-height: 44px; align-items: center; }
   }
-  .actions-row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
 </style>
 </head>
 <body data-sw-path="../sw.js">
@@ -92,34 +178,72 @@
 
 <div class="tool-layout">
   <aside class="tool-controls">
-    <details class="panel" open data-mobile-collapsed>
+    <details class="panel" open data-mobile-collapsed id="optionsPanel">
       <summary><span>Options</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
 
-      <label class="checkbox-label"><input type="checkbox" id="preserveOrientation" checked><span>Preserve image orientation</span></label>
+      <fieldset class="preset-set">
+        <legend>What to remove</legend>
+        <label class="preset-opt"><input type="radio" name="preset" value="everything" checked><span>Remove everything<small>Removes every detail it can. Only the rotation note and colour profile stay.</small></span></label>
+        <label class="preset-opt"><input type="radio" name="preset" value="location"><span>Remove location only<small>Removes GPS position and place names. Keeps the rest.</small></span></label>
+        <label class="preset-opt"><input type="radio" name="preset" value="rights"><span>Keep copyright and author<small>Keeps artist, author, copyright, title and description. Removes location, device, times and other names.</small></span></label>
+        <label class="preset-opt"><input type="radio" name="preset" value="camera"><span>Keep camera settings, remove location and serials<small>Keeps camera, lens and exposure settings. Removes location, serial numbers, times and names.</small></span></label>
+      </fieldset>
+      <p class="opt-hint" style="margin-left:0">Some details cannot be kept, such as maker notes, IPTC, preview pictures and XMP history. They are always removed. You can also tick single fields to keep in each file's list.</p>
 
-      <h3 class="mt-4">Everything at once</h3>
-      <button class="btn btn-export" type="button" onclick="stripAll(this)"><i class="ph ph-broom" aria-hidden="true"></i> Strip all metadata</button>
-      <button class="btn btn-export mt-2" type="button" onclick="downloadAllZip(this)"><i class="ph ph-download-simple" aria-hidden="true"></i> Download all cleaned as ZIP</button>
+      <label class="checkbox-label"><input type="checkbox" id="keepRotation" checked><span>Keep the photo's rotation</span></label>
+      <p class="opt-hint">Phones often save photos sideways with a note that says how to turn them. This keeps only that note, so the photo stays upright.</p>
+
+      <label class="checkbox-label"><input type="checkbox" id="anonymiseAuthors" checked><span>Anonymise comment and revision authors</span></label>
+      <p class="opt-hint">In Word, Excel, PowerPoint and PDF comments and tracked changes, names become "Author" and initials and dates are removed.</p>
+
+      <label class="checkbox-label"><input type="checkbox" id="convertPhotos"><span>Convert TIFF and HEIC when cleaning</span></label>
+      <p class="opt-hint">TIFF becomes PNG and HEIC becomes JPEG. These cannot be cleaned without converting, and HEIC photos are re-encoded.</p>
     </details>
   </aside>
 
-  <main class="tool-main">
-    <p class="tool-intro">Inspect and strip metadata from images and documents before you share them.</p>
+  <main class="tool-main" id="main">
+    <p class="tool-intro">See the hidden details in photos and documents, such as where a photo was taken, which phone took it and who wrote a file, and remove them before you share.</p>
 
-    <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="Choose files to inspect" onclick="document.getElementById('fileInput').click()">
+    <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="Choose files to inspect">
       <i class="ph ph-upload-simple" aria-hidden="true"></i>
-      <p class="dz-title">Drop files here or browse</p>
-      <p class="dz-hint">JPG PNG WebP TIFF BMP, and PDF DOCX XLSX PPTX</p>
-      <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.webp,.tiff,.bmp,.docx,.pdf,.xlsx,.pptx">
+      <p class="dz-title" id="dzTitle">Drop files here or browse</p>
+      <p class="dz-hint">JPG, PNG, WebP, PDF, Word, Excel and PowerPoint. TIFF and HEIC can be converted.</p>
+      <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.jfif,.png,.webp,.tif,.tiff,.bmp,.heic,.heif,.pdf,.docx,.xlsx,.pptx,image/*">
     </div>
 
-    <div id="statsRow" style="display:none;">
+    <details class="tool-info formats" id="formatsInfo">
+      <summary>What gets cleaned in each format</summary>
+      <dl>
+        <dt>JPEG, PNG, WebP</dt><dd>EXIF (location, device, dates, serial numbers), XMP, IPTC, comments, preview pictures and extra data after the picture are removed. The picture itself is copied unchanged, so there is no loss of quality. The colour profile is kept.</dd>
+        <dt>PDF</dt><dd>Document info (author, title, dates, software), XMP on the document, pages and pictures, private app data, and EXIF inside embedded photos. Comment authors are anonymised if you choose. Attached files are not cleaned.</dd>
+        <dt>DOCX, XLSX, PPTX</dt><dd>Author, last modified by, dates, revision, company, custom properties, the preview picture, comment and tracked-change authors, and metadata in photos inside the file.</dd>
+        <dt>TIFF</dt><dd>Can only be cleaned by converting to PNG, in browsers that can open TIFF (such as Safari).</dd>
+        <dt>HEIC</dt><dd>Converted to JPEG, then cleaned. The photo is re-encoded, so quality drops slightly.</dd>
+        <dt>BMP</dt><dd>Has no place for location, camera or author details, so there is nothing to remove.</dd>
+      </dl>
+    </details>
+
+    <div id="skipped" class="warning-msg skipped hidden" role="status"></div>
+    <div id="progressArea"></div>
+
+    <div id="statsRow" class="hidden" aria-live="polite">
       <div class="stats">
         <div class="stat-card"><div class="stat-label">Files</div><div class="stat-value" id="statFiles">0</div></div>
-        <div class="stat-card"><div class="stat-label">With risks</div><div class="stat-value" id="statRisks">0</div></div>
+        <div class="stat-card"><div class="stat-label">With location</div><div class="stat-value" id="statLocation">0</div></div>
+        <div class="stat-card"><div class="stat-label">With personal info</div><div class="stat-value" id="statPersonal">0</div></div>
         <div class="stat-card"><div class="stat-label">Cleaned</div><div class="stat-value" id="statClean">0</div></div>
       </div>
     </div>
+
+    <div class="action-bar hidden" id="actionBar">
+      <button class="btn btn-primary" type="button" id="primaryBtn"><i class="ph ph-broom" aria-hidden="true"></i> <span>Clean and download</span></button>
+      <button class="btn" type="button" id="cleanOnlyBtn"><i class="ph ph-check" aria-hidden="true"></i> Clean only</button>
+      <span class="count" id="liveCount" aria-live="polite"></span>
+      <span class="spacer"></span>
+      <button class="btn" type="button" id="startOverBtn"><i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i> Start over</button>
+    </div>
+
+    <div id="batchResult" class="result hidden" tabindex="-1"></div>
 
     <div id="fileList"></div>
   </main>
@@ -132,311 +256,866 @@
 </footer>
 
 <script>
-const SENSITIVE_IMAGE_TAGS = new Set([
-  'GPSLatitude', 'GPSLongitude', 'GPSLatitudeRef', 'GPSLongitudeRef',
-  'GPSAltitude', 'GPSTimeStamp', 'GPSDateStamp', 'latitude', 'longitude',
-  'BodySerialNumber', 'CameraSerialNumber', 'SerialNumber',
-  'LensSerialNumber', 'ImageUniqueID',
-  'CameraOwnerName', 'OwnerName', 'Artist', 'Copyright',
-  'XPAuthor', 'XPComment',
-]);
-const SENSITIVE_DOC_PROPS = new Set(['author', 'last_modified_by', 'creator', 'producer', 'company', 'manager', 'category', 'dc:creator', 'cp:lastModifiedBy']);
-const IMAGE_EXTS = new Set(['jpg', 'jpeg', 'png', 'webp', 'tiff', 'bmp']);
-const DOC_EXTS = new Set(['docx', 'pdf', 'xlsx', 'pptx']);
-const FORMAT_ICONS = { docx: 'file-doc', pdf: 'file-pdf', xlsx: 'file-xls', pptx: 'file-ppt', jpg: 'file-image', jpeg: 'file-image', png: 'file-image', webp: 'file-image', tiff: 'file-image', bmp: 'file-image' };
+(function () {
+'use strict';
 
-let fileEntries = [];
+const E = window.ScrubEngine;
+const HEIC2ANY_URL = 'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
+const LEAFLET_JS = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+const LEAFLET_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+const VALUE_CUT = 200;
 
-const dropZone = document.getElementById('dropZone');
-const fileInput = document.getElementById('fileInput');
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
-fileInput.addEventListener('change', e => handleFiles(e.target.files));
+const PRESET_SUMMARY = {
+  everything: 'Remove everything', location: 'Remove location only',
+  rights: 'Keep copyright and author', camera: 'Keep camera settings'
+};
+const FORMAT = {
+  jpeg: { label: 'JPEG', icon: 'file-jpg', ext: 'jpg', mime: 'image/jpeg', kind: 'photo' },
+  png: { label: 'PNG', icon: 'file-png', ext: 'png', mime: 'image/png', kind: 'photo' },
+  webp: { label: 'WebP', icon: 'file-image', ext: 'webp', mime: 'image/webp', kind: 'photo' },
+  tiff: { label: 'TIFF', icon: 'file-image', ext: 'tiff', mime: 'image/tiff', kind: 'photo', convertTo: 'png' },
+  heic: { label: 'HEIC', icon: 'file-image', ext: 'heic', mime: 'image/heic', kind: 'photo', convertTo: 'jpeg' },
+  bmp: { label: 'BMP', icon: 'file-image', ext: 'bmp', mime: 'image/bmp', kind: 'photo' },
+  pdf: { label: 'PDF', icon: 'file-pdf', ext: 'pdf', mime: 'application/pdf', kind: 'doc' },
+  docx: { label: 'Word', icon: 'file-doc', ext: 'docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', kind: 'doc' },
+  xlsx: { label: 'Excel', icon: 'file-xls', ext: 'xlsx', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', kind: 'doc' },
+  pptx: { label: 'PowerPoint', icon: 'file-ppt', ext: 'pptx', mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', kind: 'doc' }
+};
+const GROUP_ORDER = ['Location', 'Device', 'Time taken', 'People', 'Other'];
+const GROUP_INFO = {
+  'Location': { icon: 'map-pin', cls: 'g-location', what: 'Where it was taken or made' },
+  'Device': { icon: 'device-mobile', cls: 'g-device', what: 'The phone, camera, serial number or software' },
+  'Time taken': { icon: 'clock', cls: 'g-time', what: 'When it was taken, written or changed' },
+  'People': { icon: 'user', cls: 'g-people', what: 'Names of authors, owners or editors' },
+  'Other': { icon: 'info', cls: 'g-other', what: 'Other hidden details' }
+};
 
+const S = {
+  entries: [],
+  preset: 'everything',
+  keepRotation: true,
+  anonymise: true,
+  convert: false,
+  busy: false,
+  lastBatch: null
+};
+let uid = 0;
+
+const $ = id => document.getElementById(id);
+const dropZone = $('dropZone');
+const fileInput = $('fileInput');
+const fileList = $('fileList');
+const tfe = () => window.TFE || null;
+const announce = t => { try { if (tfe() && tfe().announce) tfe().announce(t); } catch (e) { /* optional */ } };
+const setDirty = v => { try { if (tfe() && tfe().setDirty) tfe().setDirty(v); } catch (e) { /* optional */ } };
+const startJob = label => { try { if (tfe() && tfe().job) return tfe().job(label); } catch (e) { /* optional */ } return () => {}; };
+const fmtBytes = n => { try { if (tfe() && tfe().formatBytes) return tfe().formatBytes(n); } catch (e) { /* fall back */ } return E.bytesLabel(n); };
+const tick = () => new Promise(r => setTimeout(r, 0));
+const plural = (n, one, many) => n + ' ' + (n === 1 ? one : (many || one + 's'));
+
+function esc(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 function getExt(name) { const p = name.lastIndexOf('.'); return p > 0 ? name.slice(p + 1).toLowerCase() : ''; }
 
-async function handleFiles(files) {
-  fileEntries = [];
-  for (const file of files) {
-    const ext = getExt(file.name);
-    if (!IMAGE_EXTS.has(ext) && !DOC_EXTS.has(ext)) continue;
-    const bytes = await file.arrayBuffer();
-    fileEntries.push({ name: file.name, ext, bytes: new Uint8Array(bytes), type: file.type, metadata: null, risks: [], stripped: null });
+/* ---------- intake ---------- */
+
+dropZone.addEventListener('click', e => { if (e.target !== fileInput) fileInput.click(); });
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); intake(e.dataTransfer.files); });
+fileInput.addEventListener('change', e => { const f = Array.from(e.target.files || []); fileInput.value = ''; intake(f); });
+
+function detect(name, bytes) {
+  const sn = E.sniff(bytes);
+  const ext = getExt(name);
+  if (sn === 'zip') {
+    if (ext === 'docx' || ext === 'xlsx' || ext === 'pptx') return { fmt: ext };
+    if (/^(docm|xlsm|pptm|dotx|xltx|potx)$/.test(ext)) return { reason: 'Macro-enabled and template Office files (.' + ext + ') are not supported. Save as .docx, .xlsx or .pptx first.' };
+    if (/^(odt|ods|odp)$/.test(ext)) return { reason: 'OpenDocument files are not supported yet.' };
+    return { reason: 'ZIP archives are not supported. Unzip them first.' };
   }
-  if (!fileEntries.length) {
-    showToast('None of those files are a supported type', 'error');
+  if (FORMAT[sn]) return { fmt: sn };
+  if (sn === 'gif') return { reason: 'GIF files are not supported.' };
+  if (sn === 'avif') return { reason: 'AVIF photos are not supported yet.' };
+  if (sn === 'video') return { reason: 'Videos are not supported.' };
+  if (sn === 'ole') return { reason: 'Old Office files (.doc, .xls, .ppt) are not supported. Save them as .docx, .xlsx or .pptx first.' };
+  if (!bytes.length) return { reason: 'The file is empty.' };
+  return { reason: (ext ? '.' + ext.toUpperCase() + ' files' : 'Files of this kind') + ' are not supported.' };
+}
+
+async function intake(fileArr) {
+  const files = Array.from(fileArr || []);
+  if (!files.length) return;
+  const added = files.map(file => ({
+    id: ++uid, file, name: file.name || 'file', size: file.size, state: 'reading', open: false,
+    overrides: new Map(), report: null, out: null, reason: '', fmt: null, bytes: null, mapOpen: false
+  }));
+  S.entries.push(...added);
+  for (const e of added) mountCard(e);
+  hideBatch();
+  updateChrome();
+  const done = startJob('Reading files');
+  const skipped = [];
+  const prog = $('progressArea');
+  try {
+    for (let i = 0; i < added.length; i++) {
+      if (added.length > 1 && window.setProgress) setProgress(prog, (i / added.length) * 100, 'Reading ' + (i + 1) + ' of ' + added.length);
+      const e = added[i];
+      await readEntry(e);
+      if (e.state === 'skipped') { skipped.push(e); removeEntry(e, true); }
+      else renderCard(e);
+      if (i % 4 === 3) await tick();
+    }
+  } finally {
+    done();
+    if (window.clearProgress) clearProgress(prog);
+  }
+  showSkipped(skipped);
+  updateChrome();
+  const ok = added.length - skipped.length;
+  if (ok > 0) {
+    setDirty(true);
+    const withLoc = added.filter(e => e.report && e.report.gps).length;
+    announce(plural(ok, 'file') + ' added.' + (withLoc ? ' ' + withLoc + ' with a location.' : '') + (skipped.length ? ' ' + skipped.length + ' skipped.' : ''));
+    if (S.entries.filter(x => x.state !== 'skipped').length === 1 && ok === 1) { added.find(x => x.state !== 'skipped').open = true; renderCard(added.find(x => x.state !== 'skipped')); }
+  } else if (skipped.length) {
+    showToast(skipped.length === 1 ? 'That file is not supported. See the reason above the list.' : 'None of those files are supported. See the reasons above the list.', 'error');
+  }
+}
+
+async function readEntry(e) {
+  let bytes;
+  try { bytes = new Uint8Array(await e.file.arrayBuffer()); } catch (x) { e.state = 'skipped'; e.reason = 'The file could not be opened.'; return; }
+  const d = detect(e.name, bytes);
+  if (!d.fmt) { e.state = 'skipped'; e.reason = d.reason; return; }
+  e.fmt = d.fmt;
+  e.bytes = bytes;
+  try {
+    e.report = await E.inspect(bytes, d.fmt);
+    if (d.fmt === 'bmp') { e.state = 'nothing'; e.reason = 'BMP files have no place for location, camera or author details, so there is nothing to remove.'; }
+    else if (FORMAT[d.fmt].convertTo) e.state = 'needs';
+    else e.state = 'ready';
+  } catch (x) {
+    e.state = 'failed';
+    e.readFailed = true;
+    e.reason = 'This file could not be read, so it cannot be cleaned. ' + friendly(x);
+    e.report = { fields: [], notes: [], gps: null };
+  }
+}
+
+function friendly(err) {
+  const m = (err && err.message) || String(err || '');
+  if (/encrypt/i.test(m)) return 'This PDF is password-protected. Unlock it first, then clean it.';
+  if (/Failed to fetch|Could not load/i.test(m)) return 'A part of this tool could not be downloaded. Check your connection and try again.';
+  return m ? m.replace(/\.?$/, '.') : 'Something went wrong.';
+}
+
+function showSkipped(list) {
+  const el = $('skipped');
+  if (!list.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  el.innerHTML = '<i class="ph ph-warning" aria-hidden="true"></i><div><b>' + (list.length === 1 ? '1 file was skipped' : list.length + ' files were skipped') + '</b><ul>' +
+    list.map(e => '<li><span class="mono">' + esc(e.name) + '</span>: ' + esc(e.reason) + '</li>').join('') + '</ul></div>';
+  el.classList.remove('hidden');
+}
+
+/* ---------- keep decisions ---------- */
+
+function presetKeeps(preset, f) {
+  if (!f.keepable) return false;
+  const c = f.cat;
+  switch (preset) {
+    case 'location': return c !== 'location';
+    case 'rights': return c === 'rights' || c === 'content';
+    case 'camera': return c === 'camera' || c === 'device' || c === 'software' || c === 'content' || c === 'tech';
+    default: return false;
+  }
+}
+function decideFor(entry) {
+  return f => {
+    if (!f.keepable) return false;
+    if (entry.overrides.has(f.id)) return entry.overrides.get(f.id);
+    return presetKeeps(S.preset, f);
+  };
+}
+function rotationForced(entry, f) {
+  return f.id === 'exif:ifd0:274' && S.keepRotation && entry.report && entry.report.orientation && entry.report.orientation !== 1;
+}
+function effectiveKeep(entry, f) {
+  if (f.fixed) return true;
+  if (rotationForced(entry, f)) return true;
+  if (f.author && !S.anonymise) return true;
+  return decideFor(entry)(f);
+}
+
+/* ---------- risk ---------- */
+
+function riskOf(report) {
+  const fields = (report && report.fields) || [];
+  const groups = {};
+  for (const f of fields) {
+    if (f.fixed || f.cat === 'tech') continue;
+    const g = E.GROUPS[f.cat] || 'Other';
+    (groups[g] = groups[g] || []).push(f);
+  }
+  const hasLocation = !!(groups['Location'] && groups['Location'].length) || !!(report && report.gps);
+  const personal = fields.some(f => E.RISK_CATS.has(f.cat) && f.cat !== 'location');
+  return { groups, hasLocation, personal, count: fields.length };
+}
+function riskBadge(entry) {
+  if (entry.state === 'cleaned') {
+    return entry.out.removedCount > 0
+      ? '<span class="tag-badge ok"><i class="ph ph-check" aria-hidden="true"></i> Metadata removed</span>'
+      : '<span class="tag-badge info"><i class="ph ph-check" aria-hidden="true"></i> No metadata found</span>';
+  }
+  if (!entry.report || entry.state === 'reading') return '';
+  const r = riskOf(entry.report);
+  if (r.hasLocation) return '<span class="tag-badge danger"><i class="ph ph-map-pin" aria-hidden="true"></i> Has location</span>' + (r.personal ? ' <span class="tag-badge caution"><i class="ph ph-user" aria-hidden="true"></i> Has personal info</span>' : '');
+  if (r.personal) return '<span class="tag-badge caution"><i class="ph ph-user" aria-hidden="true"></i> Has personal info</span>';
+  if (r.count) return '<span class="tag-badge info">Has other details</span>';
+  return '<span class="tag-badge info"><i class="ph ph-check" aria-hidden="true"></i> No metadata found</span>';
+}
+function stateBadge(entry) {
+  switch (entry.state) {
+    case 'reading': return '<span class="tag-badge info"><span class="spinner" aria-hidden="true"></span> Reading</span>';
+    case 'cleaning': return '<span class="tag-badge info"><span class="spinner" aria-hidden="true"></span> Cleaning</span>';
+    case 'cleaned': return '<span class="tag-badge ok"><i class="ph ph-seal-check" aria-hidden="true"></i> Cleaned and verified</span>';
+    case 'failed': return '<span class="tag-badge danger"><i class="ph ph-x-circle" aria-hidden="true"></i> Could not clean</span>';
+    case 'needs': return '<span class="tag-badge caution"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i> Needs converting</span>';
+    case 'nothing': return '<span class="tag-badge info">Nothing to remove</span>';
+    default: return '<span class="tag-badge info">Not cleaned</span>';
+  }
+}
+
+/* ---------- cards ---------- */
+
+function mountCard(entry) {
+  const el = document.createElement('div');
+  el.className = 'result file-card';
+  el.id = 'card-' + entry.id;
+  el.dataset.id = entry.id;
+  fileList.appendChild(el);
+  renderCard(entry);
+}
+
+function focusKey(el) {
+  if (!el || !el.dataset) return null;
+  if (el.dataset.keep) return '[data-keep="' + CSS.escape(el.dataset.keep) + '"]';
+  if (el.dataset.act) return '[data-act="' + el.dataset.act + '"]';
+  return null;
+}
+
+function renderCard(entry) {
+  const card = $('card-' + entry.id);
+  if (!card) return;
+  const active = document.activeElement;
+  const hadFocus = card.contains(active) ? focusKey(active) : null;
+  const fmt = FORMAT[entry.fmt] || { icon: 'file', label: '' };
+  const n = entry.report ? entry.report.fields.length : 0;
+  const countText = entry.state === 'reading' ? '' : entry.state === 'cleaned'
+    ? plural(entry.out.removedCount, 'detail') + ' removed'
+    : plural(n, 'detail');
+  let html = '<div class="file-card-head">' +
+    '<button class="file-header" type="button" data-act="toggle" aria-expanded="' + entry.open + '" aria-controls="body-' + entry.id + '">' +
+      '<span class="file-title"><i class="ph ph-' + fmt.icon + '" aria-hidden="true"></i> <span class="name" title="' + esc(entry.name) + '">' + esc(entry.name) + '</span> ' + riskBadge(entry) + ' ' + stateBadge(entry) + '</span>' +
+      '<span class="file-count">' + esc(countText) + ' <i class="ph ph-caret-down caret" aria-hidden="true"></i></span>' +
+    '</button>' +
+    '<button class="icon-btn remove-btn" type="button" data-act="remove" aria-label="Remove ' + esc(entry.name) + ' from the list"' + (entry.state === 'cleaning' || S.busy ? ' disabled' : '') + '><i class="ph ph-x" aria-hidden="true"></i></button>' +
+    '</div>';
+  html += '<div class="file-body' + (entry.open ? ' open' : '') + '" id="body-' + entry.id + '">';
+  if (entry.state !== 'reading') html += bodyHtml(entry);
+  html += '</div>';
+  card.innerHTML = html;
+  if (entry.open && entry.mapOpen) showMap(entry, false);
+  if (hadFocus) {
+    const target = card.querySelector(hadFocus) || card.querySelector('.btn-download') || card.querySelector('[data-act="toggle"]');
+    if (target) target.focus();
+  }
+}
+
+function bodyHtml(entry) {
+  const rep = entry.report || { fields: [], notes: [] };
+  let h = '';
+  // State message
+  if (entry.state === 'failed') {
+    h += '<div class="error-msg card-msg" role="alert"><i class="ph ph-warning-circle" aria-hidden="true"></i><div><p><b>This file was not cleaned.</b></p><p>' + esc(entry.reason) + '</p></div></div>';
+  } else if (entry.state === 'needs') {
+    const to = FORMAT[entry.fmt].convertTo === 'png' ? 'PNG' : 'JPEG';
+    const why = entry.fmt === 'heic'
+      ? 'HEIC photos cannot be cleaned as they are. They can be converted to JPEG and then cleaned. The photo is re-encoded, so quality drops slightly.'
+      : 'TIFF files cannot be cleaned without converting. They can be converted to PNG and cleaned, in browsers that can open TIFF (such as Safari).';
+    h += '<div class="warning-msg card-msg"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i><div><p>' + esc(why) + '</p></div></div>';
+  } else if (entry.state === 'nothing') {
+    h += '<div class="info-msg card-msg"><i class="ph ph-info" aria-hidden="true"></i><div><p>' + esc(entry.reason) + '</p></div></div>';
+  } else if (entry.stale && entry.state === 'ready') {
+    h += '<div class="info-msg card-msg"><i class="ph ph-info" aria-hidden="true"></i><div><p>Your choices changed, so this file needs cleaning again.</p></div></div>';
+  }
+  if (entry.state === 'cleaned') h += proofHtml(entry);
+  const notes = (rep.notes || []).concat(entry.out && entry.out.notes ? entry.out.notes : []);
+  const uniq = Array.from(new Set(notes));
+  if (uniq.length) h += '<div class="info-msg card-msg"><i class="ph ph-info" aria-hidden="true"></i><div>' + uniq.map(n => '<p>' + esc(n) + '</p>').join('') + '</div></div>';
+  if (entry.state !== 'cleaned' && !entry.readFailed) h += riskHtml(entry);
+  if (rep.gps) h += gpsHtml(entry);
+  if (rep.fields.length) h += tableHtml(entry);
+  h += actionsHtml(entry);
+  return h;
+}
+
+function riskHtml(entry) {
+  const r = riskOf(entry.report);
+  const names = GROUP_ORDER.filter(g => r.groups[g] && r.groups[g].length);
+  if (!entry.report.fields.length) return '<div class="success-msg card-msg"><i class="ph ph-check-circle" aria-hidden="true"></i><div><p>No metadata found in this file.</p></div></div>';
+  if (!names.length) return '<div class="success-msg card-msg"><i class="ph ph-check-circle" aria-hidden="true"></i><div><p>No location or personal details found. Only technical details, listed below.</p></div></div>';
+  let h = '<div class="risk-summary"><h3>What this file reveals</h3><ul class="risk-groups">';
+  for (const g of names) {
+    const info = GROUP_INFO[g];
+    const list = r.groups[g];
+    const showValues = g !== 'Other';
+    const seen = new Set();
+    const items = [];
+    if (g === 'Location' && entry.report.gps) {
+      items.push('GPS position: ' + entry.report.gps.lat.toFixed(4) + ', ' + entry.report.gps.lon.toFixed(4));
+      seen.add('gps');
+    }
+    const rank = f => /reference|version|^GPS tag|Latitude$|Longitude$/i.test(f.name) && entry.report.gps ? 9
+      : /Latitude|Longitude|City|Country|Make$|Model$|serial|Owner|Author|Creator|Artist|Last modified by|Date taken|Created$/i.test(f.name) ? 0 : 1;
+    const sorted = list.slice().sort((a, b) => rank(a) - rank(b));
+    for (const f of sorted) {
+      if (g === 'Location' && entry.report.gps && rank(f) === 9) continue;
+      const t = showValues ? f.name + ': ' + String(f.value).slice(0, 48) + (String(f.value).length > 48 ? '…' : '') : f.name;
+      if (seen.has(t)) continue;
+      seen.add(t);
+      items.push(t);
+    }
+    const shown = items.slice(0, 3).join(' · ') + (items.length > 3 ? ' · and ' + (items.length - 3) + ' more' : '');
+    h += '<li class="' + info.cls + '"><i class="ph ph-' + info.icon + '" aria-hidden="true"></i><div><b>' + esc(g) + ' <span class="what">· ' + esc(info.what) + '</span></b><span class="items">' + esc(shown) + '</span></div></li>';
+  }
+  return h + '</ul></div>';
+}
+
+function gpsHtml(entry) {
+  const { lat, lon } = entry.report.gps;
+  const coords = lat.toFixed(5) + ', ' + lon.toFixed(5);
+  const osm = 'https://www.openstreetmap.org/?mlat=' + lat.toFixed(5) + '&mlon=' + lon.toFixed(5) + '#map=15/' + lat.toFixed(5) + '/' + lon.toFixed(5);
+  return '<div class="gps-block">' +
+    '<div class="gps-row"><i class="ph ph-map-pin" aria-hidden="true"></i> <span>' + (entry.state === 'cleaned' ? 'The original file showed this location:' : 'This file shows where it was taken:') + '</span> <code>' + coords + '</code>' +
+    '<button class="btn btn-sm" type="button" data-act="copy"><i class="ph ph-copy" aria-hidden="true"></i> Copy</button></div>' +
+    '<div class="gps-actions">' +
+      (entry.mapOpen ? '' : '<button class="btn btn-sm" type="button" data-act="map"><i class="ph ph-map-trifold" aria-hidden="true"></i> Show on map</button>') +
+      '<a class="btn btn-sm" href="' + esc(osm) + '" target="_blank" rel="noopener noreferrer"><i class="ph ph-arrow-square-out" aria-hidden="true"></i> Open in OpenStreetMap</a>' +
+    '</div>' +
+    '<p class="gps-note">Loading the map shows the rough area to OpenStreetMap\'s tile server.</p>' +
+    '<div class="map' + (entry.mapOpen ? '' : ' hidden') + '" id="map-' + entry.id + '" role="region" aria-label="Map of the photo location"></div>' +
+    '</div>';
+}
+
+function fieldResult(entry, f) {
+  if (entry.state !== 'cleaned') return null;
+  const kept = entry.out.keptIds.has(f.id) && entry.out.outIds.has(f.id);
+  if (kept) return 'Kept';
+  if (f.author && S.anonymise && !/dates$/.test(f.id)) return 'Replaced with "Author"';
+  return 'Removed';
+}
+
+function tableHtml(entry) {
+  const fields = entry.report.fields;
+  const canKeep = entry.state !== 'cleaned' && fields.some(f => f.keepable || f.fixed) && !FORMAT[entry.fmt].convertTo;
+  const cleaned = entry.state === 'cleaned';
+  const byGroup = {};
+  fields.forEach((f, i) => { const g = E.GROUPS[f.cat] || 'Other'; (byGroup[g] = byGroup[g] || []).push([f, i]); });
+  let h = '<div class="table-wrap"><table class="meta-table"><caption class="sr-only">Details found in ' + esc(entry.name) + '</caption><thead><tr>' +
+    (canKeep ? '<th scope="col">Keep</th>' : '') + '<th scope="col">Property</th><th scope="col">Value</th>' + (cleaned ? '<th scope="col">Result</th>' : '') + '</tr></thead><tbody>';
+  const cols = (canKeep ? 1 : 0) + 2 + (cleaned ? 1 : 0);
+  for (const g of GROUP_ORDER) {
+    const rows = byGroup[g];
+    if (!rows) continue;
+    h += '<tr class="group-row"><th scope="rowgroup" colspan="' + cols + '">' + esc(g) + '</th></tr>';
+    for (const [f, i] of rows) {
+      const res = fieldResult(entry, f);
+      const sensitive = E.RISK_CATS.has(f.cat) && !cleaned;
+      h += '<tr' + (res && res !== 'Kept' ? ' class="removed"' : '') + '>';
+      if (canKeep) {
+        if (f.fixed) h += '<td class="keep"><span class="keep-fixed" title="The colour profile is always kept">Always</span></td>';
+        else if (f.keepable) {
+          const forced = rotationForced(entry, f);
+          const checked = effectiveKeep(entry, f);
+          h += '<td class="keep"><label class="keep-label"' + (forced ? ' title="Kept because Keep the photo\'s rotation is on"' : '') + '><input type="checkbox" data-keep="' + esc(f.id) + '"' + (checked ? ' checked' : '') + (forced ? ' disabled' : '') + ' aria-label="Keep ' + esc(f.name) + '"></label></td>';
+        } else h += '<td class="keep"></td>';
+      }
+      h += '<td class="prop">' + esc(f.name) + (f.source ? '<span class="src">' + esc(f.source) + '</span>' : '') + '</td>';
+      h += '<td class="val' + (sensitive ? ' sensitive' : '') + '" data-i="' + i + '">' + valueHtml(f.value, i, false) + '</td>';
+      if (cleaned) h += '<td class="res">' + (res === 'Kept' ? '<span class="tag-badge accent">Kept</span>' : esc(res)) + '</td>';
+      h += '</tr>';
+    }
+  }
+  return h + '</tbody></table></div>';
+}
+function valueHtml(v, i, full) {
+  const s = String(v);
+  if (s.length <= VALUE_CUT) return esc(s);
+  if (full) return esc(s) + ' <button class="link-btn more-btn" type="button" data-act="more" data-i="' + i + '" aria-expanded="true">Show less</button>';
+  return esc(s.slice(0, VALUE_CUT)) + '… <button class="link-btn more-btn" type="button" data-act="more" data-i="' + i + '" aria-expanded="false">Show more</button>';
+}
+
+function proofHtml(entry) {
+  const o = entry.out;
+  const keptNames = o.kept.map(f => f.id === 'exif:ifd0:274' ? 'Rotation (orientation)' : f.name);
+  let h = '<div class="success-msg card-msg proof" role="status"><i class="ph ph-seal-check" aria-hidden="true"></i><div>';
+  const keptList = Array.from(new Set(keptNames));
+  h += '<p><b>' + plural(o.removedCount, 'detail') + ' removed, 0 remaining' + (keptList.length ? ' apart from ' + keptList.length + ' kept on purpose' : '') + '.</b></p>';
+  if (keptList.length) h += '<p>Kept on purpose: ' + esc(keptList.join(', ')) + '.</p>';
+  h += '<p>Checked by reading the cleaned file again. ' + esc(o.how) + '</p>';
+  h += '<p>' + esc(fmtBytes(entry.size)) + ' before, ' + esc(fmtBytes(o.bytes.length)) + ' after.</p>';
+  return h + '</div></div>';
+}
+
+function actionsHtml(entry) {
+  let h = '<div class="actions-row">';
+  const dis = S.busy || entry.state === 'cleaning' ? ' disabled' : '';
+  if (entry.state === 'ready' || (entry.state === 'failed' && !entry.readFailed && !FORMAT[entry.fmt].convertTo)) {
+    h += '<button class="btn btn-sm" type="button" data-act="clean"' + dis + '><i class="ph ph-broom" aria-hidden="true"></i> ' + (entry.state === 'failed' ? 'Try again' : 'Clean this file') + '</button>';
+  }
+  if (FORMAT[entry.fmt] && FORMAT[entry.fmt].convertTo && entry.state !== 'cleaned' && !entry.readFailed) {
+    h += '<button class="btn btn-sm" type="button" data-act="convert"' + dis + '><i class="ph ph-arrows-clockwise" aria-hidden="true"></i> Convert to ' + (FORMAT[entry.fmt].convertTo === 'png' ? 'PNG' : 'JPEG') + ' and clean</button>';
+  }
+  if (entry.state === 'cleaned') {
+    h += '<button class="btn btn-sm btn-download" type="button" data-act="download"><i class="ph ph-download-simple" aria-hidden="true"></i> Download clean copy</button>';
+  }
+  return h + '</div>';
+}
+
+/* ---------- card events ---------- */
+
+fileList.addEventListener('click', ev => {
+  const btn = ev.target.closest('[data-act]');
+  if (!btn || !fileList.contains(btn)) return;
+  const card = btn.closest('.file-card');
+  const entry = card && S.entries.find(e => e.id === +card.dataset.id);
+  if (!entry) return;
+  const act = btn.dataset.act;
+  if (act === 'toggle') {
+    entry.open = !entry.open;
+    const body = $('body-' + entry.id);
+    body.classList.toggle('open', entry.open);
+    btn.setAttribute('aria-expanded', String(entry.open));
+    if (entry.open && entry.mapOpen) showMap(entry, false);
+  } else if (act === 'remove') {
+    removeEntry(entry);
+  } else if (act === 'clean') {
+    cleanOne(entry, btn, false);
+  } else if (act === 'convert') {
+    cleanOne(entry, btn, true);
+  } else if (act === 'download') {
+    downloadEntry(entry);
+  } else if (act === 'more') {
+    const i = +btn.dataset.i;
+    const td = btn.closest('td');
+    const expand = btn.getAttribute('aria-expanded') !== 'true';
+    td.innerHTML = valueHtml(entry.report.fields[i].value, i, expand);
+    const nb = td.querySelector('.more-btn');
+    if (nb) nb.focus();
+  } else if (act === 'copy') {
+    const { lat, lon } = entry.report.gps;
+    const text = lat.toFixed(5) + ', ' + lon.toFixed(5);
+    const ok = () => showToast('Coordinates copied', 'success');
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(ok, () => showToast('Could not copy. Select the numbers and copy them.', 'error'));
+    else showToast('Select the numbers and copy them.', 'info');
+  } else if (act === 'map') {
+    entry.mapOpen = true;
+    btn.remove();
+    showMap(entry, true);
+  }
+});
+
+fileList.addEventListener('change', ev => {
+  const cb = ev.target.closest('input[data-keep]');
+  if (!cb) return;
+  const card = cb.closest('.file-card');
+  const entry = card && S.entries.find(e => e.id === +card.dataset.id);
+  if (!entry) return;
+  entry.overrides.set(cb.dataset.keep, cb.checked);
+});
+
+let leafletPromise = null;
+function loadLeaflet() {
+  if (window.L && window.L.map) return Promise.resolve(window.L);
+  if (!leafletPromise) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = LEAFLET_CSS;
+    document.head.appendChild(link);
+    leafletPromise = E.loadScript(LEAFLET_JS, 'L').catch(err => { leafletPromise = null; throw err; });
+  }
+  return leafletPromise;
+}
+async function showMap(entry, announceIt) {
+  const el = $('map-' + entry.id);
+  if (!el) return;
+  el.classList.remove('hidden');
+  if (el._map) return;
+  let L;
+  try { L = await loadLeaflet(); } catch (e) {
+    el.innerHTML = '<p class="small muted" style="padding:12px">The map could not be loaded. Use the coordinates or the OpenStreetMap link instead.</p>';
     return;
   }
-
-  for (let i = 0; i < fileEntries.length; i++) {
-    await inspectFile(fileEntries[i]);
-  }
-  render();
+  if (!el.isConnected || el._map) return;
+  const { lat, lon } = entry.report.gps;
+  const map = L.map(el, { scrollWheelZoom: false }).setView([lat, lon], 13);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(map);
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--danger').trim() || '#d33';
+  L.circleMarker([lat, lon], { radius: 9, color: accent, weight: 3, fillOpacity: 0.25 }).addTo(map);
+  el._map = map;
+  if (announceIt) announce('Map shown.');
 }
 
-async function inspectFile(entry) {
-  const ext = entry.ext;
-  entry.metadata = {};
-  entry.risks = [];
-
-  if (IMAGE_EXTS.has(ext)) {
-    try {
-      const exif = await exifr.parse(entry.bytes.buffer, { gps: true, ifd0: true, exif: true, iptc: true, xmp: true, tiff: true });
-      if (exif) {
-        entry.metadata = {};
-        for (const [k, v] of Object.entries(exif)) {
-          if (v === undefined || v === null) continue;
-          const strVal = typeof v === 'object' && !Array.isArray(v) ? JSON.stringify(v) : String(v);
-          entry.metadata[k] = strVal;
-          if (SENSITIVE_IMAGE_TAGS.has(k)) entry.risks.push([k, strVal]);
-        }
-      }
-    } catch (e) { entry.metadata = { error: 'Could not parse metadata' }; }
-  } else if (ext === 'pdf') {
-    try {
-      const pdfDoc = await PDFLib.PDFDocument.load(entry.bytes, { ignoreEncryption: true });
-      const fields = ['Title', 'Author', 'Subject', 'Creator', 'Producer', 'Keywords', 'CreationDate', 'ModificationDate'];
-      for (const f of fields) {
-        const getter = 'get' + f;
-        try {
-          const v = pdfDoc[getter]?.();
-          if (v) {
-            const sv = v instanceof Date ? v.toISOString() : String(v);
-            entry.metadata[f] = sv;
-            if (['Author', 'Creator', 'Producer'].includes(f)) entry.risks.push([f, sv]);
-          }
-        } catch {}
-      }
-      entry.metadata['Pages'] = String(pdfDoc.getPageCount());
-    } catch (e) { entry.metadata = { error: 'Could not parse PDF: ' + e.message }; }
-  } else if (ext === 'docx' || ext === 'xlsx' || ext === 'pptx') {
-    try {
-      const zip = await JSZip.loadAsync(entry.bytes);
-      const coreXmlFile = zip.file('docProps/core.xml');
-      if (coreXmlFile) {
-        const coreXml = await coreXmlFile.async('string');
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(coreXml, 'text/xml');
-        const tags = ['dc:title', 'dc:subject', 'dc:creator', 'cp:lastModifiedBy', 'cp:keywords', 'cp:category', 'dcterms:created', 'dcterms:modified', 'cp:revision', 'dc:description'];
-        for (const tag of tags) {
-          const el = doc.getElementsByTagName(tag)[0];
-          if (el && el.textContent.trim()) {
-            entry.metadata[tag] = el.textContent.trim();
-            if (SENSITIVE_DOC_PROPS.has(tag)) entry.risks.push([tag, el.textContent.trim()]);
-          }
-        }
-      }
-      const appXmlFile = zip.file('docProps/app.xml');
-      if (appXmlFile) {
-        const appXml = await appXmlFile.async('string');
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(appXml, 'text/xml');
-        for (const tag of ['Company', 'Manager', 'Application', 'AppVersion', 'Template']) {
-          const el = doc.getElementsByTagName(tag)[0];
-          if (el && el.textContent.trim()) {
-            entry.metadata[tag] = el.textContent.trim();
-            if (['Company', 'Manager'].includes(tag)) entry.risks.push([tag, el.textContent.trim()]);
-          }
-        }
-      }
-    } catch (e) { entry.metadata = { error: 'Could not parse document: ' + e.message }; }
+function removeEntry(entry, silent) {
+  S.entries = S.entries.filter(e => e !== entry);
+  const card = $('card-' + entry.id);
+  if (card) {
+    const next = card.nextElementSibling || card.previousElementSibling;
+    card.remove();
+    if (!silent) {
+      const f = next && next.querySelector('[data-act="toggle"]');
+      if (f) f.focus(); else dropZone.focus();
+    }
+  }
+  if (!silent) {
+    hideBatch();
+    updateChrome();
+    if (!activeEntries().length) setDirty(false);
+    announce(entry.name + ' removed.');
   }
 }
 
-async function stripFileMetadata(idx, btn) {
-  const entry = fileEntries[idx];
-  const ext = entry.ext;
-  setBusy(btn, true, 'Stripping...');
+/* ---------- cleaning ---------- */
 
-  if (IMAGE_EXTS.has(ext)) {
-    const blob = new Blob([entry.bytes], { type: entry.type });
-    const img = await createImageBitmap(blob);
-    const canvas = document.createElement('canvas');
-    canvas.width = img.width;
-    canvas.height = img.height;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0);
-    const mimeMap = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', bmp: 'image/png', tiff: 'image/png' };
-    const mime = mimeMap[ext] || 'image/png';
-    const quality = mime === 'image/jpeg' ? 0.95 : undefined;
-    const dataUrl = canvas.toDataURL(mime, quality);
-    const res = await fetch(dataUrl);
-    entry.stripped = new Uint8Array(await res.arrayBuffer());
-    entry.strippedExt = (ext === 'bmp' || ext === 'tiff') ? 'png' : ext;
-  } else if (ext === 'pdf') {
-    try {
-      const pdfDoc = await PDFLib.PDFDocument.load(entry.bytes);
-      pdfDoc.setTitle(''); pdfDoc.setAuthor(''); pdfDoc.setSubject('');
-      pdfDoc.setCreator(''); pdfDoc.setProducer(''); pdfDoc.setKeywords([]);
-      const saved = await pdfDoc.save();
-      entry.stripped = new Uint8Array(saved);
-      entry.strippedExt = 'pdf';
-    } catch { entry.stripped = null; }
-  } else if (ext === 'docx' || ext === 'xlsx' || ext === 'pptx') {
-    try {
-      const zip = await JSZip.loadAsync(entry.bytes);
-      const coreFile = zip.file('docProps/core.xml');
-      if (coreFile) {
-        let xml = await coreFile.async('string');
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(xml, 'text/xml');
-        const clearTags = ['dc:creator', 'cp:lastModifiedBy', 'dc:title', 'dc:subject', 'cp:keywords', 'cp:category', 'dc:description', 'cp:contentStatus'];
-        for (const tag of clearTags) {
-          const el = doc.getElementsByTagName(tag)[0];
-          if (el) el.textContent = '';
-        }
-        const revEl = doc.getElementsByTagName('cp:revision')[0];
-        if (revEl) revEl.textContent = '1';
-        const ser = new XMLSerializer();
-        zip.file('docProps/core.xml', ser.serializeToString(doc));
-      }
-      const appFile = zip.file('docProps/app.xml');
-      if (appFile) {
-        let xml = await appFile.async('string');
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(xml, 'text/xml');
-        for (const tag of ['Company', 'Manager', 'Template']) {
-          const el = doc.getElementsByTagName(tag)[0];
-          if (el) el.textContent = '';
-        }
-        const ser = new XMLSerializer();
-        zip.file('docProps/app.xml', ser.serializeToString(doc));
-      }
-      const result = await zip.generateAsync({ type: 'uint8array' });
-      entry.stripped = result;
-      entry.strippedExt = ext;
-    } catch { entry.stripped = null; }
-  }
+function activeEntries() { return S.entries.filter(e => e.state !== 'skipped' && e.state !== 'reading'); }
 
-  setBusy(btn, false);
-  showToast(`Metadata stripped from ${entry.name}`, 'success');
-  render();
+function outName(name, ext) {
+  const base = name.replace(/\.[^.]+$/, '') || 'file';
+  return base + '_clean.' + ext;
 }
 
-async function stripAll(btn) {
-  if (!fileEntries.length) {
-    showInlineError(btn, 'Choose some files first.');
-    return;
+async function cleanEntry(entry, convert) {
+  if (entry.state === 'cleaned' || entry.readFailed || entry.state === 'nothing') return;
+  const fmtInfo = FORMAT[entry.fmt];
+  if (fmtInfo.convertTo && !convert) { entry.state = 'needs'; renderCard(entry); return; }
+  entry.state = 'cleaning';
+  entry.out = null;
+  renderCard(entry);
+  try {
+    let src = entry.bytes, fmt = entry.fmt, converted = null;
+    if (fmtInfo.convertTo === 'png') {
+      try { src = await E.convertRaster(new Blob([entry.bytes], { type: 'image/tiff' }), 'image/png'); }
+      catch (e) { throw new Error('This browser cannot open TIFF images, so it cannot convert this one. Safari can, or convert it to PNG or JPEG in another app first.'); }
+      fmt = 'png'; converted = 'PNG';
+    } else if (fmtInfo.convertTo === 'jpeg') {
+      if (entry.report && entry.report.invalid) throw new Error('This file does not look like a complete HEIC photo, so it cannot be converted.');
+      let heic2any;
+      try { heic2any = await E.loadScript(HEIC2ANY_URL, 'heic2any'); }
+      catch (e) { throw new Error('The HEIC converter could not be downloaded. Check your connection and try again.'); }
+      const cannot = 'HEIC photos cannot be cleaned here yet: this one could not be converted. Convert it to JPEG first, for example by sharing it from the Photos app.';
+      if (entry.report && entry.report.invalid) throw new Error(cannot);
+      let blob;
+      try {
+        blob = await Promise.race([
+          heic2any({ blob: new Blob([entry.bytes], { type: 'image/heic' }), toType: 'image/jpeg', quality: 0.92 }),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 90000))
+        ]);
+      } catch (e) { throw new Error(cannot); }
+      src = new Uint8Array(await (Array.isArray(blob) ? blob[0] : blob).arrayBuffer());
+      fmt = 'jpeg'; converted = 'JPEG';
+    }
+    const decide = converted ? () => false : decideFor(entry);
+    const res = await E.clean(src, fmt, decide, { keepRotation: S.keepRotation && !converted, anonymise: S.anonymise });
+    // Proof: read the output again with the same inspector.
+    const outRep = await E.inspect(res.bytes, fmt);
+    const cmp = E.compare(entry.report, outRep, res.keptIds);
+    if (cmp.unexpected.length) {
+      const names = Array.from(new Set(cmp.unexpected.map(f => f.name))).slice(0, 6).join(', ');
+      throw new Error('After cleaning, these details could still be read: ' + names + '. The file was left out so it is not shared by mistake.');
+    }
+    const outIds = new Set(outRep.fields.map(f => f.id));
+    const removedCount = entry.report.fields.filter(f => !outIds.has(f.id)).length;
+    const ext = converted ? FORMAT[fmt].ext : (fmt === 'jpeg' && /^(jpe?g|jfif)$/.test(getExt(entry.name)) ? getExt(entry.name) : FORMAT[fmt].ext);
+    let how = '';
+    if (converted) how = 'Converted to ' + converted + (converted === 'JPEG' ? ', so the photo was re-encoded.' : '. The picture looks the same.');
+    else if (fmtInfo.kind === 'photo') how = 'The picture itself was not changed or re-encoded.';
+    entry.out = {
+      bytes: res.bytes, fmt, name: outName(entry.name, ext), mime: FORMAT[fmt].mime, outIds, keptIds: res.keptIds,
+      kept: cmp.kept, removedCount, notes: res.notes || [], how
+    };
+    entry.state = 'cleaned';
+    entry.stale = false;
+  } catch (e) {
+    entry.state = 'failed';
+    entry.out = null;
+    entry.reason = friendly(e);
+  } finally {
+    if (entry.state === 'cleaning') { entry.state = 'failed'; entry.reason = 'Cleaning stopped unexpectedly.'; }
+    renderCard(entry);
   }
-  setBusy(btn, true, 'Stripping...');
-  for (let i = 0; i < fileEntries.length; i++) {
-    if (!fileEntries[i].stripped) await stripFileMetadata(i);
-  }
-  setBusy(btn, false);
-  showToast('All files stripped', 'success');
-  render();
 }
 
-function downloadFile(idx) {
-  const entry = fileEntries[idx];
-  const data = entry.stripped || entry.bytes;
-  const ext = entry.stripped ? (entry.strippedExt || entry.ext) : entry.ext;
-  const baseName = entry.name.replace(/\.[^.]+$/, '');
-  const suffix = entry.stripped ? '_clean' : '';
-  const name = `${baseName}${suffix}.${ext}`;
-  const blob = new Blob([data]);
+async function cleanOne(entry, btn, convert) {
+  if (S.busy) return;
+  S.busy = true;
+  const done = startJob('Cleaning ' + entry.name);
+  try {
+    await cleanEntry(entry, convert);
+  } finally {
+    S.busy = false;
+    done();
+    renderCard(entry);
+    updateChrome();
+  }
+  if (entry.state === 'cleaned') {
+    showToast(entry.name + ' cleaned and checked', 'success');
+    announce(entry.name + ' cleaned. ' + plural(entry.out.removedCount, 'detail') + ' removed.');
+  } else {
+    showToast(entry.name + ' could not be cleaned. The reason is on the file.', 'error');
+    announce(entry.name + ' could not be cleaned. ' + entry.reason);
+  }
+}
+
+function leftOutReason(e) {
+  if (e.state === 'needs') return e.fmt === 'heic' ? 'needs converting to JPEG (use Convert to JPEG and clean, or turn on Convert TIFF and HEIC)' : 'needs converting to PNG (use Convert to PNG and clean, or turn on Convert TIFF and HEIC)';
+  if (e.state === 'nothing') return 'nothing to remove';
+  return e.reason.replace(/\.$/, '');
+}
+
+async function runBatch(download, btn) {
+  if (S.busy) return;
+  const list = activeEntries();
+  if (!list.length) return;
+  S.busy = true;
+  const other = btn === $('primaryBtn') ? $('cleanOnlyBtn') : $('primaryBtn');
+  other.disabled = true;
+  $('startOverBtn').disabled = true;
+  setBusy(btn, true, 'Cleaning...');
+  const done = startJob('Cleaning files');
+  const prog = $('progressArea');
+  hideBatch();
+  for (const e of list) renderCard(e);
+  try {
+    for (let i = 0; i < list.length; i++) {
+      if (list.length > 1 && window.setProgress) setProgress(prog, (i / list.length) * 100, 'Cleaning ' + (i + 1) + ' of ' + list.length);
+      await cleanEntry(list[i], S.convert);
+      await tick();
+    }
+    const cleaned = list.filter(e => e.state === 'cleaned');
+    const left = list.filter(e => e.state !== 'cleaned');
+    let downloaded = false;
+    if (download && cleaned.length) {
+      if (list.length === 1) downloadEntry(cleaned[0]);
+      else await downloadZip(cleaned);
+      downloaded = true;
+    }
+    showBatch(cleaned, left, downloaded, list.length);
+    // One toast per batch.
+    if (!cleaned.length) showToast(list.length === 1 ? 'The file could not be cleaned. The reason is below.' : 'None of the files could be cleaned. The reasons are below.', 'error');
+    else if (left.length) showToast(cleaned.length + ' of ' + list.length + ' files cleaned. ' + plural(left.length, 'file') + ' left out.', 'info');
+    else showToast(list.length === 1 ? 'Cleaned and checked' + (downloaded ? '. Download started.' : '') : 'All ' + list.length + ' files cleaned and checked' + (downloaded ? '. ZIP download started.' : ''), 'success');
+  } finally {
+    S.busy = false;
+    done();
+    setBusy(btn, false);
+    other.disabled = false;
+    $('startOverBtn').disabled = false;
+    if (window.clearProgress) clearProgress(prog);
+    for (const e of list) renderCard(e);
+    updateChrome();
+  }
+}
+
+function hideBatch() {
+  const el = $('batchResult');
+  el.classList.add('hidden');
+  el.innerHTML = '';
+  S.lastBatch = null;
+}
+
+function showBatch(cleaned, left, downloaded, total) {
+  const el = $('batchResult');
+  S.lastBatch = cleaned;
+  const title = !cleaned.length ? 'Nothing was cleaned'
+    : left.length ? cleaned.length + ' of ' + total + ' files cleaned and verified'
+    : total === 1 ? 'Cleaned and verified' : 'All ' + total + ' files cleaned and verified';
+  let h = '<div class="result-head"><h2>' + esc(title) + '</h2></div><div class="result-body">';
+  if (cleaned.length) {
+    const removed = cleaned.reduce((n, e) => n + e.out.removedCount, 0);
+    const kept = cleaned.reduce((n, e) => n + e.out.kept.length, 0);
+    h += '<div class="success-msg"><i class="ph ph-seal-check" aria-hidden="true"></i><span>' + plural(removed, 'detail') + ' removed. Each cleaned file was read again to check that nothing you chose to remove is left' + (kept ? ' (' + plural(kept, 'detail') + ' kept on purpose)' : '') + '.' + (downloaded ? (cleaned.length > 1 || total > 1 ? ' The ZIP download has started.' : ' The download has started.') : '') + '</span></div>';
+  }
+  if (left.length) {
+    h += '<div class="warning-msg mt-2"><i class="ph ph-warning" aria-hidden="true"></i><div><b>' + (left.length === 1 ? '1 file could not be cleaned and was left out' : left.length + ' files could not be cleaned and were left out') + (downloaded ? ' of the download' : '') + ':</b><ul class="batch-list">' +
+      left.map(e => '<li><span class="mono">' + esc(e.name) + '</span>: ' + esc(leftOutReason(e)) + '</li>').join('') + '</ul></div></div>';
+  }
+  if (cleaned.length) {
+    h += '<div class="actions-row">';
+    if (cleaned.length === 1) h += '<button class="btn btn-download" type="button" id="batchDlOne"><i class="ph ph-download-simple" aria-hidden="true"></i> Download ' + esc(cleaned[0].out.name) + '</button>';
+    else h += '<button class="btn btn-download" type="button" id="batchDlZip"><i class="ph ph-file-zip" aria-hidden="true"></i> Download ZIP (' + plural(cleaned.length, 'file') + ')</button>';
+    h += '</div><div id="continueArea"></div>';
+  }
+  h += '</div>';
+  el.innerHTML = h;
+  el.classList.remove('hidden');
+  const one = $('batchDlOne'), zip = $('batchDlZip');
+  if (one) one.addEventListener('click', () => downloadEntry(cleaned[0]));
+  if (zip) zip.addEventListener('click', () => downloadZip(cleaned, zip));
+  if (cleaned.length === 1) {
+    const e = cleaned[0];
+    try {
+      if (tfe() && tfe().continueWith) tfe().continueWith($('continueArea'), new File([e.out.bytes], e.out.name, { type: e.out.mime }));
+    } catch (x) { /* optional */ }
+  }
+  try { if (tfe() && tfe().revealResult) tfe().revealResult(el); else el.focus({ preventScroll: false }); } catch (x) { /* optional */ }
+  announce(title + (left.length ? '. ' + plural(left.length, 'file') + ' left out.' : '.'));
+}
+
+function triggerDownload(blob, name) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = name;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(a.href);
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
-
-async function downloadAllZip(btn) {
-  if (!fileEntries.length) {
-    showInlineError(btn, 'Choose some files first.');
-    return;
+function downloadEntry(entry) {
+  if (entry.state !== 'cleaned' || !entry.out) return;
+  triggerDownload(new Blob([entry.out.bytes], { type: entry.out.mime }), entry.out.name);
+}
+async function downloadZip(list, btn) {
+  const good = list.filter(e => e.state === 'cleaned' && e.out);
+  if (!good.length) return;
+  if (btn) setBusy(btn, true, 'Packing...');
+  try {
+    const zip = new JSZip();
+    const used = new Set();
+    for (const e of good) {
+      let name = e.out.name, k = 2;
+      while (used.has(name.toLowerCase())) name = e.out.name.replace(/(\.[^.]+)$/, ' (' + (k++) + ')$1');
+      used.add(name.toLowerCase());
+      zip.file(name, e.out.bytes);
+    }
+    const blob = await zip.generateAsync({ type: 'blob' });
+    S.lastZip = { names: Array.from(used), size: blob.size };
+    triggerDownload(blob, 'cleaned_files_' + new Date().toISOString().slice(0, 10) + '.zip');
+  } finally {
+    if (btn) setBusy(btn, false);
   }
-  setBusy(btn, true, 'Packing...');
-  const zip = new JSZip();
-  for (const entry of fileEntries) {
-    if (!entry.stripped) await stripFileMetadata(fileEntries.indexOf(entry));
-    const ext = entry.strippedExt || entry.ext;
-    const baseName = entry.name.replace(/\.[^.]+$/, '');
-    zip.file(`${baseName}_clean.${ext}`, entry.stripped || entry.bytes);
+}
+
+/* ---------- page chrome ---------- */
+
+const mqMobile = window.matchMedia('(max-width: 900px)');
+function updateChrome() {
+  const act = activeEntries();
+  const all = S.entries.filter(e => e.state !== 'skipped');
+  const has = all.length > 0;
+  $('statsRow').classList.toggle('hidden', !has);
+  $('actionBar').classList.toggle('hidden', !has);
+  $('actionBar').classList.toggle('is-sticky', has && mqMobile.matches);
+  dropZone.classList.toggle('compact', has);
+  $('dzTitle').textContent = has ? 'Add more files' : 'Drop files here or browse';
+  dropZone.setAttribute('aria-label', has ? 'Add more files' : 'Choose files to inspect');
+  const withLoc = act.filter(e => e.report && riskOf(e.report).hasLocation).length;
+  const personal = act.filter(e => e.report && riskOf(e.report).personal).length;
+  const cleaned = act.filter(e => e.state === 'cleaned').length;
+  $('statFiles').textContent = all.length;
+  $('statLocation').textContent = withLoc;
+  $('statPersonal').textContent = personal;
+  $('statClean').textContent = cleaned;
+  const n = act.length;
+  const primary = $('primaryBtn');
+  if (!primary.hasAttribute('aria-busy')) {
+    primary.querySelector('span').textContent = n === 1 ? 'Clean and download' : 'Clean ' + n + ' files and download ZIP';
+    primary.disabled = !n || S.busy;
+    $('cleanOnlyBtn').disabled = !n || S.busy;
   }
-  const blob = await zip.generateAsync({ type: 'blob' });
-  setBusy(btn, false);
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `cleaned_files_${new Date().toISOString().slice(0, 10)}.zip`;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  const reading = S.entries.some(e => e.state === 'reading');
+  if (reading) { primary.disabled = true; $('cleanOnlyBtn').disabled = true; }
+  $('liveCount').textContent = reading ? 'Reading files…' : plural(all.length, 'file') + (withLoc ? ' · ' + withLoc + ' with location' : '') + (cleaned ? ' · ' + cleaned + ' cleaned' : '');
+}
+if (mqMobile.addEventListener) mqMobile.addEventListener('change', updateChrome);
+
+$('primaryBtn').addEventListener('click', e => runBatch(true, e.currentTarget));
+$('cleanOnlyBtn').addEventListener('click', e => runBatch(false, e.currentTarget));
+$('startOverBtn').addEventListener('click', async e => {
+  const btn = e.currentTarget;
+  if (S.busy) return;
+  let ok = true;
+  try {
+    if (tfe() && tfe().confirmInline) ok = await tfe().confirmInline(btn, { message: 'Remove all files from the list?', confirmLabel: 'Start over', cancelLabel: 'Cancel', danger: false });
+  } catch (x) { ok = true; }
+  if (!ok) return;
+  startOver();
+});
+function startOver() {
+  S.entries = [];
+  fileList.innerHTML = '';
+  hideBatch();
+  showSkipped([]);
+  updateChrome();
+  setDirty(false);
+  dropZone.focus();
+  announce('The list is empty.');
 }
 
-function render() {
-  if (!fileEntries.length) return;
-  document.getElementById('statsRow').style.display = 'block';
-  document.getElementById('statFiles').textContent = fileEntries.length;
-  const withRisks = fileEntries.filter(e => e.risks.length > 0).length;
-  document.getElementById('statRisks').textContent = withRisks;
-  document.getElementById('statClean').textContent = fileEntries.filter(e => e.stripped).length;
+/* ---------- options ---------- */
 
-  let html = '';
-  for (let i = 0; i < fileEntries.length; i++) {
-    const entry = fileEntries[i];
-    const icon = FORMAT_ICONS[entry.ext] || 'file';
-    const tagCount = Object.keys(entry.metadata).length;
-    const riskBadge = entry.risks.length > 0
-      ? `<span class="tag-badge warn"><i class="ph ph-warning" aria-hidden="true"></i> ${entry.risks.length} to review</span>`
-      : `<span class="tag-badge ok"><i class="ph ph-check" aria-hidden="true"></i> Clean</span>`;
-    const strippedBadge = entry.stripped ? '<span class="tag-badge info"><i class="ph ph-broom" aria-hidden="true"></i> Stripped</span>' : '';
-
-    html += `<div class="result">
-      <button class="file-header" type="button" onclick="toggleFile(${i})" aria-expanded="false" aria-controls="file-body-${i}">
-        <span class="file-title"><i class="ph ph-${icon}" aria-hidden="true"></i> <span class="name">${escapeHTML(entry.name)}</span> ${riskBadge} ${strippedBadge}</span>
-        <span class="file-count">${tagCount} properties <i class="ph ph-caret-down" aria-hidden="true"></i></span>
-      </button>
-      <div class="file-body" id="file-body-${i}">`;
-
-    if (entry.risks.length > 0) {
-      html += '<div class="warning-msg"><i class="ph ph-warning" aria-hidden="true"></i><div><b>Worth checking before you share</b><ul class="risk-list">';
-      for (const [k, v] of entry.risks) html += `<li><b>${escapeHTML(k)}:</b> ${escapeHTML(v)}</li>`;
-      html += '</ul></div></div>';
-    } else {
-      html += '<div class="success-msg"><i class="ph ph-check-circle" aria-hidden="true"></i> <span>No obvious privacy risks found.</span></div>';
-    }
-
-    if (Object.keys(entry.metadata).length) {
-      html += '<table class="meta-table"><tr><th>Property</th><th>Value</th></tr>';
-      for (const [k, v] of Object.entries(entry.metadata)) {
-        const isSensitive = SENSITIVE_IMAGE_TAGS.has(k) || SENSITIVE_DOC_PROPS.has(k) || ['Company', 'Manager', 'Author', 'Creator', 'Producer'].includes(k);
-        html += `<tr><td>${escapeHTML(k)}</td><td class="${isSensitive ? 'sensitive' : ''}">${escapeHTML(String(v).slice(0, 200))}</td></tr>`;
-      }
-      html += '</table>';
-    }
-
-    if (entry.metadata.latitude && entry.metadata.longitude) {
-      const lat = parseFloat(entry.metadata.latitude);
-      const lon = parseFloat(entry.metadata.longitude);
-      if (!isNaN(lat) && !isNaN(lon)) {
-        html += `<p class="mt-2"><a class="gps-link" href="https://www.google.com/maps?q=${lat},${lon}" target="_blank" rel="noopener"><i class="ph ph-map-pin" aria-hidden="true"></i> View this location on Google Maps (${lat.toFixed(4)}, ${lon.toFixed(4)})</a></p>`;
-      }
-    }
-
-    html += `<div class="actions-row">`;
-    if (!entry.stripped) {
-      html += `<button class="btn btn-sm btn-strip" type="button" onclick="stripFileMetadata(${i}, this)"><i class="ph ph-broom" aria-hidden="true"></i> Strip metadata</button>`;
-    }
-    html += `<button class="btn btn-sm btn-download" type="button" onclick="downloadFile(${i})"><i class="ph ph-download-simple" aria-hidden="true"></i> ${entry.stripped ? 'Download clean copy' : 'Download original'}</button>`;
-    html += `</div></div></div>`;
+const optionsPanel = $('optionsPanel');
+function formOptions() {
+  const r = optionsPanel.querySelector('input[name="preset"]:checked');
+  return {
+    preset: r ? r.value : 'everything',
+    keepRotation: $('keepRotation').checked,
+    anonymise: $('anonymiseAuthors').checked,
+    convert: $('convertPhotos').checked
+  };
+}
+function readOptions() { Object.assign(S, formOptions()); }
+// Read-only: the shell calls this on every input event, before the page's change handler.
+function optionsSummary() {
+  const o = formOptions();
+  return PRESET_SUMMARY[o.preset] + ' · ' + (o.keepRotation ? 'keep rotation' : 'remove rotation') + (o.anonymise ? ' · anonymise authors' : '');
+}
+function onOptionsChanged(ev) {
+  const before = { preset: S.preset, keepRotation: S.keepRotation, anonymise: S.anonymise };
+  readOptions();
+  const presetChanged = before.preset !== S.preset;
+  const cleanChanged = presetChanged || before.keepRotation !== S.keepRotation || before.anonymise !== S.anonymise;
+  if (!cleanChanged) { updateChrome(); return; }
+  for (const e of S.entries) {
+    if (presetChanged) e.overrides.clear();
+    if (e.state === 'cleaned') { e.state = FORMAT[e.fmt].convertTo ? 'needs' : 'ready'; e.out = null; e.stale = true; }
+    if (e.state !== 'reading' && e.state !== 'skipped') renderCard(e);
   }
-  document.getElementById('fileList').innerHTML = html;
+  hideBatch();
+  updateChrome();
 }
+optionsPanel.addEventListener('change', onOptionsChanged);
+readOptions();
 
-function toggleFile(idx) {
-  const body = document.getElementById('file-body-' + idx);
-  const open = body.classList.toggle('open');
-  const header = body.previousElementSibling;
-  if (header) header.setAttribute('aria-expanded', open ? 'true' : 'false');
-}
+document.addEventListener('DOMContentLoaded', async () => {
+  const T = tfe();
+  if (!T) return;
+  try {
+    if (T.prefs) T.prefs('metadata').bindForm(optionsPanel, { onRestore: () => { onOptionsChanged(); } });
+  } catch (e) { /* optional */ }
+  try { if (T.panelSummary) T.panelSummary(optionsPanel, optionsSummary); } catch (e) { /* optional */ }
+  try {
+    if (T.handoff && T.handoff.take) {
+      const files = await T.handoff.take();
+      if (files && files.length) intake(files);
+    }
+  } catch (e) { /* optional */ }
+});
 
-function escapeHTML(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
+// For tests and debugging.
+window.__scrubber = { S, intake, runBatch, cleanEntry, startOver, presetKeeps };
+})();
 </script>
 <script src="../assets/app.js" defer></script>
 </body>
