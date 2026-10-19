@@ -2,7 +2,7 @@
   "id": "/tools-for-everyone/index.html",
   "name": "Tools for Everyone",
   "short_name": "Tools",
-  "description": "Free tools that run in your browser: a PDF suite, image compressor, video converter, audio transcriber, private AI chat, QR code studio, metadata scrubber, bulk file renamer and test card generator. Your files are never uploaded, and each tool keeps working offline once you have opened it.",
+  "description": "Free tools that run in your browser: a PDF suite, image compressor, video converter, video editor, screen recorder, audio transcriber, private AI chat, QR code studio, metadata scrubber, bulk file renamer and test card generator. Your files are never uploaded, and each tool keeps working offline once you have opened it.",
   "lang": "en",
   "dir": "ltr",
   "start_url": "./index.html",
@@ -36,6 +36,20 @@
       "short_name": "AI Chat",
       "description": "Chat with an AI model that runs on your device",
       "url": "./Private%20AI%20Chat/private_ai_chat.html",
+      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Screen Recorder",
+      "short_name": "Record",
+      "description": "Record your screen, a window or a tab",
+      "url": "./Screen%20Recorder/screen_recorder.html",
+      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Video Editor",
+      "short_name": "Edit video",
+      "description": "Trim, join and crop videos, add text and music",
+      "url": "./Video%20Editor/video_editor.html",
       "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {

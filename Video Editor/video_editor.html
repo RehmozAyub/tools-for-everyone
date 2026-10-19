@@ -1,0 +1,2426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Editor - Free Online Video Editor: Trim, Cut, Join, Crop, Text and Music</title>
+<meta name="description" content="Edit videos for free in your browser: trim and cut out parts, join clips, crop, rotate, change speed, add text and music, then export an MP4. No upload, no watermark, no signup.">
+<link rel="canonical" href="https://rehmozayub.github.io/tools-for-everyone/Video%20Editor/video_editor.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Video Editor - Free Online Video Editor: Trim, Cut, Join, Crop, Text and Music">
+<meta property="og:description" content="Trim, cut, join, crop, rotate, speed up, add text and music, then export an MP4, all in your browser. No upload, no watermark.">
+<meta property="og:url" content="https://rehmozayub.github.io/tools-for-everyone/Video%20Editor/video_editor.html">
+<meta property="og:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Video Editor - Free Online Video Editor: Trim, Cut, Join, Crop, Text and Music">
+<meta name="twitter:description" content="Trim, cut, join, crop, rotate, speed up, add text and music, then export an MP4, all in your browser. No upload, no watermark.">
+<meta name="twitter:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f3f5">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1114">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="apple-touch-icon" href="../assets/icon-192.png">
+<script>
+  try {
+    var t = localStorage.getItem('theme');
+    if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="../assets/theme.css">
+<style>
+  .ve-page { max-width: 1400px; margin: 0 auto; padding: 24px; }
+  .ve-page > .tool-intro { margin-bottom: 16px; }
+  .ve-page .hidden { display: none !important; }
+
+  /* Empty state */
+  .ve-empty .drop-zone { padding: 64px 24px; }
+  .ve-empty .ve-alt { margin-top: 4px; font-size: 0.875rem; color: var(--text-muted); }
+
+  /* Workspace: preview and inspector side by side, timeline below */
+  .ve-top { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 20px; align-items: stretch; }
+  /* The inspector scrolls inside a column as tall as the preview, so the
+     timeline stays right under the picture whatever is selected. */
+  .ve-insp-cell { position: relative; min-height: 380px; }
+  .ve-insp-cell > .ve-inspector { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .ve-stage-wrap { align-self: start; }
+  @media (max-width: 1000px) {
+    /* One column: the picture, then the timeline, then the settings. */
+    .ve-work:not(.hidden) { display: flex; flex-direction: column; }
+    .ve-top { display: contents; }
+    .ve-stage-wrap { order: 1; }
+    .ve-tl-wrap { order: 2; }
+    .ve-insp-cell { order: 3; min-height: 0; margin-top: 20px; }
+    .ve-insp-cell > .ve-inspector { position: static; }
+    .ve-export { order: 4; }
+  }
+
+  .ve-stage-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px; }
+  .ve-stage {
+    --ar: 1.7778;
+    position: relative;
+    aspect-ratio: var(--ar);
+    width: min(100%, calc(56vh * var(--ar)));
+    margin: 0 auto;
+    background: #000;
+    border-radius: var(--radius);
+    overflow: hidden;
+    touch-action: none;
+  }
+  .ve-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .ve-stage.is-texting { cursor: move; }
+  .ve-note {
+    position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
+    padding: 4px 10px; border-radius: 999px; background: rgba(0, 0, 0, 0.65); color: #fff;
+    font-size: 0.75rem; white-space: nowrap; pointer-events: none;
+  }
+  .ve-note:empty { display: none; }
+
+  /* Crop box */
+  .ve-crop { position: absolute; border: 2px solid #fff; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55); cursor: move; touch-action: none; }
+  .ve-crop::before, .ve-crop::after { content: ""; position: absolute; pointer-events: none; border: 0 solid rgba(255, 255, 255, 0.35); }
+  .ve-crop::before { left: 33.33%; right: 33.33%; top: 0; bottom: 0; border-left-width: 1px; border-right-width: 1px; }
+  .ve-crop::after { top: 33.33%; bottom: 33.33%; left: 0; right: 0; border-top-width: 1px; border-bottom-width: 1px; }
+  .ve-crop .h { position: absolute; width: 16px; height: 16px; background: #fff; border-radius: 3px; touch-action: none; }
+  .ve-crop .h[data-h="nw"] { left: -9px; top: -9px; cursor: nwse-resize; }
+  .ve-crop .h[data-h="ne"] { right: -9px; top: -9px; cursor: nesw-resize; }
+  .ve-crop .h[data-h="sw"] { left: -9px; bottom: -9px; cursor: nesw-resize; }
+  .ve-crop .h[data-h="se"] { right: -9px; bottom: -9px; cursor: nwse-resize; }
+  .ve-crop .h[data-h="n"] { left: calc(50% - 8px); top: -9px; cursor: ns-resize; }
+  .ve-crop .h[data-h="s"] { left: calc(50% - 8px); bottom: -9px; cursor: ns-resize; }
+  .ve-crop .h[data-h="w"] { top: calc(50% - 8px); left: -9px; cursor: ew-resize; }
+  .ve-crop .h[data-h="e"] { top: calc(50% - 8px); right: -9px; cursor: ew-resize; }
+  .ve-textbox { position: absolute; outline: 1px dashed rgba(255, 255, 255, 0.9); outline-offset: 2px; pointer-events: none; }
+
+  .ve-transport { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+  .ve-transport .btn { margin: 0; }
+  .ve-time { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 0.875rem; color: var(--text-muted); }
+  .ve-time b { color: var(--text); font-weight: 500; }
+  .ve-spacer { flex: 1 1 auto; }
+  .ve-transport .icon-btn[disabled] { opacity: 0.4; cursor: not-allowed; }
+  .ve-play { width: 42px; height: 38px; padding: 0; }
+
+  /* Inspector */
+  .ve-inspector { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; min-width: 0; }
+  .ve-inspector h2 { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; overflow-wrap: anywhere; }
+  .ve-inspector h2 .ph { color: var(--text-muted); flex-shrink: 0; }
+  .ve-inspector .ve-sub { font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 12px; font-variant-numeric: tabular-nums; }
+  .ve-sec { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
+  .ve-sec > h3 { margin-bottom: 8px; }
+  .ve-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .ve-row + .ve-row { margin-top: 8px; }
+  .ve-row .btn { margin: 0; }
+  .ve-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+  .ve-pair .form-group { margin-bottom: 0; }
+  .ve-pair input { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .ve-slider { display: grid; grid-template-columns: 1fr 3.6em; gap: 8px; align-items: center; }
+  .ve-slider .slider-value { margin: 0; }
+  .ve-grid9 { display: grid; grid-template-columns: repeat(3, 34px); gap: 4px; }
+  .ve-grid9 button { width: 34px; height: 30px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text-muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+  .ve-grid9 button:hover { border-color: var(--accent); color: var(--accent); }
+  .ve-grid9 button span { width: 8px; height: 8px; border-radius: 2px; background: currentColor; }
+  .ve-inspector textarea { min-height: 70px; }
+  .ve-inspector .field-note { font-size: 0.75rem; color: var(--text-muted); margin-top: 6px; }
+  .ve-color { display: flex; align-items: center; gap: 8px; }
+
+  /* Timeline */
+  .ve-tl-wrap { margin-top: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .ve-tl-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .ve-tl-bar .btn { margin: 0; }
+  .ve-zoom { display: inline-flex; align-items: center; gap: 4px; }
+  .ve-zoom input[type="range"] { width: 120px; }
+  .ve-tl-grid { display: grid; grid-template-columns: 74px minmax(0, 1fr); }
+  .ve-labels { border-right: 1px solid var(--border); background: var(--surface-2); }
+  .ve-labels > div {
+    display: flex; align-items: center; gap: 6px; padding: 0 10px;
+    font-size: 0.75rem; font-weight: 500; color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .ve-labels > div:last-child { border-bottom: 0; }
+  .ve-labels .ph { font-size: 0.9375rem; }
+  .ve-tl { overflow-x: auto; overflow-y: hidden; position: relative; outline: none; overscroll-behavior-x: contain; }
+  .ve-tl:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+  .ve-tl-inner { position: relative; min-width: 100%; }
+  .ve-ruler, .ve-track { position: relative; border-bottom: 1px solid var(--border); }
+  .ve-track:last-child { border-bottom: 0; }
+  .r-ruler { height: 26px; }
+  .r-video { height: 70px; }
+  .r-text { height: 38px; }
+  .r-audio { height: 46px; }
+  .ve-ruler { cursor: pointer; background: var(--surface-2); user-select: none; }
+  .ve-ruler canvas { position: absolute; inset: 0; height: 100%; display: block; }
+  .ve-track { background-image: linear-gradient(var(--surface), var(--surface)); }
+  .ve-item {
+    position: absolute; top: 5px; bottom: 5px;
+    border-radius: 6px; overflow: hidden;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-2);
+    cursor: grab; user-select: none; touch-action: none;
+  }
+  .ve-item:active { cursor: grabbing; }
+  .ve-item canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+  .ve-item .lbl {
+    position: absolute; left: 6px; top: 4px; right: 6px;
+    display: flex; gap: 4px; align-items: center;
+    font-size: 0.6875rem; font-weight: 500; line-height: 1.3; color: #fff;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  }
+  .ve-item .lbl .badge { padding: 0 4px; border-radius: 3px; background: rgba(0, 0, 0, 0.55); flex-shrink: 0; }
+  .ve-item.is-selected { outline: 2px solid var(--accent); outline-offset: -1px; z-index: 2; }
+  .ve-item .hd { position: absolute; top: 0; bottom: 0; width: 10px; cursor: ew-resize; z-index: 1; touch-action: none; }
+  .ve-item .hd.l { left: 0; }
+  .ve-item .hd.r { right: 0; }
+  .ve-item.is-selected .hd, .ve-item:hover .hd { background: rgba(255, 255, 255, 0.28); }
+  .ve-item.is-selected .hd::after, .ve-item:hover .hd::after { content: ""; position: absolute; top: 35%; bottom: 35%; left: 4px; width: 2px; border-radius: 1px; background: #fff; }
+  .ve-item.ve-text { background: var(--accent-tint); border-color: var(--accent); }
+  .ve-item.ve-text .lbl { color: var(--accent); text-shadow: none; top: 50%; transform: translateY(-50%); }
+  .ve-item.ve-audio { background: var(--success-tint); border-color: var(--success); }
+  .ve-item.ve-audio .lbl { color: var(--success); text-shadow: none; }
+  .ve-item.is-dragging { opacity: 0.85; z-index: 3; box-shadow: var(--shadow); }
+  .ve-playhead { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--danger); pointer-events: none; z-index: 5; }
+  .ve-playhead::before { content: ""; position: absolute; top: 0; left: -5px; border: 6px solid transparent; border-top-color: var(--danger); }
+  .ve-marker { position: absolute; top: 26px; bottom: 0; width: 3px; margin-left: -1.5px; background: var(--accent); z-index: 6; pointer-events: none; }
+  .ve-empty-track { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 0.75rem; color: var(--text-faint); pointer-events: none; white-space: nowrap; }
+  .ve-hint { padding: 8px 12px; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--text-faint); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  .ve-hint .kbd { margin-right: 4px; }
+
+  /* Export */
+  .ve-export { margin-top: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
+  .ve-export h2 { display: flex; align-items: center; gap: 8px; }
+  .ve-export-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 20px; margin-bottom: 8px; }
+  .ve-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+  .ve-fieldset > legend { padding: 0; font-size: 0.8125rem; font-weight: 500; color: var(--text-muted); margin-bottom: 6px; }
+  .ve-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  label.ve-chip { position: relative; margin: 0; }
+  .ve-chip input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+  .ve-chip:has(input:checked) { border-color: var(--accent); background: var(--accent-tint); color: var(--accent); }
+  .ve-chip:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .ve-chip:has(input:disabled) { opacity: 0.5; cursor: not-allowed; }
+  .ve-export .action-bar .btn { margin-top: 0; }
+  .ve-progress { max-width: 560px; }
+  .ve-progress .progress-sub { margin-top: 4px; font-size: 0.75rem; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+  .result-preview { display: block; width: 100%; max-height: 460px; border-radius: var(--radius); background: #000; margin: 12px 0 4px; }
+  .ve-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.8125rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .ve-details { margin-top: 8px; font-size: 0.8125rem; }
+  .ve-details summary { cursor: pointer; color: var(--text-muted); }
+  .ve-details pre { margin-top: 6px; padding: 8px 10px; max-height: 220px; overflow: auto; background: var(--surface-2); border-radius: var(--radius); font-family: var(--font-mono); font-size: 0.75rem; white-space: pre-wrap; word-break: break-word; }
+
+  .ve-dragging-file .ve-page::after {
+    content: "Drop to add to your video";
+    position: fixed; inset: 16px; z-index: 150;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px dashed var(--accent); border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    color: var(--text); font-size: 1.125rem; font-weight: 600; pointer-events: none;
+  }
+
+  @media (max-width: 900px) {
+    .ve-page { padding: 16px; }
+    .ve-stage { width: min(100%, calc(48vh * var(--ar))); }
+    .ve-tl-grid { grid-template-columns: 44px minmax(0, 1fr); }
+    .ve-labels span { display: none; }
+  }
+  @media (pointer: coarse) {
+    .ve-item .hd { width: 18px; }
+    .ve-crop .h { width: 24px; height: 24px; }
+  }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="tool-header">
+  <a class="back" href="../index.html"><i class="ph ph-arrow-left" aria-hidden="true"></i> <span>All tools</span></a>
+  <h1><i class="ph ph-film-slate" aria-hidden="true"></i> Video Editor</h1>
+  <div class="header-actions">
+    <button class="icon-btn" type="button" id="themeToggle" aria-label="Toggle theme"></button>
+    <a class="icon-btn" href="https://github.com/RehmozAyub/tools-for-everyone" aria-label="Source on GitHub"><i class="ph ph-github-logo" aria-hidden="true"></i></a>
+  </div>
+</header>
+
+<main class="ve-page" id="main">
+  <p class="tool-intro">Trim and cut out parts, join clips, crop, rotate, change the speed, and add text and music. Then save it as an MP4. Your videos never leave this device.</p>
+  <div id="tip"></div>
+  <div id="supportNote"></div>
+  <div id="problems" aria-live="polite"></div>
+
+  <section class="ve-empty" id="empty">
+    <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="Choose videos, pictures or music">
+      <i class="ph ph-upload-simple" aria-hidden="true"></i>
+      <p class="dz-title">Drop videos, pictures or music here, or browse</p>
+      <p class="dz-hint">MP4 MOV WebM MKV · JPG PNG WebP · MP3 WAV M4A, as many as you like</p>
+    </div>
+    <p class="ve-alt">Nothing to edit yet? <a href="../Screen%20Recorder/screen_recorder.html">Record your screen or camera</a> and send it here.</p>
+  </section>
+
+  <section class="ve-work hidden" id="work" aria-label="Editor">
+    <div class="ve-top">
+      <div class="ve-stage-wrap">
+        <div class="ve-stage" id="stage">
+          <canvas id="view" aria-label="Preview of your video"></canvas>
+          <div id="overlay"></div>
+          <div class="ve-note" id="viewNote"></div>
+        </div>
+        <div class="ve-transport">
+          <button class="btn ve-play" type="button" id="playBtn" aria-label="Play"><i class="ph ph-play" aria-hidden="true"></i></button>
+          <span class="ve-time"><b id="timeNow">0:00.0</b> / <span id="timeTotal">0:00.0</span></span>
+          <span class="ve-spacer"></span>
+          <button class="btn btn-sm" type="button" id="splitBtn" title="Split at the playhead (S)"><i class="ph ph-scissors" aria-hidden="true"></i> Split</button>
+          <button class="btn btn-sm" type="button" id="deleteBtn" title="Delete the selection (Delete)"><i class="ph ph-trash" aria-hidden="true"></i> Delete</button>
+          <button class="icon-btn" type="button" id="undoBtn" aria-label="Undo" title="Undo (Ctrl+Z)"><i class="ph ph-arrow-u-up-left" aria-hidden="true"></i></button>
+          <button class="icon-btn" type="button" id="redoBtn" aria-label="Redo" title="Redo (Ctrl+Shift+Z)"><i class="ph ph-arrow-u-up-right" aria-hidden="true"></i></button>
+        </div>
+      </div>
+      <div class="ve-insp-cell"><aside class="ve-inspector" id="inspector" aria-label="Settings for the selection"></aside></div>
+    </div>
+
+    <div class="ve-tl-wrap">
+      <div class="ve-tl-bar">
+        <button class="btn btn-sm" type="button" id="addMediaBtn"><i class="ph ph-plus" aria-hidden="true"></i> Video or picture</button>
+        <button class="btn btn-sm" type="button" id="addTextBtn"><i class="ph ph-text-t" aria-hidden="true"></i> Text</button>
+        <button class="btn btn-sm" type="button" id="addMusicBtn"><i class="ph ph-music-notes" aria-hidden="true"></i> Music or voice-over</button>
+        <span class="ve-spacer"></span>
+        <span class="ve-zoom">
+          <button class="icon-btn" type="button" id="zoomOut" aria-label="Zoom out"><i class="ph ph-magnifying-glass-minus" aria-hidden="true"></i></button>
+          <input type="range" id="zoom" min="0" max="100" value="0" aria-label="Zoom" data-no-remember>
+          <button class="icon-btn" type="button" id="zoomIn" aria-label="Zoom in"><i class="ph ph-magnifying-glass-plus" aria-hidden="true"></i></button>
+          <button class="btn btn-sm" type="button" id="zoomFit">Fit</button>
+        </span>
+        <button class="btn btn-sm btn-primary" type="button" id="toExport" style="margin:0;min-height:32px;padding:6px 12px"><i class="ph ph-export" aria-hidden="true"></i> Export</button>
+      </div>
+      <div class="ve-tl-grid">
+        <div class="ve-labels" aria-hidden="true">
+          <div class="r-ruler"></div>
+          <div class="r-video"><i class="ph ph-film-strip"></i><span>Video</span></div>
+          <div class="r-text"><i class="ph ph-text-t"></i><span>Text</span></div>
+          <div class="r-audio"><i class="ph ph-music-notes"></i><span>Sound</span></div>
+        </div>
+        <div class="ve-tl" id="tl" tabindex="0" aria-label="Timeline. Use the arrow keys to move the playhead.">
+          <div class="ve-tl-inner" id="tlInner">
+            <div class="ve-ruler r-ruler" id="ruler"><canvas id="rulerCanvas"></canvas></div>
+            <div class="ve-track r-video" id="trackV" data-track="clips"></div>
+            <div class="ve-track r-text" id="trackT" data-track="texts"></div>
+            <div class="ve-track r-audio" id="trackA" data-track="audio"></div>
+            <div class="ve-playhead" id="playhead"></div>
+            <div class="ve-marker hidden" id="dropMarker"></div>
+          </div>
+        </div>
+      </div>
+      <div class="ve-hint">
+        <span><span class="kbd">Space</span>Play</span>
+        <span><span class="kbd">S</span>Split</span>
+        <span><span class="kbd">Del</span>Delete</span>
+        <span><span class="kbd">Ctrl Z</span>Undo</span>
+        <span><span class="kbd">←</span><span class="kbd">→</span>One frame</span>
+        <span>Drag clips to reorder, drag their edges to trim.</span>
+      </div>
+    </div>
+
+    <section class="ve-export" id="exportSection" aria-labelledby="exportTitle">
+      <h2 id="exportTitle"><i class="ph ph-export" aria-hidden="true"></i> Export</h2>
+      <div class="ve-export-grid" id="exportBody">
+        <fieldset class="ve-fieldset">
+          <legend>File type</legend>
+          <div class="ve-chips">
+            <label class="chip ve-chip"><input type="radio" name="exFormat" value="mp4" checked><span>MP4</span></label>
+            <label class="chip ve-chip"><input type="radio" name="exFormat" value="webm"><span>WebM</span></label>
+          </div>
+        </fieldset>
+        <fieldset class="ve-fieldset">
+          <legend>Size</legend>
+          <div class="ve-chips">
+            <label class="chip ve-chip"><input type="radio" name="exSize" value="1080" checked><span>1080p</span></label>
+            <label class="chip ve-chip"><input type="radio" name="exSize" value="720"><span>720p</span></label>
+            <label class="chip ve-chip"><input type="radio" name="exSize" value="480"><span>480p</span></label>
+            <label class="chip ve-chip"><input type="radio" name="exSize" value="0"><span>Original</span></label>
+          </div>
+        </fieldset>
+        <fieldset class="ve-fieldset">
+          <legend>Quality</legend>
+          <div class="ve-chips">
+            <label class="chip ve-chip"><input type="radio" name="exQuality" value="high" checked><span>High</span></label>
+            <label class="chip ve-chip"><input type="radio" name="exQuality" value="medium"><span>Medium</span></label>
+            <label class="chip ve-chip"><input type="radio" name="exQuality" value="low"><span>Small file</span></label>
+          </div>
+        </fieldset>
+        <fieldset class="ve-fieldset">
+          <legend>Frame rate</legend>
+          <div class="ve-chips">
+            <label class="chip ve-chip"><input type="radio" name="exFps" value="24"><span>24</span></label>
+            <label class="chip ve-chip"><input type="radio" name="exFps" value="30" checked><span>30</span></label>
+            <label class="chip ve-chip"><input type="radio" name="exFps" value="60"><span>60</span></label>
+          </div>
+        </fieldset>
+      </div>
+      <p class="muted small" id="exportSummary"></p>
+      <div class="action-bar">
+        <button class="btn btn-primary" type="button" id="exportBtn"><i class="ph ph-export" aria-hidden="true"></i> Export video</button>
+        <button class="btn hidden" type="button" id="cancelExportBtn"><i class="ph ph-x" aria-hidden="true"></i> Cancel</button>
+      </div>
+      <div id="exportProgress"></div>
+      <div id="exportResult" aria-live="polite"></div>
+    </section>
+  </section>
+
+  <input type="file" id="fileInput" multiple accept="video/*,image/*,audio/*,.mkv,.mov,.m4v,.webm" hidden data-no-remember>
+  <input type="file" id="musicInput" multiple accept="audio/*,video/*,.mp3,.m4a,.wav,.ogg,.opus,.flac" hidden data-no-remember>
+  <p class="sr-only" id="srStatus" aria-live="polite"></p>
+</main>
+
+<footer class="tool-footer">
+  <span>Made with ❤️ by <a href="https://github.com/RehmozAyub">RehmozAyub</a></span>
+  <a href="https://github.com/RehmozAyub/tools-for-everyone">Source on GitHub</a>
+  <button class="link-btn" type="button" onclick="sharePage()">Share</button>
+</footer>
+
+<script src="editor-core.js"></script>
+<script>
+'use strict';
+
+const Core = window.EditorCore;
+
+const $ = id => document.getElementById(id);
+const hasTFE = () => typeof window.TFE === 'object' && window.TFE !== null;
+function tfe(path, ...args) {
+  // Calls window.TFE.<path>(...args) when it exists; returns undefined otherwise.
+  try {
+    if (!hasTFE()) return undefined;
+    const parts = path.split('.');
+    let ctx = window.TFE, fn = window.TFE;
+    for (const p of parts) { ctx = fn; fn = fn && fn[p]; }
+    return typeof fn === 'function' ? fn.apply(ctx, args) : undefined;
+  } catch (e) { return undefined; }
+}
+function el(tag, attrs, children) {
+  const n = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === 'class') n.className = v;
+    else if (k === 'text') n.textContent = v;
+    else n.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of [].concat(children || [])) if (c != null) n.append(c);
+  return n;
+}
+const icon = name => el('i', { class: 'ph ph-' + name, 'aria-hidden': 'true' });
+function msgBox(kind, iconName, text, extra) {
+  return el('div', { class: kind + '-msg' }, [icon(iconName), ' ', el('span', null, [text].concat(extra || []))]);
+}
+function announce(text) {
+  if (hasTFE() && typeof TFE.announce === 'function') tfe('announce', text);
+  else $('srStatus').textContent = text;
+}
+function fmtSize(bytes) {
+  const shared = tfe('formatBytes', bytes);
+  if (typeof shared === 'string') return shared;
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+}
+const T = (s, tenths = true) => Core.formatTime(s, tenths);
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const radio = name => { const n = document.querySelector(`input[name="${name}"]:checked`); return n ? n.value : null; };
+function errText(e) { return e && e.message ? e.message : String(e); }
+class UserError extends Error { constructor(msg, detail) { super(msg); this.detail = detail || ''; } }
+class Cancelled extends Error { constructor() { super('Cancelled'); } }
+function isEditable(n) {
+  if (!n || n === document.body) return false;
+  if (n.isContentEditable) return true;
+  const tag = n.tagName;
+  if (tag === 'TEXTAREA' || tag === 'SELECT') return true;
+  if (tag !== 'INPUT') return false;
+  return !['button', 'checkbox', 'radio', 'range', 'color', 'file', 'submit', 'reset'].includes((n.type || 'text').toLowerCase());
+}
+
+/* ======================================================================
+   Mediabunny: reads and writes video files with the device's own decoders
+   and encoders. The same pinned copy Video Converter uses, from the same cache.
+   ====================================================================== */
+
+const MB_VERSION = '1.59.1';
+const MB_URL = `https://cdn.jsdelivr.net/npm/mediabunny@${MB_VERSION}/dist/bundles/mediabunny.min.mjs`;
+const MB_CACHE = `tfe-mediabunny-${MB_VERSION}`;
+let mbPromise = null;
+function getMediabunny() {
+  if (!mbPromise) {
+    const p = (async () => {
+      let cache = null;
+      try { cache = 'caches' in window ? await caches.open(MB_CACHE) : null; } catch (e) {}
+      let blob = null;
+      if (cache) { try { const hit = await cache.match(MB_URL); if (hit) blob = await hit.blob(); } catch (e) {} }
+      if (!blob || !blob.size) {
+        const res = await fetch(MB_URL);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        blob = new Blob([await res.arrayBuffer()], { type: 'text/javascript' });
+        if (cache) { try { await cache.put(MB_URL, new Response(blob, { headers: { 'Content-Type': 'text/javascript' } })); } catch (e) {} }
+      }
+      return await import(URL.createObjectURL(new Blob([blob], { type: 'text/javascript' })));
+    })();
+    mbPromise = p;
+    p.catch(() => { if (mbPromise === p) mbPromise = null; });
+  }
+  return mbPromise;
+}
+
+/* ======================================================================
+   State
+   ====================================================================== */
+
+let P = Core.emptyProject();          // the project
+const undoStack = new Core.History(150);
+const SRC = {};                       // source id -> media
+let sel = null;                       // { type: 'clip'|'text'|'audio', id }
+let pps = 40;                         // timeline pixels per second
+let zoomFitted = true;
+let editJob = null;                   // leave guard while there is something to lose
+let cropMode = false;
+let exporting = null;
+
+/* ======================================================================
+   Sources: files added to the project
+   ====================================================================== */
+
+function kindOfFile(f) {
+  const t = (f.type || '').toLowerCase();
+  const m = /\.([a-z0-9]+)$/i.exec(f.name || '');
+  const ext = m ? m[1].toLowerCase() : '';
+  if (t.startsWith('image/') || /^(jpe?g|png|webp|gif|bmp|avif)$/.test(ext)) return 'image';
+  if (t.startsWith('audio/') || /^(mp3|wav|m4a|aac|oga|ogg|opus|flac)$/.test(ext)) return 'audio';
+  if (t.startsWith('video/') || /^(mp4|mov|webm|mkv|m4v|avi|3gp|ogv)$/.test(ext)) return 'video';
+  return null;
+}
+
+function waitMeta(media) {
+  return new Promise(res => {
+    if (media.readyState >= 1) { res(true); return; }
+    const done = ok => { media.removeEventListener('loadedmetadata', onOk); media.removeEventListener('error', onErr); clearTimeout(t); res(ok); };
+    const onOk = () => done(true), onErr = () => done(false);
+    media.addEventListener('loadedmetadata', onOk);
+    media.addEventListener('error', onErr);
+    const t = setTimeout(() => done(media.readyState >= 1), 20000);
+  });
+}
+
+// A <video> made from a MediaRecorder file can report an endless duration until it is asked to find the end.
+async function finiteDuration(media) {
+  if (isFinite(media.duration) && media.duration > 0) return media.duration;
+  return new Promise(res => {
+    const t = setTimeout(() => res(0), 8000);
+    media.addEventListener('durationchange', function f() {
+      if (isFinite(media.duration)) { clearTimeout(t); media.removeEventListener('durationchange', f); media.currentTime = 0; res(media.duration); }
+    });
+    try { media.currentTime = 1e9; } catch (e) { clearTimeout(t); res(0); }
+  });
+}
+
+async function probe(file, want) {
+  const kind = want || kindOfFile(file);
+  if (!kind) throw new UserError(`${file.name} is not a video, picture or sound file.`);
+  const src = { id: Core.uid('s'), file, name: file.name, kind, url: URL.createObjectURL(file), thumbs: [], peaks: null };
+  if (kind === 'image') {
+    try { src.bitmap = await createImageBitmap(file); }
+    catch (e) { throw new UserError(`${file.name} could not be opened as a picture.`); }
+    src.width = src.bitmap.width; src.height = src.bitmap.height;
+    src.duration = 3;
+    return src;
+  }
+  // The engine reads the file for export, thumbnails and sound pictures.
+  let MB = null;
+  try { MB = await getMediabunny(); } catch (e) { src.mbError = e; }
+  if (MB) {
+    try {
+      src.input = new MB.Input({ source: new MB.BlobSource(file), formats: MB.ALL_FORMATS });
+      src.vtrack = kind === 'video' ? await src.input.getPrimaryVideoTrack() : null;
+      src.atrack = await src.input.getPrimaryAudioTrack();
+      if (src.vtrack) {
+        src.vcodec = await src.vtrack.getCodec();
+        src.canDecodeVideo = await src.vtrack.canDecode();
+        src.width = await src.vtrack.getDisplayWidth();
+        src.height = await src.vtrack.getDisplayHeight();
+      }
+      if (src.atrack) {
+        src.canDecodeAudio = await src.atrack.canDecode();
+        src.audioRate = await src.atrack.getSampleRate();
+        src.audioChannels = await src.atrack.getNumberOfChannels();
+      }
+      src.duration = await src.input.computeDuration();
+    } catch (e) { src.mbError = e; }
+  }
+  if (kind === 'video' && !src.vtrack && src.atrack) src.kind = 'audio';
+  const media = document.createElement(src.kind === 'audio' ? 'audio' : 'video');
+  media.preload = 'auto';
+  media.playsInline = true;
+  media.src = src.url;
+  const ok = await waitMeta(media);
+  if (!ok) {
+    throw new UserError(`This browser cannot play ${file.name}${src.vcodec ? ` (${src.vcodec.toUpperCase()} video)` : ''}.`,
+      'Convert it to MP4 in Video Converter first, then add it here.');
+  }
+  src.el = media;
+  if (src.kind === 'video') {
+    src.width = src.width || media.videoWidth;
+    src.height = src.height || media.videoHeight;
+    if (!src.width) throw new UserError(`${file.name} has no picture.`);
+  }
+  if (!src.duration || !isFinite(src.duration)) src.duration = await finiteDuration(media);
+  if (!src.duration) throw new UserError(`The length of ${file.name} could not be read.`);
+  src.hasAudio = src.atrack ? true : (src.input ? false : true);
+  media.addEventListener('seeked', requestDraw);
+  media.addEventListener('loadeddata', requestDraw);
+  connectAudio(media);
+  return src;
+}
+
+async function addFiles(files, { asSound = false } = {}) {
+  const list = [...files].filter(Boolean);
+  if (!list.length) return;
+  const added = { clips: [], audio: [] };
+  const problems = [];
+  setViewNote('Opening ' + (list.length === 1 ? list[0].name : list.length + ' files') + '…');
+  let at = P.clips.length ? Core.totalDuration(P) : 0;
+  const before = Core.clone(P);
+  let next = Core.clone(P);
+  for (const f of list) {
+    try {
+      const kind = asSound ? 'audio' : kindOfFile(f);
+      const src = await probe(f, asSound && kindOfFile(f) === 'video' ? 'video' : kind);
+      SRC[src.id] = src;
+      if (asSound || src.kind === 'audio') {
+        if (asSound && src.kind === 'video' && !src.atrack) { problems.push(`${f.name} has no sound to use.`); continue; }
+        const start = next.clips.length ? clamp(V.t, 0, Math.max(0, Core.totalDuration(next) - 0.5)) : 0;
+        const a = Core.makeAudio(src.id, start, src.duration);
+        next.audio.push(a);
+        added.audio.push(a.id);
+      } else {
+        const c = Core.makeClip(src.id, src.kind, src.kind === 'image' ? 3 : src.duration);
+        next.clips.push(c);
+        added.clips.push(c.id);
+      }
+      queueBackground(src);
+    } catch (e) {
+      problems.push(e instanceof UserError ? e.message + (e.detail ? ' ' + e.detail : '') : `${f.name} could not be opened: ${errText(e)}`);
+    }
+  }
+  setViewNote('');
+  if (added.clips.length || added.audio.length) {
+    undoStack.push(before);
+    P = next;
+    if (added.clips.length) sel = { type: 'clip', id: added.clips[0] };
+    else sel = { type: 'audio', id: added.audio[0] };
+    if (zoomFitted) fitZoom();
+    showWorkspace();
+    renderAll();
+    if (added.clips.length && at > 0) setTime(at); else setTime(V.t);
+    announce(`Added ${added.clips.length + added.audio.length} item${added.clips.length + added.audio.length === 1 ? '' : 's'}.`);
+  }
+  renderProblems(problems);
+}
+
+function renderProblems(list) {
+  const box = $('problems');
+  box.textContent = '';
+  for (const p of list) {
+    const conv = /Video Converter/.test(p) ? el('a', { href: '../Video%20Converter/video_converter.html#convert', text: ' Open Video Converter' }) : null;
+    box.append(msgBox('warning', 'warning', p, conv ? [conv] : []));
+  }
+}
+
+/* Thumbnails and sound pictures are made in the background, one source at a time. */
+const bgQueue = [];
+let bgRunning = false;
+function queueBackground(src) { bgQueue.push(src); if (!bgRunning) runBackground(); }
+async function runBackground() {
+  bgRunning = true;
+  while (bgQueue.length) {
+    const src = bgQueue.shift();
+    try { if (src.kind === 'video') await makeThumbs(src); } catch (e) {}
+    try { if (src.atrack && src.canDecodeAudio) await makePeaks(src); } catch (e) {}
+    renderTimeline();
+  }
+  bgRunning = false;
+}
+
+async function makeThumbs(src) {
+  if (src.vtrack && src.canDecodeVideo) {
+    const MB = await getMediabunny();
+    const count = clamp(Math.ceil(src.duration / 2), 2, 90);
+    const times = Array.from({ length: count }, (_, i) => (i + 0.5) * src.duration / count);
+    const h = 64;
+    const w = Math.max(16, Math.round(h * src.width / src.height));
+    const sink = new MB.CanvasSink(src.vtrack, { width: w, height: h, fit: 'cover', poolSize: 1 });
+    let i = 0;
+    for await (const wc of sink.canvasesAtTimestamps(times)) {
+      if (wc) src.thumbs.push({ t: times[i], bmp: await createImageBitmap(wc.canvas) });
+      i++;
+      if (i % 10 === 0) renderTimeline();
+    }
+    return;
+  }
+  // Without the engine: a few pictures from the player itself.
+  const v = document.createElement('video');
+  v.muted = true; v.preload = 'auto'; v.src = src.url;
+  if (!(await waitMeta(v))) return;
+  const count = clamp(Math.ceil(src.duration / 5), 2, 16);
+  const c = document.createElement('canvas');
+  c.height = 64; c.width = Math.max(16, Math.round(64 * src.width / src.height));
+  const g = c.getContext('2d');
+  for (let i = 0; i < count; i++) {
+    const t = (i + 0.5) * src.duration / count;
+    await new Promise(res => { const to = setTimeout(res, 3000); v.addEventListener('seeked', () => { clearTimeout(to); res(); }, { once: true }); v.currentTime = t; });
+    g.drawImage(v, 0, 0, c.width, c.height);
+    src.thumbs.push({ t, bmp: await createImageBitmap(c) });
+  }
+  v.removeAttribute('src'); v.load();
+}
+
+async function makePeaks(src) {
+  const MB = await getMediabunny();
+  const rate = 40;   // bars per second
+  const peaks = new Float32Array(Math.ceil(src.duration * rate) + 1);
+  const sink = new MB.AudioBufferSink(src.atrack);
+  for await (const { buffer, timestamp } of sink.buffers()) {
+    const sr = buffer.sampleRate;
+    const chs = Math.min(2, buffer.numberOfChannels);
+    for (let c = 0; c < chs; c++) {
+      const d = buffer.getChannelData(c);
+      for (let i = 0; i < d.length; i += 8) {
+        const b = Math.floor((timestamp + i / sr) * rate);
+        if (b >= 0 && b < peaks.length) { const v = Math.abs(d[i]); if (v > peaks[b]) peaks[b] = v; }
+      }
+    }
+  }
+  src.peaks = peaks;
+  src.peakRate = rate;
+}
+
+/* ======================================================================
+   Project changes and undo
+   ====================================================================== */
+
+function commit(next, { keepSel = true } = {}) {
+  if (!next || next === P) return;
+  undoStack.push(P);
+  P = next;
+  if (!keepSel || !selected()) sel = null;
+  afterChange();
+}
+
+function afterChange() {
+  if (sel && !selected()) sel = null;
+  if (cropMode && (!sel || sel.type !== 'clip')) cropMode = false;
+  V.t = clamp(V.t, 0, Core.totalDuration(P));
+  syncElementsToProject();
+  renderAll();
+  if (!V.playing) requestDraw();
+  updateLeaveGuard();
+}
+
+function undo() {
+  const prev = undoStack.undo(P);
+  if (!prev) return;
+  P = prev;
+  afterChange();
+  announce('Undone.');
+}
+function redo() {
+  const next = undoStack.redo(P);
+  if (!next) return;
+  P = next;
+  afterChange();
+  announce('Redone.');
+}
+
+/* Slider-style edits: the first change of a gesture is remembered for undo,
+   and the gesture ends when the control reports a final "change". */
+let gestureStart = null;
+function live(fn) {
+  if (!gestureStart) gestureStart = Core.clone(P);
+  P = fn(P);
+  syncElementsToProject();
+  renderTimeline();
+  updateHeader();
+  if (!V.playing) requestDraw();
+}
+function liveEnd() {
+  if (gestureStart) {
+    if (JSON.stringify(gestureStart) !== JSON.stringify(P)) undoStack.push(gestureStart);
+    gestureStart = null;
+  }
+  renderAll();
+}
+
+function selected() {
+  if (!sel) return null;
+  const list = sel.type === 'clip' ? P.clips : sel.type === 'text' ? P.texts : P.audio;
+  return list.find(x => x.id === sel.id) || null;
+}
+
+function select(type, id) {
+  sel = type ? { type, id } : null;
+  if (cropMode && (!sel || sel.type !== 'clip')) cropMode = false;
+  renderTimeline();
+  renderInspector();
+  renderOverlay();
+  requestDraw();
+}
+
+function updateLeaveGuard() {
+  const has = P.clips.length || P.audio.length || P.texts.length;
+  if (has && !editJob) editJob = tfe('job', 'Editing a video') || null;
+  if (!has && editJob) { try { editJob(); } catch (e) {} editJob = null; }
+  tfe('setDirty', !!has);
+}
+
+/* ======================================================================
+   Sound for the preview: each player goes through a gain node, so volume can
+   go above 100% the same way it does in the export.
+   ====================================================================== */
+
+let actx = null;
+function ensureAudio() {
+  if (!actx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    try { actx = new AC(); } catch (e) { return null; }
+    for (const s of Object.values(SRC)) if (s.el) connectAudio(s.el);
+    for (const a of Object.values(musicEls)) connectAudio(a);
+  }
+  if (actx.state === 'suspended') actx.resume().catch(() => {});
+  return actx;
+}
+function connectAudio(media) {
+  if (!actx || media.__gain) return;
+  try {
+    const node = actx.createMediaElementSource(media);
+    const g = actx.createGain();
+    node.connect(g); g.connect(actx.destination);
+    media.__gain = g;
+  } catch (e) { /* the player keeps its own volume */ }
+}
+function setGain(media, v) {
+  if (media.__gain) { media.__gain.gain.value = v; media.volume = 1; }
+  else media.volume = clamp(v, 0, 1);
+}
+
+/* ======================================================================
+   Preview: plays the timeline with the browser's own players and draws
+   every frame through the same drawing code the export uses.
+   ====================================================================== */
+
+const V = { playing: false, t: 0, raf: 0, entry: null, clock: null, drawQueued: false, preseek: null };
+const view = $('view');
+const vctx = view.getContext('2d');
+let textBoxes = [];      // where texts were drawn, for picking them on the preview
+
+const musicEls = {};     // audio item id -> <audio>
+function musicEl(a) {
+  let m = musicEls[a.id];
+  if (!m) {
+    const s = SRC[a.src];
+    m = document.createElement(s.kind === 'video' ? 'video' : 'audio');
+    m.preload = 'auto';
+    m.src = s.url;
+    if (m.tagName === 'VIDEO') m.playsInline = true;
+    musicEls[a.id] = m;
+    connectAudio(m);
+  }
+  return m;
+}
+
+function syncElementsToProject() {
+  // Players for sound items that were removed are stopped and dropped.
+  const ids = new Set(P.audio.map(a => a.id));
+  for (const [id, m] of Object.entries(musicEls)) {
+    if (!ids.has(id)) { try { m.pause(); m.removeAttribute('src'); m.load(); } catch (e) {} delete musicEls[id]; }
+  }
+  if (V.playing && V.entry) {
+    // The playing clip may have changed (speed, volume, mute).
+    const c = P.clips.find(x => x.id === V.entry.clip.id);
+    if (!c) { pause(); return; }
+    V.entry = Object.assign({}, Core.locate(P, V.t));
+    if (c.kind === 'video') {
+      const m = SRC[c.src].el;
+      m.playbackRate = c.speed;
+      setGain(m, c.muted ? 0 : c.volume);
+    }
+  }
+}
+
+function frameSizeFor(shortSide, proj = P) {
+  const first = proj.clips[0];
+  if (!first) return { width: 1280, height: 720 };
+  const s = SRC[first.src];
+  const b = Core.baseSize(first, s.width, s.height);
+  return Core.frameSize(proj.frame, b.w, b.h, shortSide);
+}
+
+function sizeView() {
+  const fs = frameSizeFor(0);
+  const stage = $('stage');
+  stage.style.setProperty('--ar', (fs.width / fs.height).toFixed(5));
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const cw = Math.max(2, Math.round(stage.clientWidth * dpr));
+  const w = Math.min(fs.width, cw);
+  const h = Math.round(w * fs.height / fs.width);
+  if (view.width !== w || view.height !== h) { view.width = w; view.height = h; }
+}
+
+function setViewNote(text) { $('viewNote').textContent = text || ''; }
+
+function requestDraw() {
+  if (V.drawQueued) return;
+  V.drawQueued = true;
+  const run = () => { if (!V.drawQueued) return; V.drawQueued = false; draw(); };
+  requestAnimationFrame(run);
+  // A covered window gets no animation frames; the picture still catches up.
+  setTimeout(run, 150);
+}
+
+const FONTS = {
+  sans: '"Geist Variable", system-ui, -apple-system, "Segoe UI", sans-serif',
+  serif: 'Georgia, "Times New Roman", serif',
+  mono: '"Geist Mono Variable", ui-monospace, Consolas, monospace',
+};
+
+function wrapLines(ctx, text, maxW) {
+  const out = [];
+  for (const para of String(text || '').split('\n')) {
+    const words = para.split(/\s+/).filter(Boolean);
+    if (!words.length) { out.push(''); continue; }
+    let line = words[0];
+    for (let i = 1; i < words.length; i++) {
+      const tryLine = line + ' ' + words[i];
+      if (ctx.measureText(tryLine).width <= maxW) line = tryLine;
+      else { out.push(line); line = words[i]; }
+    }
+    out.push(line);
+  }
+  return out;
+}
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  if (typeof ctx.roundRect === 'function') ctx.roundRect(x, y, w, h, r);
+  else ctx.rect(x, y, w, h);
+}
+
+/* Draws one text item; returns its box in frame pixels. */
+function drawText(ctx, W, H, t, alpha = 1) {
+  const size = Math.max(6, t.size * H);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = `${t.bold ? 700 : 400} ${size}px ${FONTS[t.font] || FONTS.sans}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const lines = wrapLines(ctx, t.text, W * 0.9);
+  const lh = size * 1.22;
+  const bw = Math.max(...lines.map(l => ctx.measureText(l).width), size * 0.5);
+  const bh = lines.length * lh;
+  const padX = size * 0.4, padY = size * 0.22;
+  const cx = clamp(t.x * W, bw / 2 + padX, W - bw / 2 - padX);
+  const cy = clamp(t.y * H, bh / 2 + padY, H - bh / 2 - padY);
+  if (t.style === 'box') {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.62)';
+    roundRectPath(ctx, cx - bw / 2 - padX, cy - bh / 2 - padY, bw + 2 * padX, bh + 2 * padY, size * 0.22);
+    ctx.fill();
+  }
+  lines.forEach((l, i) => {
+    const y = cy - bh / 2 + lh * (i + 0.5);
+    if (t.style === 'outline') {
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = size * 0.16;
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
+      ctx.strokeText(l, cx, y);
+    } else if (t.style === 'plain') {
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+      ctx.shadowBlur = size * 0.18;
+      ctx.shadowOffsetY = size * 0.04;
+    }
+    ctx.fillStyle = t.color || '#fff';
+    ctx.fillText(l, cx, y);
+  });
+  ctx.restore();
+  return { x: cx - bw / 2 - padX, y: cy - bh / 2 - padY, w: bw + 2 * padX, h: bh + 2 * padY };
+}
+
+/* The whole picture for one moment: background, the clip, then text.
+   The preview and the export both draw through here. */
+function composite(ctx, W, H, img, iw, ih, clip, texts, opts = {}) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+  if (img && iw && ih && clip) {
+    const base = { srcW: iw, srcH: ih, rotate: clip.rotate, flipH: clip.flipH, flipV: clip.flipV, crop: opts.noCrop ? Core.FULL : clip.crop, outW: W, outH: H };
+    const fit = opts.noCrop ? 'contain' : (opts.fit || P.fit);
+    if (fit === 'blur' && 'filter' in ctx) {
+      const gb = Core.drawGeometry(Object.assign({}, base, { fit: 'cover' }));
+      ctx.save();
+      ctx.filter = `blur(${Math.max(4, Math.round(Math.min(W, H) * 0.035))}px) brightness(0.55)`;
+      ctx.setTransform(...gb.matrix);
+      ctx.drawImage(img, 0, 0, iw, ih);
+      ctx.restore();
+    }
+    const g = Core.drawGeometry(Object.assign({}, base, { fit: fit === 'cover' ? 'cover' : 'contain' }));
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(g.clip[0], g.clip[1], g.clip[2], g.clip[3]);
+    ctx.clip();
+    ctx.setTransform(...g.matrix);
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, iw, ih);
+    ctx.restore();
+    if (opts.geometry) opts.geometry(g);
+  }
+  const boxes = [];
+  if (!opts.noText) for (const t of texts) boxes.push({ id: t.id, box: drawText(ctx, W, H, t) });
+  return boxes;
+}
+
+function currentImage(clip) {
+  const s = SRC[clip.src];
+  if (!s) return null;
+  if (clip.kind === 'image') return { img: s.bitmap, w: s.width, h: s.height };
+  const m = s.el;
+  if (m && m.readyState >= 2 && m.videoWidth) return { img: m, w: m.videoWidth, h: m.videoHeight };
+  return null;
+}
+
+let lastGeometry = null;
+function draw() {
+  sizeView();
+  const W = view.width, H = view.height;
+  const loc = Core.locate(P, V.t);
+  if (!loc) { vctx.setTransform(1, 0, 0, 1, 0, 0); vctx.fillStyle = '#000'; vctx.fillRect(0, 0, W, H); textBoxes = []; return; }
+  const im = currentImage(loc.clip);
+  const editingCrop = cropMode && sel && sel.type === 'clip' && sel.id === loc.clip.id;
+  textBoxes = composite(vctx, W, H, im && im.img, im && im.w, im && im.h, loc.clip, Core.textsAt(P, V.t), {
+    noCrop: editingCrop, noText: editingCrop,
+    geometry: g => { lastGeometry = { g, W, H, iw: im.w, ih: im.h }; },
+  });
+  if (!V.playing) {
+    // When paused, keep the player on the frame being shown.
+    if (loc.clip.kind === 'video') {
+      const m = SRC[loc.clip.src].el;
+      if (m && Math.abs(m.currentTime - loc.sourceTime) > 0.02 && !m.seeking) { try { m.currentTime = loc.sourceTime; } catch (e) {} }
+    }
+  }
+  renderOverlay();
+}
+
+function setTime(t, { keepPlaying = true } = {}) {
+  const total = Core.totalDuration(P);
+  V.t = clamp(t, 0, total);
+  if (V.playing && keepPlaying) startEntryAt(V.t);
+  else if (V.playing) pause();
+  syncMusic(true);
+  updatePlayhead();
+  requestDraw();
+}
+
+function pauseAllExcept(keep) {
+  for (const s of Object.values(SRC)) if (s.el && s.el !== keep && !s.el.paused) s.el.pause();
+}
+
+function startEntryAt(t) {
+  const loc = Core.locate(P, t);
+  if (!loc) { pause(); return; }
+  V.entry = loc;
+  V.preseek = null;
+  const c = loc.clip;
+  if (c.kind === 'video') {
+    const m = SRC[c.src].el;
+    pauseAllExcept(m);
+    m.playbackRate = c.speed;
+    m.preservesPitch = true;
+    setGain(m, c.muted ? 0 : c.volume);
+    if (Math.abs(m.currentTime - loc.sourceTime) > 0.04) m.currentTime = loc.sourceTime;
+    const p = m.play();
+    if (p && p.catch) p.catch(() => {});
+    V.clock = null;
+  } else {
+    pauseAllExcept(null);
+    V.clock = { t0: t, now0: performance.now() };
+  }
+}
+
+function play() {
+  if (!P.clips.length || exporting) return;
+  ensureAudio();
+  const total = Core.totalDuration(P);
+  if (V.t >= total - 0.02) V.t = 0;
+  if (cropMode) { cropMode = false; renderInspector(); }
+  V.playing = true;
+  startEntryAt(V.t);
+  updatePlayButton();
+  cancelAnimationFrame(V.raf);
+  V.raf = requestAnimationFrame(tick);
+}
+
+function pause() {
+  V.playing = false;
+  cancelAnimationFrame(V.raf);
+  pauseAllExcept(null);
+  for (const m of Object.values(musicEls)) if (!m.paused) m.pause();
+  updatePlayButton();
+  requestDraw();
+}
+
+function togglePlay() { if (V.playing) pause(); else play(); }
+
+function tick() {
+  if (!V.playing) return;
+  const e = V.entry;
+  const c = e.clip;
+  let t;
+  let ended = false;
+  if (c.kind === 'video') {
+    const m = SRC[c.src].el;
+    t = e.start + (m.currentTime - c.in) / c.speed;
+    if (m.currentTime >= c.out - 0.015 || m.ended) ended = true;
+    // Get the next clip's player to its first frame ahead of time.
+    if (!V.preseek && e.end - t < 0.6) {
+      const L = Core.layout(P);
+      const n = L[e.index + 1];
+      if (n && n.clip.kind === 'video' && n.clip.src !== c.src) {
+        const nm = SRC[n.clip.src].el;
+        if (nm && Math.abs(nm.currentTime - n.clip.in) > 0.04) nm.currentTime = n.clip.in;
+      }
+      V.preseek = true;
+    }
+  } else {
+    t = V.clock.t0 + (performance.now() - V.clock.now0) / 1000;
+    if (t >= e.end) ended = true;
+  }
+  if (ended) {
+    const L = Core.layout(P);
+    const n = L[e.index + 1];
+    if (!n) { V.t = Core.totalDuration(P); pause(); updatePlayhead(); return; }
+    // A clip cut from the same file right where this one ends simply keeps playing.
+    if (c.kind === 'video' && n.clip.kind === 'video' && n.clip.src === c.src && Math.abs(n.clip.in - c.out) < 0.03) {
+      V.entry = Object.assign({}, n, { local: 0, sourceTime: n.clip.in });
+      const m = SRC[c.src].el;
+      m.playbackRate = n.clip.speed;
+      setGain(m, n.clip.muted ? 0 : n.clip.volume);
+      V.preseek = null;
+    } else {
+      startEntryAt(n.start + 0.0001);
+    }
+    V.t = n.start;
+  } else {
+    V.t = clamp(t, e.start, e.end);
+  }
+  draw();
+  syncMusic(false);
+  updatePlayhead();
+  V.raf = requestAnimationFrame(tick);
+}
+
+function syncMusic(force) {
+  for (const a of P.audio) {
+    const m = musicEl(a);
+    const inRange = V.playing && V.t >= a.start && V.t < Core.audioEnd(a) - 0.01;
+    if (inRange) {
+      const want = a.in + (V.t - a.start);
+      if (force || m.paused || Math.abs(m.currentTime - want) > 0.3) { try { m.currentTime = want; } catch (e) {} }
+      setGain(m, Core.gainAt(a, V.t, Core.totalDuration(P)));
+      if (m.paused) { const p = m.play(); if (p && p.catch) p.catch(() => {}); }
+    } else if (!m.paused) m.pause();
+  }
+}
+
+function step(frames) {
+  if (V.playing) pause();
+  setTime(V.t + frames / 30);
+}
+
+/* ======================================================================
+   Overlay on the preview: the crop box, and the outline of the selected text
+   ====================================================================== */
+
+function viewScale() {
+  const r = view.getBoundingClientRect();
+  return { sx: r.width / view.width, sy: r.height / view.height };
+}
+
+function renderOverlay() {
+  const ov = $('overlay');
+  ov.textContent = '';
+  const { sx, sy } = viewScale();
+  if (cropMode && sel && sel.type === 'clip' && lastGeometry) {
+    const c = selected();
+    if (!c) return;
+    const d = lastGeometry.g.dest;   // the whole turned picture, fitted
+    const cr = c.crop;
+    const box = el('div', { class: 've-crop', 'aria-label': 'Crop area' });
+    box.style.left = (d[0] + cr.x * d[2]) * sx + 'px';
+    box.style.top = (d[1] + cr.y * d[3]) * sy + 'px';
+    box.style.width = cr.w * d[2] * sx + 'px';
+    box.style.height = cr.h * d[3] * sy + 'px';
+    for (const h of ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']) box.append(el('span', { class: 'h', 'data-h': h }));
+    ov.append(box);
+    return;
+  }
+  if (sel && sel.type === 'text' && !V.playing) {
+    const b = textBoxes.find(x => x.id === sel.id);
+    if (b) {
+      const o = el('div', { class: 've-textbox' });
+      o.style.left = b.box.x * sx + 'px';
+      o.style.top = b.box.y * sy + 'px';
+      o.style.width = b.box.w * sx + 'px';
+      o.style.height = b.box.h * sy + 'px';
+      ov.append(o);
+    }
+  }
+}
+
+const CROP_RATIOS = { free: null, frame: 'frame', '16:9': 16 / 9, '9:16': 9 / 16, '1:1': 1, '4:5': 4 / 5, '4:3': 4 / 3 };
+let cropRatio = 'free';
+
+// Crop sizes in the turned picture's own pixels, so a ratio means what it says.
+function cropPx(c) {
+  const s = SRC[c.src];
+  const os = Core.orientedSize(s.width, s.height, c.rotate);
+  return os;
+}
+
+function applyCropRatio(c, crop, ratioKey, anchor) {
+  let r = CROP_RATIOS[ratioKey];
+  if (r === 'frame') { const fs = frameSizeFor(0); r = fs.width / fs.height; }
+  if (!r) return crop;
+  const os = cropPx(c);
+  // Largest box of that shape inside the current one, centred.
+  let wpx = crop.w * os.w, hpx = crop.h * os.h;
+  if (wpx / hpx > r) wpx = hpx * r; else hpx = wpx / r;
+  const cx = anchor ? anchor.x : (crop.x + crop.w / 2) * os.w;
+  const cy = anchor ? anchor.y : (crop.y + crop.h / 2) * os.h;
+  let x = cx - wpx / 2, y = cy - hpx / 2;
+  x = clamp(x, 0, os.w - wpx); y = clamp(y, 0, os.h - hpx);
+  return Core.normaliseCrop({ x: x / os.w, y: y / os.h, w: wpx / os.w, h: hpx / os.h });
+}
+
+function initStagePointer() {
+  const stage = $('stage');
+  let drag = null;
+  stage.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || exporting) return;
+    const { sx, sy } = viewScale();
+    const r = view.getBoundingClientRect();
+    const px = (e.clientX - r.left) / sx, py = (e.clientY - r.top) / sy;
+    if (cropMode && sel && sel.type === 'clip' && lastGeometry) {
+      const handle = e.target.closest('.h');
+      const inBox = e.target.closest('.ve-crop');
+      if (!handle && !inBox) return;
+      const c = selected();
+      drag = { kind: 'crop', h: handle ? handle.dataset.h : 'move', start: Object.assign({}, c.crop), x: px, y: py, d: lastGeometry.g.dest };
+    } else {
+      // Pick the text under the pointer, newest on top.
+      for (let i = textBoxes.length - 1; i >= 0; i--) {
+        const b = textBoxes[i].box;
+        if (px >= b.x && px <= b.x + b.w && py >= b.y && py <= b.y + b.h) {
+          const t = P.texts.find(x => x.id === textBoxes[i].id);
+          if (!t) break;
+          if (V.playing) pause();
+          if (!sel || sel.id !== t.id) select('text', t.id);
+          drag = { kind: 'text', id: t.id, ox: t.x, oy: t.y, x: px, y: py };
+          break;
+        }
+      }
+      // A click anywhere else on the picture plays or pauses.
+      if (!drag) { togglePlay(); return; }
+    }
+    try { stage.setPointerCapture(e.pointerId); } catch (err) {}
+    drag.pid = e.pointerId;
+    e.preventDefault();
+  });
+  stage.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.pid) return;
+    const { sx, sy } = viewScale();
+    const r = view.getBoundingClientRect();
+    const px = (e.clientX - r.left) / sx, py = (e.clientY - r.top) / sy;
+    if (drag.kind === 'text') {
+      const W = view.width, H = view.height;
+      const nx = clamp(drag.ox + (px - drag.x) / W, 0, 1), ny = clamp(drag.oy + (py - drag.y) / H, 0, 1);
+      live(p => Core.updateIn(p, 'texts', drag.id, { x: Math.round(nx * 1000) / 1000, y: Math.round(ny * 1000) / 1000 }));
+      return;
+    }
+    const d = drag.d, s = drag.start;
+    const dx = (px - drag.x) / d[2], dy = (py - drag.y) / d[3];
+    let x0 = s.x, y0 = s.y, x1 = s.x + s.w, y1 = s.y + s.h;
+    const h = drag.h;
+    if (h === 'move') {
+      const nx = clamp(s.x + dx, 0, 1 - s.w), ny = clamp(s.y + dy, 0, 1 - s.h);
+      x0 = nx; y0 = ny; x1 = nx + s.w; y1 = ny + s.h;
+    } else {
+      if (h.includes('w')) x0 = clamp(s.x + dx, 0, x1 - 0.03);
+      if (h.includes('e')) x1 = clamp(s.x + s.w + dx, x0 + 0.03, 1);
+      if (h.includes('n')) y0 = clamp(s.y + dy, 0, y1 - 0.03);
+      if (h.includes('s')) y1 = clamp(s.y + s.h + dy, y0 + 0.03, 1);
+    }
+    let crop = Core.normaliseCrop({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 });
+    const c = selected();
+    if (h !== 'move' && CROP_RATIOS[cropRatio]) {
+      const os = cropPx(c);
+      // Keep the opposite corner where it is while the shape stays fixed.
+      const ax = h.includes('w') ? x1 * os.w : h.includes('e') ? x0 * os.w : (x0 + x1) / 2 * os.w;
+      const ay = h.includes('n') ? y1 * os.h : h.includes('s') ? y0 * os.h : (y0 + y1) / 2 * os.h;
+      let r0 = CROP_RATIOS[cropRatio];
+      if (r0 === 'frame') { const fs = frameSizeFor(0); r0 = fs.width / fs.height; }
+      let wpx = crop.w * os.w, hpx = crop.h * os.h;
+      if (h === 'n' || h === 's') wpx = hpx * r0;
+      else if (h === 'e' || h === 'w') hpx = wpx / r0;
+      else if (wpx / hpx > r0) hpx = wpx / r0; else wpx = hpx * r0;
+      wpx = Math.min(wpx, os.w); hpx = Math.min(hpx, os.h);
+      if (wpx / hpx > r0) wpx = hpx * r0; else hpx = wpx / r0;
+      let nx = h.includes('w') ? ax - wpx : h.includes('e') ? ax : ax - wpx / 2;
+      let ny = h.includes('n') ? ay - hpx : h.includes('s') ? ay : ay - hpx / 2;
+      nx = clamp(nx, 0, os.w - wpx); ny = clamp(ny, 0, os.h - hpx);
+      crop = Core.normaliseCrop({ x: nx / os.w, y: ny / os.h, w: wpx / os.w, h: hpx / os.h });
+    }
+    live(p => Core.updateIn(p, 'clips', sel.id, { crop }));
+  });
+  const end = e => {
+    if (!drag || e.pointerId !== drag.pid) return;
+    drag = null;
+    liveEnd();
+  };
+  stage.addEventListener('pointerup', end);
+  stage.addEventListener('pointercancel', end);
+  stage.addEventListener('dblclick', () => {
+    if (sel && sel.type === 'text') { const ta = $('inspector').querySelector('textarea'); if (ta) { ta.focus(); ta.select(); } }
+  });
+}
+
+/* ======================================================================
+   Timeline
+   ====================================================================== */
+
+const tl = $('tl'), tlInner = $('tlInner');
+const TRACK_PAD = 40;   // room after the end, so the last clip's edge can be grabbed
+
+function zoomBounds() {
+  const total = Math.max(1, Core.totalDuration(P), ...P.audio.map(a => Core.audioEnd(a)), ...P.texts.map(t => t.end));
+  const fit = Math.max(1, (tl.clientWidth - TRACK_PAD) / total);
+  return { min: Math.min(fit, 2), max: 300, fit };
+}
+function fitZoom() { pps = zoomBounds().fit; zoomFitted = true; syncZoomSlider(); }
+function syncZoomSlider() {
+  const b = zoomBounds();
+  const v = Math.log(pps / b.min) / Math.log(b.max / b.min);
+  $('zoom').value = String(Math.round(clamp(v, 0, 1) * 100));
+}
+function setZoom(newPps, anchorT) {
+  const b = zoomBounds();
+  const old = pps;
+  pps = clamp(newPps, b.min, b.max);
+  zoomFitted = Math.abs(pps - b.fit) < 0.01;
+  const at = anchorT != null ? anchorT : V.t;
+  const screenX = at * old - tl.scrollLeft;
+  renderTimeline();
+  tl.scrollLeft = Math.max(0, at * pps - screenX);
+  syncZoomSlider();
+}
+
+function timelineSpan() {
+  return Math.max(Core.totalDuration(P), ...P.audio.map(a => Core.audioEnd(a)), ...P.texts.map(t => t.end), 1);
+}
+
+function renderTimeline() {
+  if ($('work').classList.contains('hidden')) return;
+  const span = timelineSpan();
+  const width = Math.max(tl.clientWidth, Math.ceil(span * pps + TRACK_PAD));
+  tlInner.style.width = width + 'px';
+  drawRuler(width);
+  const L = Core.layout(P);
+  // Video track
+  const tv = $('trackV');
+  tv.textContent = '';
+  if (!L.length) tv.append(el('span', { class: 've-empty-track', text: 'Add a video or picture to start' }));
+  for (const e of L) {
+    const c = e.clip, s = SRC[c.src];
+    const w = Math.max(4, (e.end - e.start) * pps);
+    const box = el('div', { class: 've-item ve-clip' + (sel && sel.id === c.id ? ' is-selected' : ''), 'data-type': 'clip', 'data-id': c.id, title: s ? s.name : '' });
+    box.style.left = e.start * pps + 'px';
+    box.style.width = w + 'px';
+    const cv = el('canvas');
+    box.append(cv);
+    const badges = [];
+    if (c.speed !== 1) badges.push(el('span', { class: 'badge', text: c.speed + '×' }));
+    if (c.kind === 'video' && (c.muted || c.volume === 0)) badges.push(el('span', { class: 'badge' }, icon('speaker-slash')));
+    if (c.rotate || c.flipH || c.flipV || c.crop.w < 1 || c.crop.h < 1) badges.push(el('span', { class: 'badge' }, icon('crop')));
+    box.append(el('span', { class: 'lbl' }, [...badges, el('span', { text: s ? s.name : '' })]));
+    box.append(el('span', { class: 'hd l', 'data-edge': 'in' }), el('span', { class: 'hd r', 'data-edge': 'out' }));
+    tv.append(box);
+    drawClipStrip(cv, c, e, w);
+  }
+  // Text track
+  const tt = $('trackT');
+  tt.textContent = '';
+  if (!P.texts.length) tt.append(el('span', { class: 've-empty-track', text: 'Text you add shows here' }));
+  for (const t of P.texts) {
+    const box = el('div', { class: 've-item ve-text' + (sel && sel.id === t.id ? ' is-selected' : ''), 'data-type': 'text', 'data-id': t.id, title: t.text });
+    box.style.left = t.start * pps + 'px';
+    box.style.width = Math.max(4, (t.end - t.start) * pps) + 'px';
+    box.append(el('span', { class: 'lbl' }, [icon('text-t'), el('span', { text: t.text.replace(/\s+/g, ' ') })]));
+    box.append(el('span', { class: 'hd l', 'data-edge': 'start' }), el('span', { class: 'hd r', 'data-edge': 'end' }));
+    tt.append(box);
+  }
+  // Sound track
+  const ta = $('trackA');
+  ta.textContent = '';
+  if (!P.audio.length) ta.append(el('span', { class: 've-empty-track', text: 'Music or a voice-over you add shows here' }));
+  for (const a of P.audio) {
+    const s = SRC[a.src];
+    const w = Math.max(4, (a.out - a.in) * pps);
+    const box = el('div', { class: 've-item ve-audio' + (sel && sel.id === a.id ? ' is-selected' : ''), 'data-type': 'audio', 'data-id': a.id, title: s ? s.name : '' });
+    box.style.left = a.start * pps + 'px';
+    box.style.width = w + 'px';
+    const cv = el('canvas');
+    box.append(cv);
+    box.append(el('span', { class: 'lbl' }, [icon('music-notes'), el('span', { text: s ? s.name : '' })]));
+    box.append(el('span', { class: 'hd l', 'data-edge': 'in' }), el('span', { class: 'hd r', 'data-edge': 'out' }));
+    ta.append(box);
+    drawWave(cv, s, a.in, a.out, w, getComputedStyle(document.documentElement).getPropertyValue('--success').trim() || '#17744c');
+  }
+  updatePlayhead();
+  updateHeader();
+}
+
+function drawRuler(width) {
+  const cv = $('rulerCanvas');
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const h = 26;
+  cv.width = Math.round(width * dpr); cv.height = Math.round(h * dpr);
+  cv.style.width = width + 'px';
+  const g = cv.getContext('2d');
+  g.scale(dpr, dpr);
+  const cs = getComputedStyle(document.documentElement);
+  const muted = cs.getPropertyValue('--text-faint').trim() || '#888';
+  // A label every 70px or so, at a tidy interval.
+  const steps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1800];
+  const stepT = steps.find(s => s * pps >= 70) || 3600;
+  g.fillStyle = muted;
+  g.strokeStyle = muted;
+  g.font = '10px "Geist Mono Variable", ui-monospace, monospace';
+  g.textBaseline = 'top';
+  const end = width / pps;
+  for (let t = 0; t <= end; t += stepT) {
+    const x = Math.round(t * pps) + 0.5;
+    g.globalAlpha = 0.7;
+    g.beginPath(); g.moveTo(x, h - 8); g.lineTo(x, h); g.stroke();
+    g.globalAlpha = 1;
+    g.fillText(Core.formatTime(t, stepT < 1), x + 3, 5);
+    const minor = stepT / 5;
+    g.globalAlpha = 0.35;
+    for (let k = 1; k < 5; k++) {
+      const mx = Math.round((t + k * minor) * pps) + 0.5;
+      g.beginPath(); g.moveTo(mx, h - 4); g.lineTo(mx, h); g.stroke();
+    }
+  }
+}
+
+function drawClipStrip(cv, c, e, w) {
+  const s = SRC[c.src];
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const h = 58;
+  cv.width = Math.max(1, Math.round(w * dpr)); cv.height = Math.round(h * dpr);
+  const g = cv.getContext('2d');
+  g.scale(dpr, dpr);
+  g.fillStyle = '#20242b';
+  g.fillRect(0, 0, w, h);
+  if (!s) return;
+  if (c.kind === 'image') {
+    const tw = Math.max(8, h * s.width / s.height);
+    for (let x = 0; x < w; x += tw) g.drawImage(s.bitmap, x, 0, tw, h);
+  } else if (s.thumbs.length) {
+    const th = s.thumbs[0].bmp;
+    const tw = Math.max(8, h * th.width / th.height);
+    for (let x = 0; x < w; x += tw) {
+      const tt = e.start + (x + tw / 2) / pps;
+      const st = Core.sourceTimeAt(c, tt - e.start);
+      let best = s.thumbs[0];
+      for (const k of s.thumbs) if (Math.abs(k.t - st) < Math.abs(best.t - st)) best = k;
+      g.drawImage(best.bmp, x, 0, tw, h);
+    }
+  }
+  // The clip's sound along its bottom edge, which shows where the pauses are.
+  if (s.peaks && !(c.muted || c.volume === 0)) {
+    g.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    g.fillRect(0, h - 16, w, 16);
+    g.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    for (let x = 0; x < w; x += 2) {
+      const st = Core.sourceTimeAt(c, x / pps);
+      const st2 = Core.sourceTimeAt(c, (x + 2) / pps);
+      let pk = 0;
+      for (let b = Math.floor(st * s.peakRate); b <= Math.floor(st2 * s.peakRate); b++) pk = Math.max(pk, s.peaks[b] || 0);
+      const bh = Math.max(1, Math.min(1, pk) * 14);
+      g.fillRect(x, h - 1 - bh, 1.5, bh);
+    }
+  }
+}
+
+function drawWave(cv, s, from, to, w, color) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const h = 34;
+  cv.width = Math.max(1, Math.round(w * dpr)); cv.height = Math.round(h * dpr);
+  const g = cv.getContext('2d');
+  g.scale(dpr, dpr);
+  if (!s || !s.peaks) return;
+  g.fillStyle = color;
+  g.globalAlpha = 0.55;
+  const mid = h / 2 + 4;
+  for (let x = 0; x < w; x += 2) {
+    const a = from + x / pps, b = from + (x + 2) / pps;
+    let pk = 0;
+    for (let k = Math.floor(a * s.peakRate); k <= Math.floor(b * s.peakRate); k++) pk = Math.max(pk, s.peaks[k] || 0);
+    const bh = Math.max(1, Math.min(1, pk) * (h - 12));
+    g.fillRect(x, mid - bh / 2, 1.5, bh);
+  }
+}
+
+function updatePlayhead() {
+  $('playhead').style.left = (V.t * pps) + 'px';
+  $('timeNow').textContent = T(V.t);
+  // Keep the playhead in view while playing.
+  if (V.playing) {
+    const x = V.t * pps;
+    if (x < tl.scrollLeft || x > tl.scrollLeft + tl.clientWidth - 30) tl.scrollLeft = Math.max(0, x - 60);
+  }
+}
+
+function updateHeader() {
+  $('timeTotal').textContent = T(Core.totalDuration(P));
+  $('undoBtn').disabled = !undoStack.canUndo();
+  $('redoBtn').disabled = !undoStack.canRedo();
+  $('splitBtn').disabled = !P.clips.length;
+  $('deleteBtn').disabled = !sel;
+  updateExportSummary();
+}
+
+function updatePlayButton() {
+  const b = $('playBtn');
+  b.textContent = '';
+  b.append(icon(V.playing ? 'pause' : 'play'));
+  b.setAttribute('aria-label', V.playing ? 'Pause' : 'Play');
+}
+
+function timeAtClientX(x) {
+  const r = tlInner.getBoundingClientRect();
+  return Math.max(0, (x - r.left) / pps);
+}
+
+function initTimelinePointer() {
+  let drag = null;
+  tlInner.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || exporting) return;
+    const item = e.target.closest('.ve-item');
+    const t = timeAtClientX(e.clientX);
+    if (!item) {
+      // The ruler and empty space move the playhead.
+      if (V.playing) pause();
+      if (!e.target.closest('#ruler')) select(null);
+      setTime(t);
+      drag = { kind: 'scrub' };
+    } else {
+      const type = item.dataset.type, id = item.dataset.id;
+      const edge = e.target.closest('.hd') ? e.target.closest('.hd').dataset.edge : null;
+      if (!sel || sel.id !== id) select(type, id);
+      const list = type === 'clip' ? P.clips : type === 'text' ? P.texts : P.audio;
+      const obj = list.find(x => x.id === id);
+      // Selecting redraws the timeline, so the element is looked up again.
+      drag = { kind: edge ? 'trim' : 'move', type, id, edge, x0: e.clientX, t0: t, start: Core.clone(obj), snapshot: Core.clone(P), moved: false,
+        item: tlInner.querySelector(`.ve-item[data-id="${id}"]`) || item };
+      if (type === 'clip' && !edge) {
+        const loc = Core.layout(P).find(x => x.clip.id === id);
+        drag.entryStart = loc.start;
+      }
+    }
+    try { tlInner.setPointerCapture(e.pointerId); } catch (err) {}
+    drag.pid = e.pointerId;
+    e.preventDefault();
+  });
+  tlInner.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.pid) return;
+    const t = timeAtClientX(e.clientX);
+    if (drag.kind === 'scrub') { setTime(t); return; }
+    const dxPx = e.clientX - drag.x0;
+    if (!drag.moved && Math.abs(dxPx) < 4) return;
+    drag.moved = true;
+    const dt = dxPx / pps;
+    const s = drag.start;
+    if (drag.type === 'clip') {
+      if (drag.kind === 'trim') {
+        const src = SRC[s.src];
+        let next;
+        if (s.kind === 'image') next = Core.trimClip(drag.snapshot, s.id, 'out', s.dur + (drag.edge === 'in' ? -dt : dt));
+        else next = Core.trimClip(drag.snapshot, s.id, drag.edge, (drag.edge === 'in' ? s.in : s.out) + dt * s.speed, src.duration);
+        P = next;
+        renderTimeline();
+        // Show the frame at the edge being moved.
+        const loc = Core.layout(P).find(x => x.clip.id === s.id);
+        if (loc) { V.t = drag.edge === 'in' ? loc.start : Math.max(loc.start, loc.end - 1 / 30); updatePlayhead(); requestDraw(); }
+      } else {
+        // Reorder: the clip follows the pointer and a marker shows where it lands.
+        drag.item.classList.add('is-dragging');
+        drag.item.style.left = Math.max(0, drag.entryStart + dt) * pps + 'px';
+        const idx = Core.dropIndex(P, s.id, t);
+        drag.dropAt = idx;
+        const others = Core.layout({ clips: P.clips.filter(c => c.id !== s.id) });
+        const mx = idx < others.length ? others[idx].start : (others.length ? others[others.length - 1].end : 0);
+        const mk = $('dropMarker');
+        mk.classList.remove('hidden');
+        mk.style.left = (mx * pps) + 'px';
+      }
+      return;
+    }
+    if (drag.type === 'text') {
+      let patch;
+      const len = s.end - s.start;
+      if (drag.kind === 'move') { const ns = Math.max(0, s.start + dt); patch = { start: round3(ns), end: round3(ns + len) }; }
+      else if (drag.edge === 'start') patch = { start: round3(clamp(s.start + dt, 0, s.end - Core.MIN_CLIP)) };
+      else patch = { end: round3(Math.max(s.start + Core.MIN_CLIP, s.end + dt)) };
+      P = Core.updateIn(drag.snapshot, 'texts', s.id, patch);
+    } else {
+      const src = SRC[s.src];
+      let patch;
+      if (drag.kind === 'move') patch = { start: round3(Math.max(0, s.start + dt)) };
+      else if (drag.edge === 'in') {
+        const d = clamp(dt, -s.in, (s.out - s.in) - Core.MIN_CLIP);
+        const d2 = Math.max(d, -s.start);
+        patch = { in: s.in + d2, start: round3(s.start + d2) };
+      } else patch = { out: clamp(s.out + dt, s.in + Core.MIN_CLIP, src.duration) };
+      P = Core.updateIn(drag.snapshot, 'audio', s.id, patch);
+    }
+    renderTimeline();
+    requestDraw();
+  });
+  const end = e => {
+    if (!drag || e.pointerId !== drag.pid) return;
+    const d = drag;
+    drag = null;
+    $('dropMarker').classList.add('hidden');
+    if (d.kind === 'scrub') return;
+    if (d.type === 'clip' && d.kind === 'move' && d.moved) {
+      const idx = d.dropAt != null ? d.dropAt : P.clips.findIndex(c => c.id === d.id);
+      const next = Core.moveClip(d.snapshot, d.id, idx);
+      if (JSON.stringify(next.clips.map(c => c.id)) !== JSON.stringify(d.snapshot.clips.map(c => c.id))) {
+        P = d.snapshot;
+        commit(next);
+        announce('Clip moved.');
+      } else { P = d.snapshot; renderTimeline(); }
+      return;
+    }
+    if (d.moved && JSON.stringify(d.snapshot) !== JSON.stringify(P)) {
+      undoStack.push(d.snapshot);
+      afterChange();
+    } else {
+      renderInspector();
+    }
+  };
+  tlInner.addEventListener('pointerup', end);
+  tlInner.addEventListener('pointercancel', end);
+  // Ctrl and the wheel, or a pinch, zooms. Plain scrolling is left to the page.
+  tl.addEventListener('wheel', e => {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    e.preventDefault();
+    setZoom(pps * Math.exp(-e.deltaY * 0.0025), timeAtClientX(e.clientX));
+  }, { passive: false });
+}
+const round3 = v => Math.round(v * 1000) / 1000;
+
+/* ======================================================================
+   Inspector
+   ====================================================================== */
+
+function field(labelText, input, note) {
+  const id = input.id || (input.id = Core.uid('f'));
+  return el('div', { class: 'form-group' }, [el('label', { for: id, text: labelText }), input, note ? el('p', { class: 'field-note', text: note }) : null]);
+}
+function timeInput(value, onSet) {
+  const i = el('input', { type: 'text', inputmode: 'decimal', value: T(value), spellcheck: 'false', 'data-no-remember': true });
+  i.addEventListener('change', () => {
+    const v = Core.parseTime(i.value);
+    if (v == null) { i.value = T(value); return; }
+    onSet(v);
+  });
+  return i;
+}
+function slider(min, max, stepV, value, fmt, onInput) {
+  const wrap = el('div', { class: 've-slider' });
+  const r = el('input', { type: 'range', min, max, step: stepV, value, 'data-no-remember': true });
+  const out = el('div', { class: 'slider-value', text: fmt(value) });
+  r.addEventListener('input', () => { out.textContent = fmt(+r.value); onInput(+r.value); });
+  r.addEventListener('change', liveEnd);
+  wrap.append(r, out);
+  wrap.input = r;
+  return wrap;
+}
+function chipRow(options, current, onPick, label) {
+  const row = el('div', { class: 've-row', role: 'group', 'aria-label': label || '' });
+  for (const [v, text] of options) {
+    const b = el('button', { class: 'chip', type: 'button', 'aria-pressed': String(v) === String(current) ? 'true' : 'false', text });
+    b.addEventListener('click', () => onPick(v));
+    row.append(b);
+  }
+  return row;
+}
+function btn(iconName, text, onClick, cls) {
+  const b = el('button', { class: 'btn btn-sm' + (cls ? ' ' + cls : ''), type: 'button' }, [icon(iconName), ' ' + text]);
+  b.addEventListener('click', onClick);
+  return b;
+}
+function section(title, children) { return el('div', { class: 've-sec' }, [el('h3', { text: title }), ...children]); }
+
+function renderInspector() {
+  const box = $('inspector');
+  if (gestureStart) return;   // do not rebuild under a slider being dragged
+  const active = document.activeElement;
+  const keepFocus = active && box.contains(active) && active.dataset.k ? active.dataset.k : null;
+  box.textContent = '';
+  const obj = selected();
+  if (!obj) renderProjectPanel(box);
+  else if (sel.type === 'clip') renderClipPanel(box, obj);
+  else if (sel.type === 'text') renderTextPanel(box, obj);
+  else renderAudioPanel(box, obj);
+  if (keepFocus) { const n = box.querySelector(`[data-k="${keepFocus}"]`); if (n) n.focus(); }
+}
+
+function renderProjectPanel(box) {
+  const total = Core.totalDuration(P);
+  box.append(el('h2', null, [icon('film-slate'), 'Your video']));
+  box.append(el('p', { class: 've-sub', text: `${P.clips.length} clip${P.clips.length === 1 ? '' : 's'} · ${T(total)}` }));
+  box.append(el('p', { class: 'muted small', text: 'Select a clip, a text or a sound on the timeline to change it.' }));
+  box.append(section('Shape', [
+    chipRow([['auto', 'Like the first clip'], ['16:9', '16:9'], ['9:16', '9:16 phone'], ['1:1', '1:1'], ['4:5', '4:5'], ['4:3', '4:3']], P.frame, v => commit(Object.assign(Core.clone(P), { frame: v })), 'Shape of the video'),
+  ]));
+  box.append(section('When a clip has another shape', [
+    chipRow([['contain', 'Black bars'], ['blur', 'Blurred background'], ['cover', 'Fill and cut edges']], P.fit, v => commit(Object.assign(Core.clone(P), { fit: v })), 'Fitting'),
+  ]));
+}
+
+function renderClipPanel(box, c) {
+  const s = SRC[c.src];
+  const L = Core.layout(P);
+  const e = L.find(x => x.clip.id === c.id);
+  box.append(el('h2', null, [icon(c.kind === 'image' ? 'image-square' : 'film-strip'), s ? s.name : 'Clip']));
+  box.append(el('p', { class: 've-sub', text: `Clip ${e.index + 1} of ${L.length} · ${T(e.end - e.start)} · at ${T(e.start)}` }));
+
+  if (c.kind === 'video') {
+    const pair = el('div', { class: 've-pair' }, [
+      field('Starts at', timeInput(c.in, v => commit(Core.trimClip(P, c.id, 'in', v, s.duration)))),
+      field('Ends at', timeInput(c.out, v => commit(Core.trimClip(P, c.id, 'out', v, s.duration)))),
+    ]);
+    const atHead = () => Core.locate(P, V.t);
+    box.append(section('Trim', [
+      pair,
+      el('div', { class: 've-row mt-2' }, [
+        btn('arrow-line-left', 'Start here', () => { const l = atHead(); if (l && l.clip.id === c.id) commit(Core.trimClip(P, c.id, 'in', l.sourceTime, s.duration)); else announce('Move the playhead into this clip first.'); }),
+        btn('arrow-line-right', 'End here', () => { const l = atHead(); if (l && l.clip.id === c.id) commit(Core.trimClip(P, c.id, 'out', l.sourceTime, s.duration)); else announce('Move the playhead into this clip first.'); }),
+      ]),
+      el('p', { class: 'field-note', text: `Times in the original file, which is ${T(s.duration)} long. To cut out a middle part, split at both ends of it and delete the piece.` }),
+    ]));
+    box.append(section('Speed', [
+      chipRow([[0.25, '0.25×'], [0.5, '0.5×'], [0.75, '0.75×'], [1, '1×'], [1.25, '1.25×'], [1.5, '1.5×'], [2, '2×'], [3, '3×'], [4, '4×']], c.speed,
+        v => commit(Core.updateIn(P, 'clips', c.id, { speed: +v })), 'Speed'),
+      el('p', { class: 'field-note', text: 'Voices keep their normal pitch.' }),
+    ]));
+    const vol = slider(0, 200, 5, Math.round(c.volume * 100), v => v + '%', v => live(p => Core.updateIn(p, 'clips', c.id, { volume: v / 100 })));
+    const mute = el('label', { class: 'checkbox-label mt-2' }, [el('input', { type: 'checkbox', 'data-no-remember': true }), ' Mute this clip']);
+    mute.firstChild.checked = !!c.muted;
+    mute.firstChild.addEventListener('change', () => commit(Core.updateIn(P, 'clips', c.id, { muted: mute.firstChild.checked })));
+    const soundSec = section('Sound', s.hasAudio ? [vol, mute] : [el('p', { class: 'muted small', text: 'This clip has no sound.' })]);
+    box.append(soundSec);
+  } else {
+    box.append(section('Length', [
+      field('Show for', timeInput(c.dur, v => commit(Core.trimClip(P, c.id, 'out', v)))),
+    ]));
+  }
+
+  // Crop and turn
+  const cropBtn = btn('crop', cropMode ? 'Done cropping' : 'Crop', () => {
+    cropMode = !cropMode;
+    if (cropMode && V.playing) pause();
+    if (cropMode) { const l = Core.layout(P).find(x => x.clip.id === c.id); if (l && !(V.t >= l.start && V.t < l.end)) setTime(l.start + 0.001); }
+    renderInspector(); requestDraw();
+  }, cropMode ? 'btn-primary' : '');
+  cropBtn.style.marginTop = '0';
+  const kids = [el('div', { class: 've-row' }, [
+    cropBtn,
+    btn('arrow-counter-clockwise', 'Left', () => commit(Core.updateIn(P, 'clips', c.id, { rotate: (c.rotate + 270) % 360, crop: Core.rotateCrop(c.crop, false) }))),
+    btn('arrow-clockwise', 'Right', () => commit(Core.updateIn(P, 'clips', c.id, { rotate: (c.rotate + 90) % 360, crop: Core.rotateCrop(c.crop, true) }))),
+  ]), el('div', { class: 've-row' }, [
+    btn('flip-horizontal', 'Flip', () => commit(Core.updateIn(P, 'clips', c.id, { flipH: !c.flipH, crop: Core.flipCrop(c.crop, true) }))),
+    btn('flip-vertical', 'Upside down', () => commit(Core.updateIn(P, 'clips', c.id, { flipV: !c.flipV, crop: Core.flipCrop(c.crop, false) }))),
+  ])];
+  if (cropMode) {
+    kids.push(el('p', { class: 'field-note', text: 'Drag the box or its corners on the preview.' }));
+    kids.push(chipRow([['free', 'Free'], ['frame', 'Video shape'], ['16:9', '16:9'], ['9:16', '9:16'], ['1:1', '1:1'], ['4:5', '4:5']], cropRatio, v => {
+      cropRatio = v;
+      if (CROP_RATIOS[v]) commit(Core.updateIn(P, 'clips', c.id, { crop: applyCropRatio(c, c.crop, v) }));
+      else renderInspector();
+    }, 'Crop shape'));
+  }
+  const edited = c.rotate || c.flipH || c.flipV || c.crop.w < 1 || c.crop.h < 1;
+  const tail = el('div', { class: 've-row' });
+  if (edited) tail.append(btn('arrows-counter-clockwise', 'Reset', () => commit(Core.updateIn(P, 'clips', c.id, { crop: Core.clone(Core.FULL), rotate: 0, flipH: false, flipV: false }))));
+  if (P.clips.length > 1) tail.append(btn('stack', 'Use on all clips', () => {
+    const p = Core.clone(P);
+    for (const x of p.clips) {
+      // Same crop and turn, but only on clips from files of the same shape.
+      const sx = SRC[x.src];
+      if (sx.width * s.height === sx.height * s.width) Object.assign(x, { crop: Core.clone(c.crop), rotate: c.rotate, flipH: c.flipH, flipV: c.flipV });
+    }
+    commit(p);
+    announce('Crop and turn copied to the clips of the same shape.');
+  }));
+  if (tail.childNodes.length) kids.push(tail);
+  box.append(section('Crop and turn', kids));
+
+  box.append(section('Clip', [el('div', { class: 've-row' }, [
+    btn('scissors', 'Split at playhead', splitAtPlayhead),
+    btn('copy', 'Duplicate', () => {
+      const p = Core.clone(P);
+      const i = p.clips.findIndex(x => x.id === c.id);
+      const d = Object.assign(Core.clone(c), { id: Core.uid('c') });
+      p.clips.splice(i + 1, 0, d);
+      commit(p);
+      select('clip', d.id);
+    }),
+    btn('trash', 'Delete', deleteSelection, 'btn-delete'),
+  ])]));
+}
+
+function renderTextPanel(box, t) {
+  box.append(el('h2', null, [icon('text-t'), 'Text']));
+  box.append(el('p', { class: 've-sub', text: `${T(t.start)} to ${T(t.end)}` }));
+  const ta = el('textarea', { rows: 3, 'data-k': 'text', 'data-no-remember': true, 'aria-label': 'Text' });
+  ta.value = t.text;
+  ta.addEventListener('input', () => live(p => Core.updateIn(p, 'texts', t.id, { text: ta.value })));
+  ta.addEventListener('change', liveEnd);
+  box.append(ta);
+  box.append(section('Look', [
+    slider(3, 20, 0.5, Math.round(t.size * 1000) / 10, v => v + '%', v => live(p => Core.updateIn(p, 'texts', t.id, { size: v / 100 }))),
+    chipRow([['box', 'Box'], ['outline', 'Outline'], ['plain', 'Shadow']], t.style, v => commit(Core.updateIn(P, 'texts', t.id, { style: v })), 'Style'),
+    chipRow([['sans', 'Sans'], ['serif', 'Serif'], ['mono', 'Mono']], t.font, v => commit(Core.updateIn(P, 'texts', t.id, { font: v })), 'Font'),
+    (() => {
+      const color = el('input', { type: 'color', value: t.color, 'aria-label': 'Text colour', 'data-no-remember': true });
+      color.addEventListener('input', () => live(p => Core.updateIn(p, 'texts', t.id, { color: color.value })));
+      color.addEventListener('change', liveEnd);
+      const bold = el('label', { class: 'checkbox-label mb-0' }, [el('input', { type: 'checkbox', 'data-no-remember': true }), ' Bold']);
+      bold.firstChild.checked = !!t.bold;
+      bold.firstChild.addEventListener('change', () => commit(Core.updateIn(P, 'texts', t.id, { bold: bold.firstChild.checked })));
+      return el('div', { class: 've-row ve-color' }, [color, bold]);
+    })(),
+  ]));
+  const grid = el('div', { class: 've-grid9', role: 'group', 'aria-label': 'Position' });
+  for (const [k, label] of [['tl', 'Top left'], ['tc', 'Top'], ['tr', 'Top right'], ['ml', 'Left'], ['mc', 'Middle'], ['mr', 'Right'], ['bl', 'Bottom left'], ['bc', 'Bottom'], ['br', 'Bottom right']]) {
+    const b = el('button', { type: 'button', 'aria-label': label, title: label }, el('span'));
+    b.addEventListener('click', () => { const [x, y] = Core.TEXT_SPOTS[k]; commit(Core.updateIn(P, 'texts', t.id, { x, y })); });
+    grid.append(b);
+  }
+  box.append(section('Position', [grid, el('p', { class: 'field-note', text: 'Or drag the text on the preview.' })]));
+  box.append(section('Timing', [
+    el('div', { class: 've-pair' }, [
+      field('From', timeInput(t.start, v => commit(Core.updateIn(P, 'texts', t.id, { start: Math.min(v, t.end - Core.MIN_CLIP) })))),
+      field('To', timeInput(t.end, v => commit(Core.updateIn(P, 'texts', t.id, { end: Math.max(v, t.start + Core.MIN_CLIP) })))),
+    ]),
+    el('div', { class: 've-row mt-2' }, [
+      btn('arrow-line-right', 'Start here', () => { const len = t.end - t.start; commit(Core.updateIn(P, 'texts', t.id, { start: round3(V.t), end: round3(V.t + len) })); }),
+      btn('arrow-line-left', 'End here', () => { if (V.t > t.start + Core.MIN_CLIP) commit(Core.updateIn(P, 'texts', t.id, { end: round3(V.t) })); }),
+      btn('trash', 'Delete', deleteSelection, 'btn-delete'),
+    ]),
+  ]));
+}
+
+function renderAudioPanel(box, a) {
+  const s = SRC[a.src];
+  box.append(el('h2', null, [icon('music-notes'), s ? s.name : 'Sound']));
+  box.append(el('p', { class: 've-sub', text: `${T(a.start)} to ${T(Core.audioEnd(a))} · ${T(a.out - a.in)} long` }));
+  box.append(section('Volume', [
+    slider(0, 200, 5, Math.round(a.volume * 100), v => v + '%', v => live(p => Core.updateIn(p, 'audio', a.id, { volume: v / 100 }))),
+  ]));
+  box.append(section('Fades', [
+    el('label', { text: 'Fade in' }),
+    slider(0, 10, 0.5, a.fadeIn, v => v + ' s', v => live(p => Core.updateIn(p, 'audio', a.id, { fadeIn: v }))),
+    el('label', { class: 'mt-2', text: 'Fade out' }),
+    slider(0, 10, 0.5, a.fadeOut, v => v + ' s', v => live(p => Core.updateIn(p, 'audio', a.id, { fadeOut: v }))),
+  ]));
+  box.append(section('Timing', [
+    el('div', { class: 've-pair' }, [
+      field('Starts at', timeInput(a.start, v => commit(Core.updateIn(P, 'audio', a.id, { start: Math.max(0, v) })))),
+      field('Plays from', timeInput(a.in, v => commit(Core.updateIn(P, 'audio', a.id, { in: clamp(v, 0, a.out - Core.MIN_CLIP) })))),
+    ]),
+    el('div', { class: 've-row mt-2' }, [
+      btn('arrow-line-right', 'Start here', () => commit(Core.updateIn(P, 'audio', a.id, { start: round3(V.t) }))),
+      btn('arrow-line-left', 'End here', () => { const o = a.in + (V.t - a.start); if (o > a.in + Core.MIN_CLIP) commit(Core.updateIn(P, 'audio', a.id, { out: Math.min(o, s.duration) })); }),
+      btn('trash', 'Delete', deleteSelection, 'btn-delete'),
+    ]),
+    el('p', { class: 'field-note', text: 'Sound after the end of the video is left out of the export.' }),
+  ]));
+}
+
+/* ======================================================================
+   Editing commands
+   ====================================================================== */
+
+function splitAtPlayhead() {
+  if (!P.clips.length) return;
+  const r = Core.splitAt(P, V.t);
+  if (!r) { announce('Too close to a cut to split here.'); return; }
+  commit(r.project);
+  sel = { type: 'clip', id: r.rightId };
+  renderAll();
+  announce('Split.');
+}
+
+function deleteSelection() {
+  const obj = selected();
+  if (!obj) return;
+  if (sel.type === 'clip') {
+    const L = Core.layout(P);
+    const i = L.findIndex(e => e.clip.id === obj.id);
+    const next = Core.removeClip(P, obj.id);
+    commit(next, { keepSel: false });
+    // Select what is now in its place, so pieces can be removed one after another.
+    const nl = Core.layout(P);
+    const pick = nl[Math.min(i, nl.length - 1)];
+    sel = pick ? { type: 'clip', id: pick.clip.id } : null;
+    if (L[i]) V.t = clamp(L[i].start, 0, Core.totalDuration(P));
+    renderAll();
+    setTime(V.t, { keepPlaying: false });
+    if (!P.clips.length) showWorkspace();
+  } else {
+    commit(Core.removeFrom(P, sel.type === 'text' ? 'texts' : 'audio', obj.id), { keepSel: false });
+  }
+  announce('Deleted.');
+}
+
+function addText() {
+  if (!P.clips.length) { announce('Add a video or picture first.'); return; }
+  const total = Core.totalDuration(P);
+  const start = V.t >= total - 0.5 ? Math.max(0, total - 3) : V.t;
+  const t = Core.makeText(start, Math.min(total, start + 3), 'Your text');
+  const p = Core.clone(P);
+  p.texts.push(t);
+  commit(p);
+  select('text', t.id);
+  const ta = $('inspector').querySelector('textarea');
+  if (ta) { ta.focus(); ta.select(); }
+}
+
+/* ======================================================================
+   Layout of the page
+   ====================================================================== */
+
+function showWorkspace() {
+  const has = P.clips.length || P.audio.length;
+  $('empty').classList.toggle('hidden', !!has);
+  $('work').classList.toggle('hidden', !has);
+}
+
+function renderAll() {
+  showWorkspace();
+  if ($('work').classList.contains('hidden')) return;
+  if (zoomFitted) { pps = zoomBounds().fit; syncZoomSlider(); }
+  renderTimeline();
+  renderInspector();
+  requestDraw();
+}
+
+/* ======================================================================
+   Export: every frame is drawn the same way the preview draws it, and
+   encoded by the device; the sound is mixed in stretches of a few seconds.
+   ====================================================================== */
+
+const AUDIO_WINDOW = 4;   // seconds of sound mixed at a time
+
+/* Reads a stretch of a source's sound in order, at a speed, without loading
+   the whole file: the decoder hands over pieces, the stretcher (for other
+   speeds) turns them into the same sound at the new pace. */
+class SoundReader {
+  constructor(MB, src, from, to, speed) {
+    this.rate = src.audioRate;
+    this.ch = Math.min(2, Math.max(1, src.audioChannels || 1));
+    this.iter = new MB.AudioBufferSink(src.atrack).buffers(from, to)[Symbol.asyncIterator]();
+    this.cursor = from;
+    this.left = Math.round((to - from) * this.rate);   // input samples still wanted
+    this.stretch = speed !== 1 ? Core.createStretcher({ channels: this.ch, sampleRate: this.rate, speed }) : null;
+    this.queue = []; this.queued = 0;
+    this.done = false;
+    this.produced = 0;   // output samples handed out
+  }
+  pushOut(chs) { if (chs[0].length) { this.queue.push(chs); this.queued += chs[0].length; } }
+  feed(chs) {
+    if (this.stretch) { this.stretch.push(chs); if (this.stretch.available()) this.pushOut(this.stretch.pull(this.stretch.available())); }
+    else this.pushOut(chs);
+  }
+  async fill(n) {
+    while (this.queued < n && !this.done) {
+      const r = await this.iter.next();
+      if (r.done || this.left <= 0) {
+        this.done = true;
+        if (this.stretch) { this.stretch.end(); if (this.stretch.available()) this.pushOut(this.stretch.pull(this.stretch.available())); }
+        break;
+      }
+      const { buffer, timestamp } = r.value;
+      const rate = buffer.sampleRate;
+      let skip = 0;
+      if (timestamp < this.cursor) skip = Math.round((this.cursor - timestamp) * rate);
+      else if (timestamp > this.cursor + 2 / rate) {
+        // A gap in the sound becomes silence.
+        const gap = Math.min(this.left, Math.round((timestamp - this.cursor) * rate));
+        if (gap > 0) { this.feed(Array.from({ length: this.ch }, () => new Float32Array(gap))); this.left -= gap; }
+      }
+      const avail = buffer.length - skip;
+      if (avail <= 0) continue;
+      const take = Math.min(avail, this.left);
+      const chs = [];
+      for (let c = 0; c < this.ch; c++) chs.push(buffer.getChannelData(Math.min(c, buffer.numberOfChannels - 1)).slice(skip, skip + take));
+      this.left -= take;
+      this.cursor = timestamp + (skip + take) / rate;
+      this.feed(chs);
+    }
+  }
+  async read(n) {
+    await this.fill(n);
+    const out = Array.from({ length: this.ch }, () => new Float32Array(n));
+    let got = 0;
+    while (got < n && this.queue.length) {
+      const blk = this.queue[0], take = Math.min(blk[0].length, n - got);
+      for (let c = 0; c < this.ch; c++) out[c].set(blk[c].subarray(0, take), got);
+      if (take === blk[0].length) this.queue.shift();
+      else this.queue[0] = blk.map(x => x.subarray(take));
+      got += take;
+      this.queued -= take;
+    }
+    this.produced += n;
+    return out;
+  }
+  close() { try { this.iter.return && this.iter.return(); } catch (e) {} }
+}
+
+function exportSettings() {
+  return {
+    format: radio('exFormat') || 'mp4',
+    short: +(radio('exSize') || 1080),
+    quality: radio('exQuality') || 'high',
+    fps: +(radio('exFps') || 30),
+  };
+}
+
+function updateExportSummary() {
+  if (!P.clips.length) { $('exportSummary').textContent = ''; return; }
+  const s = exportSettings();
+  const fs = frameSizeFor(s.short);
+  $('exportSummary').textContent = `${fs.width} × ${fs.height}, ${T(Core.totalDuration(P))}, ${s.format.toUpperCase()}.`;
+}
+
+function setExportProgress(label, p, sub) {
+  const box = $('exportProgress');
+  let wrap = box.querySelector('.ve-progress');
+  if (!wrap) {
+    wrap = el('div', { class: 'progress ve-progress', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100' }, [
+      el('div', { class: 'progress-track' }, el('div', { class: 'progress-fill' })),
+      el('div', { class: 'progress-label' }, [el('span', { class: 'lbl' }), el('span', { class: 'pct' })]),
+      el('div', { class: 'progress-sub' }),
+    ]);
+    box.append(wrap);
+  }
+  wrap.querySelector('.progress-fill').style.width = Math.round(clamp(p, 0, 1) * 100) + '%';
+  wrap.querySelector('.lbl').textContent = label;
+  wrap.querySelector('.pct').textContent = Math.round(clamp(p, 0, 1) * 100) + '%';
+  wrap.querySelector('.progress-sub').textContent = sub || '';
+  wrap.setAttribute('aria-valuenow', String(Math.round(p * 100)));
+  wrap.setAttribute('aria-label', label);
+}
+
+function fmtLeft(ms) {
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${Math.max(1, s)} s`;
+  const m = Math.round(s / 60);
+  return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`;
+}
+
+async function exportVideo() {
+  if (exporting || !P.clips.length) return;
+  // The export works from a copy, so edits made while it runs do not change it halfway.
+  const proj = Core.clone(P);
+  pause();
+  if (cropMode) { cropMode = false; renderInspector(); }
+  const settings = exportSettings();
+  const job = { cancelled: false, output: null };
+  exporting = job;
+  const done = tfe('job', 'Exporting a video');
+  $('exportBtn').disabled = true;
+  $('cancelExportBtn').classList.remove('hidden');
+  $('exportResult').textContent = '';
+  setExportProgress('Starting', 0);
+  const started = performance.now();
+  const readers = [];
+  try {
+    let MB;
+    try { MB = await getMediabunny(); }
+    catch (e) { throw new UserError('The video engine could not be downloaded. Connect to the internet once; after that it also works offline.'); }
+    for (const c of proj.clips) {
+      const s = SRC[c.src];
+      if (c.kind === 'video' && !(s.vtrack && s.canDecodeVideo)) throw new UserError(`This browser cannot read the picture in ${s.name}. Convert it to MP4 in Video Converter first.`);
+    }
+    if (typeof VideoEncoder !== 'function') throw new UserError('This browser cannot make videos. Use a recent Chrome, Edge, Firefox or Safari.');
+
+    const { width: W, height: H } = frameSizeFor(settings.short, proj);
+    const fps = settings.fps;
+    const total = Core.totalDuration(proj);
+    const N = Core.frameCount(total, fps);
+    const quality = { high: MB.QUALITY_HIGH, medium: MB.QUALITY_MEDIUM, low: MB.QUALITY_LOW }[settings.quality];
+    const mp4 = settings.format === 'mp4';
+    const vcodec = await MB.getFirstEncodableVideoCodec(mp4 ? ['avc', 'hevc', 'vp9', 'av1'] : ['vp9', 'vp8', 'av1'], { width: W, height: H, quality });
+    if (!vcodec) throw new UserError(`This device cannot encode a ${W} × ${H} ${mp4 ? 'MP4' : 'WebM'}. Try a smaller size or the other file type.`);
+
+    // Sound: from the clips that have it and are not muted, and from the sound track.
+    const soundy = proj.clips.some(c => c.kind === 'video' && !c.muted && c.volume > 0 && SRC[c.src].atrack && SRC[c.src].canDecodeAudio) ||
+      proj.audio.some(a => a.volume > 0 && a.start < total && SRC[a.src].atrack && SRC[a.src].canDecodeAudio);
+    let acodec = null;
+    const notes = [];
+    if (soundy) {
+      acodec = await MB.getFirstEncodableAudioCodec(mp4 ? ['aac', 'opus'] : ['opus', 'vorbis'], { numberOfChannels: 2, sampleRate: 48000, quality });
+      if (!acodec) notes.push('This browser cannot encode sound, so the video has none.');
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d', { alpha: false });
+    const output = new MB.Output({
+      format: mp4 ? new MB.Mp4OutputFormat({ fastStart: 'in-memory' }) : new MB.WebMOutputFormat(),
+      target: new MB.BufferTarget(),
+    });
+    job.output = output;
+    const vsrc = new MB.CanvasSource(canvas, { codec: vcodec, quality, keyFrameInterval: 2 });
+    output.addVideoTrack(vsrc, { frameRate: fps });
+    let asrc = null;
+    if (acodec) { asrc = new MB.AudioBufferSource({ codec: acodec, quality }); output.addAudioTrack(asrc); }
+    await output.start();
+
+    const L = Core.layout(proj);
+    const sinks = {};
+    const sinkFor = s => sinks[s.id] || (sinks[s.id] = new MB.CanvasSink(s.vtrack, { poolSize: 3 }));
+
+    // Sound, a few seconds at a time, kept a little ahead of the pictures.
+    const RATE = 48000;
+    let audioDone = 0;
+    const clipReaders = new Map(), itemReaders = new Map();
+    const mixWindow = async (w0, w1) => {
+      const s0 = Math.round(w0 * RATE), s1 = Math.round(w1 * RATE);
+      const len = s1 - s0;
+      if (len <= 0) return;
+      const oac = new OfflineAudioContext(2, len, RATE);
+      const place = (chs, rate, at) => {
+        if (!chs[0].length) return;
+        const buf = oac.createBuffer(chs.length, chs[0].length, rate);
+        chs.forEach((d, i) => buf.copyToChannel(d, i));
+        const node = oac.createBufferSource();
+        node.buffer = buf;
+        node.connect(oac.destination);
+        node.start(Math.max(0, at));
+      };
+      for (const e of L) {
+        const c = e.clip, s = SRC[c.src];
+        if (c.kind !== 'video' || c.muted || c.volume <= 0 || !s.atrack || !s.canDecodeAudio) continue;
+        if (e.end <= w0 || e.start >= w1) continue;
+        let r = clipReaders.get(c.id);
+        if (!r) { r = new SoundReader(MB, s, c.in, c.out, c.speed); clipReaders.set(c.id, r); readers.push(r); }
+        const a0 = Math.max(w0, e.start), a1 = Math.min(w1, e.end);
+        const want = Math.round((a1 - e.start) * r.rate) - r.produced;
+        if (want <= 0) continue;
+        const chs = await r.read(want);
+        if (c.volume !== 1) for (const d of chs) for (let i = 0; i < d.length; i++) d[i] *= c.volume;
+        place(chs, r.rate, a0 - w0);
+        if (a1 >= e.end - 1e-6) { r.close(); }
+      }
+      for (const a of proj.audio) {
+        const s = SRC[a.src];
+        const end = Math.min(Core.audioEnd(a), total);
+        if (a.volume <= 0 || !s.atrack || !s.canDecodeAudio || end <= w0 || a.start >= w1) continue;
+        let r = itemReaders.get(a.id);
+        if (!r) { r = new SoundReader(MB, s, a.in, a.out, 1); itemReaders.set(a.id, r); readers.push(r); }
+        const a0 = Math.max(w0, a.start), a1 = Math.min(w1, end);
+        const want = Math.round((a1 - a.start) * r.rate) - r.produced;
+        if (want <= 0) continue;
+        const startIdx = r.produced;
+        const chs = await r.read(want);
+        for (const d of chs) for (let i = 0; i < d.length; i++) d[i] *= Core.gainAt(a, a.start + (startIdx + i) / r.rate, total);
+        place(chs, r.rate, a0 - w0);
+      }
+      const mixed = await oac.startRendering();
+      await asrc.add(mixed);
+    };
+
+    let n = 0;
+    let lastImg = null;
+    const blackFrame = { img: null, w: 0, h: 0 };
+    for (const e of L) {
+      const c = e.clip, s = SRC[c.src];
+      const fr = Core.framesForEntry(e, fps, total);
+      if (!fr.count) continue;
+      const texts = proj.texts;
+      let iter = null;
+      if (c.kind === 'video') {
+        const times = [];
+        for (let k = 0; k < fr.count; k++) {
+          const tl = (fr.first + k) / fps - e.start;
+          times.push(Math.min(c.out - 0.0005, Core.sourceTimeAt(c, Math.max(0, tl))));
+        }
+        iter = sinkFor(s).canvasesAtTimestamps(times)[Symbol.asyncIterator]();
+      }
+      for (let k = 0; k < fr.count; k++) {
+        if (job.cancelled) throw new Cancelled();
+        const t = (fr.first + k) / fps;
+        let im = blackFrame;
+        if (c.kind === 'image') im = { img: s.bitmap, w: s.width, h: s.height };
+        else {
+          const r = await iter.next();
+          const wc = r.done ? null : r.value;
+          if (wc) { im = { img: wc.canvas, w: wc.canvas.width, h: wc.canvas.height }; lastImg = im; }
+          else if (lastImg) im = lastImg;
+        }
+        composite(ctx, W, H, im.img, im.w, im.h, c, texts.filter(x => t >= x.start - 1e-6 && t < x.end - 1e-6), { fit: proj.fit });
+        await vsrc.add(t, 1 / fps);
+        n++;
+        if (asrc) {
+          while (audioDone < total && audioDone < t + 1) {
+            const w1 = Math.min(total, audioDone + AUDIO_WINDOW);
+            await mixWindow(audioDone, w1);
+            audioDone = w1;
+          }
+        }
+        if (n % 10 === 0 || n === N) {
+          const p = n / N;
+          const el2 = performance.now() - started;
+          setExportProgress('Exporting', p * 0.98, p > 0.03 ? `About ${fmtLeft(el2 / p - el2)} left · frame ${n} of ${N}` : `Frame ${n} of ${N}`);
+          await new Promise(r => setTimeout(r, 0));
+        }
+      }
+      if (iter && iter.return) { try { await iter.return(); } catch (err) {} }
+    }
+    while (asrc && audioDone < total - 1e-6) {
+      const w1 = Math.min(total, audioDone + AUDIO_WINDOW);
+      await mixWindow(audioDone, w1);
+      audioDone = w1;
+    }
+    vsrc.close();
+    if (asrc) asrc.close();
+    setExportProgress('Finishing the file', 0.99);
+    await output.finalize();
+    const type = mp4 ? 'video/mp4' : 'video/webm';
+    const blob = new Blob([output.target.buffer], { type });
+    showExportResult(blob, { W, H, total, vcodec, acodec, notes, secs: (performance.now() - started) / 1000, ext: mp4 ? 'mp4' : 'webm' });
+  } catch (e) {
+    try { if (job.output && job.output.state !== 'finalized') await job.output.cancel(); } catch (err) {}
+    $('exportProgress').textContent = '';
+    const box = $('exportResult');
+    box.textContent = '';
+    if (e instanceof Cancelled) {
+      box.append(msgBox('info', 'info', 'Export cancelled. Your edit is still here.'));
+      announce('Export cancelled.');
+    } else {
+      const msg = e instanceof UserError ? e.message : 'The export failed: ' + errText(e);
+      box.append(msgBox('error', 'warning-circle', msg));
+      if (!(e instanceof UserError) && e && e.stack) box.append(el('details', { class: 've-details' }, [el('summary', { text: 'Technical details' }), el('pre', { text: String(e.stack).split('\n').slice(0, 8).join('\n') })]));
+      announce(msg);
+    }
+  } finally {
+    for (const r of readers) r.close();
+    exporting = null;
+    if (typeof done === 'function') done();
+    $('exportBtn').disabled = false;
+    $('cancelExportBtn').classList.add('hidden');
+  }
+}
+
+let resultURL = null;
+function showExportResult(blob, info) {
+  $('exportProgress').textContent = '';
+  if (resultURL) URL.revokeObjectURL(resultURL);
+  const first = P.clips[0] && SRC[P.clips[0].src];
+  const baseName = first ? first.name.replace(/\.[a-z0-9]+$/i, '') : 'video';
+  const name = `${baseName} edited.${info.ext}`;
+  const file = new File([blob], name, { type: blob.type });
+  resultURL = URL.createObjectURL(file);
+  const dl = el('button', { class: 'btn btn-sm btn-download', type: 'button' }, [icon('download-simple'), ' Download ' + info.ext.toUpperCase()]);
+  dl.addEventListener('click', () => {
+    const a = document.createElement('a');
+    a.href = resultURL; a.download = name;
+    document.body.append(a); a.click(); a.remove();
+  });
+  const body = el('div', { class: 'result-body' }, [
+    el('div', { class: 've-meta' }, [
+      el('span', { class: 'mono', text: name }),
+      el('span', { text: fmtSize(blob.size) }),
+      el('span', { text: `${info.W} × ${info.H}` }),
+      el('span', { text: T(info.total) }),
+      el('span', { class: 'pill pill-accent' }, [icon('lightning'), ` Made in ${Math.max(1, Math.round(info.secs))} s on this device`]),
+    ]),
+    ...info.notes.map(n => msgBox('warning', 'warning', n)),
+    el('video', { class: 'result-preview', src: resultURL, controls: true, playsinline: true, preload: 'metadata' }),
+  ]);
+  const box = el('div', { class: 'result' }, [el('div', { class: 'result-head' }, [el('h2', { text: 'Your video is ready' }), dl]), body]);
+  $('exportResult').textContent = '';
+  $('exportResult').append(box);
+  tfe('continueWith', body, file, { exclude: ['editor'] });
+  if (hasTFE() && typeof TFE.revealResult === 'function') tfe('revealResult', box);
+  else { try { box.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
+  announce(`Your video is ready, ${fmtSize(blob.size)}.`);
+}
+
+/* ======================================================================
+   Keyboard
+   ====================================================================== */
+
+function initKeys() {
+  document.addEventListener('keydown', e => {
+    if ($('work').classList.contains('hidden') || exporting) return;
+    if (isEditable(e.target) || e.defaultPrevented) return;
+    if (e.target.closest && e.target.closest('dialog')) return;
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && !e.altKey && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
+    if (mod && (e.key === 'y' || e.key === 'Y')) { e.preventDefault(); redo(); return; }
+    if (mod || e.altKey) return;
+    // Sliders and choices keep their arrow keys; buttons keep Space.
+    if (/^Arrow/.test(e.key) && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
+    const onButton = e.target.closest && e.target.closest('button, a, [role="button"]');
+    switch (e.key) {
+      case ' ': if (onButton) return; e.preventDefault(); togglePlay(); break;
+      case 's': case 'S': e.preventDefault(); splitAtPlayhead(); break;
+      case 'Delete': case 'Backspace': if (sel) { e.preventDefault(); deleteSelection(); } break;
+      case 'ArrowLeft': e.preventDefault(); if (e.shiftKey) setTime(V.t - 1); else step(-1); break;
+      case 'ArrowRight': e.preventDefault(); if (e.shiftKey) setTime(V.t + 1); else step(1); break;
+      case 'Home': e.preventDefault(); setTime(0); break;
+      case 'End': e.preventDefault(); setTime(Core.totalDuration(P)); break;
+      case 'Escape': if (cropMode) { cropMode = false; renderInspector(); requestDraw(); } else if (sel) select(null); break;
+      default: return;
+    }
+  });
+}
+
+/* ======================================================================
+   Files in: browse, drop, paste, and from other tools
+   ====================================================================== */
+
+function initFiles() {
+  const fi = $('fileInput'), mi = $('musicInput');
+  const dz = $('dropZone');
+  dz.addEventListener('click', () => fi.click());
+  dz.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fi.click(); } });
+  fi.addEventListener('change', () => { const f = [...fi.files]; fi.value = ''; addFiles(f); });
+  mi.addEventListener('change', () => { const f = [...mi.files]; mi.value = ''; addFiles(f, { asSound: true }); });
+  $('addMediaBtn').addEventListener('click', () => fi.click());
+  $('addMusicBtn').addEventListener('click', () => mi.click());
+  let depth = 0;
+  const hasFiles = e => e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files');
+  document.addEventListener('dragenter', e => { if (!hasFiles(e)) return; depth++; document.body.classList.add('ve-dragging-file'); e.preventDefault(); });
+  document.addEventListener('dragover', e => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+  document.addEventListener('dragleave', e => { if (!hasFiles(e)) return; depth = Math.max(0, depth - 1); if (!depth) document.body.classList.remove('ve-dragging-file'); });
+  document.addEventListener('drop', e => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    depth = 0;
+    document.body.classList.remove('ve-dragging-file');
+    if (exporting) return;
+    // Sound dropped on the sound track goes there; everything else by kind.
+    const onSound = e.target.closest && e.target.closest('#trackA');
+    addFiles([...e.dataTransfer.files], { asSound: !!onSound });
+  }, true);
+}
+
+/* ======================================================================
+   Start-up
+   ====================================================================== */
+
+const TIPS = {
+  trim: 'Drag the edges of a clip to trim it. To cut a part out of the middle, move the playhead to each end of it, press Split, then delete the piece.',
+  join: 'Add all your clips, then drag them on the timeline into the order you want.',
+  crop: 'Select a clip, then use Crop and turn on the right. For a phone video, set the shape to 9:16.',
+  speed: 'Select a clip and pick a speed on the right. Voices keep their normal pitch.',
+  text: 'Press Text below the preview, type, then drag it where you want it on the picture.',
+  audio: 'Press Music or voice-over to add a sound file. Select a clip to change its volume or mute it.',
+};
+function renderTip() {
+  const h = location.hash.slice(1);
+  const box = $('tip');
+  box.textContent = '';
+  if (TIPS[h]) box.append(msgBox('info', 'lightbulb', TIPS[h]));
+}
+
+function checkSupport() {
+  const notes = [];
+  if (typeof VideoEncoder !== 'function' || typeof VideoDecoder !== 'function') {
+    notes.push('This browser cannot export videos, because it has no video encoder for web pages. Chrome, Edge, Firefox 130 or later, and Safari 16.4 or later can.');
+  }
+  const box = $('supportNote');
+  for (const n of notes) box.append(msgBox('warning', 'warning', n));
+}
+
+initFiles();
+initKeys();
+initTimelinePointer();
+initStagePointer();
+checkSupport();
+renderTip();
+updatePlayButton();
+$('playBtn').addEventListener('click', togglePlay);
+$('splitBtn').addEventListener('click', splitAtPlayhead);
+$('deleteBtn').addEventListener('click', deleteSelection);
+$('undoBtn').addEventListener('click', undo);
+$('redoBtn').addEventListener('click', redo);
+$('addTextBtn').addEventListener('click', addText);
+$('zoomIn').addEventListener('click', () => setZoom(pps * 1.6));
+$('zoomOut').addEventListener('click', () => setZoom(pps / 1.6));
+$('zoomFit').addEventListener('click', () => { fitZoom(); renderTimeline(); tl.scrollLeft = 0; });
+$('zoom').addEventListener('input', () => {
+  const b = zoomBounds();
+  setZoom(b.min * Math.pow(b.max / b.min, +$('zoom').value / 100));
+});
+$('toExport').addEventListener('click', () => {
+  const s = $('exportSection');
+  try { s.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { s.scrollIntoView(); }
+  setTimeout(() => $('exportBtn').focus({ preventScroll: true }), 400);
+});
+$('exportBtn').addEventListener('click', exportVideo);
+$('cancelExportBtn').addEventListener('click', () => { if (exporting) { exporting.cancelled = true; setExportProgress('Cancelling', 0); } });
+$('exportBody').addEventListener('change', updateExportSummary);
+window.addEventListener('resize', () => { if (zoomFitted) fitZoom(); renderTimeline(); requestDraw(); });
+new ResizeObserver(() => requestDraw()).observe($('stage'));
+window.addEventListener('hashchange', renderTip);
+// Animation stops in a hidden tab, so the preview stops with it rather than drift.
+document.addEventListener('visibilitychange', () => { if (document.hidden && V.playing) pause(); });
+if (document.fonts && document.fonts.load) {
+  // Text on the picture uses the site's fonts; the drawing waits for them once.
+  Promise.all([document.fonts.load('700 32px "Geist Variable"'), document.fonts.load('400 32px "Geist Mono Variable"')]).then(requestDraw, () => {});
+}
+// The engine is fetched early so thumbnails and exports do not wait for it.
+getMediabunny().catch(() => {});
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!hasTFE()) return;
+  try {
+    const pr = typeof TFE.prefs === 'function' ? TFE.prefs('editor') : null;
+    if (pr && pr.bindForm) pr.bindForm($('exportBody'), { onRestore: updateExportSummary });
+  } catch (e) {}
+  tfe('subtool.onChange', () => renderTip());
+  try {
+    const files = TFE.handoff && TFE.handoff.take ? await TFE.handoff.take() : null;
+    if (files && files.length) addFiles(files);
+  } catch (e) {}
+});
+
+// Hooks for the automated tests; harmless for people.
+window.__ve = {
+  get project() { return P; }, set project(v) { P = v; afterChange(); },
+  sources: SRC, preview: V, undoStack,
+  addFiles, setTime, play, pause, splitAtPlayhead, deleteSelection, select, undo, redo, addText, exportVideo,
+  composite, frameSizeFor,
+};
+</script>
+<script src="../assets/app.js" defer></script>
+</body>
+</html>

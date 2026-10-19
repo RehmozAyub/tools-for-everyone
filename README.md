@@ -67,6 +67,14 @@ Turn a video clip into a GIF, or compress a video down to a smaller MP4. Runs on
 
 ![Video Converter](assets/screenshots/video-converter.png)
 
+### Video Editor
+Trim the start and end of a clip, split it and delete the parts you do not want, join videos and pictures in the order you drag them, crop (also to 9:16 for phones), rotate and flip, speed clips up or slow them down with voices kept at their normal pitch, put text on top, and add music or a voice-over with fades. Undo and redo everything, then save the result as an MP4 or WebM. It uses your device's own video encoder, so a few minutes of video usually exports in well under a minute.
+[Open in browser](https://rehmozayub.github.io/tools-for-everyone/Video%20Editor/video_editor.html) · browser only, built with [Mediabunny](https://github.com/Vanilagy/mediabunny)
+
+### Screen Recorder
+Record a whole screen, one window or a browser tab, with the sound it plays, your microphone and a camera bubble you can drag anywhere, or record just your camera. Each sound has its own volume and level meter, and there is a countdown, pause and resume, and a mute button for the microphone. The recording is saved on your device a second at a time, so a closed tab or a crash loses at most the last second, and it can be recovered the next time you open the page. Finished recordings are MP4 where the browser allows it, and go straight to the Video Editor in one click.
+[Open in browser](https://rehmozayub.github.io/tools-for-everyone/Screen%20Recorder/screen_recorder.html) · browser only
+
 ### Metadata Scrubber
 Inspect and strip metadata from images (JPG, PNG, WebP, TIFF, BMP) and documents (DOCX, PDF, XLSX, PPTX), including GPS location. Per-file privacy risk alerts, strip individually or batch-download all cleaned files as a ZIP.
 [Open in browser](https://rehmozayub.github.io/tools-for-everyone/Metadata%20Scrubber/metadata_scrubber.html) · [Streamlit version](Metadata%20Scrubber/)

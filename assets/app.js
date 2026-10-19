@@ -174,6 +174,32 @@
       ]
     },
     {
+      id: 'editor', name: 'Video Editor', path: 'Video%20Editor/video_editor.html', icon: 'film-slate', category: 'media',
+      description: 'Trim, cut, join, crop and speed up videos, add text and music, and save an MP4.',
+      accepts: ['video', 'image', 'audio'], formats: 'MP4, MOV, WebM, JPG, PNG, MP3, WAV',
+      keywords: 'video editor edit cut trim join merge combine crop rotate flip speed slow motion text title caption music soundtrack voice over mute volume timeline clip',
+      cta: 'Edit this video',
+      subtools: [
+        sub('trim', 'Trim or cut a video', 'scissors', 'Cut off the start or end, or take mistakes out of the middle.', 'trim cut shorten remove part split clip mistake', ['video'], 'Trim or cut it'),
+        sub('join', 'Join videos', 'stack', 'Put clips and pictures one after another, in the order you choose.', 'join merge combine concatenate append put together slideshow', ['video', 'image'], 'Join with other clips'),
+        sub('crop', 'Crop or rotate a video', 'crop', 'Crop to part of the picture or to 9:16 for phones, rotate or flip.', 'crop rotate flip turn vertical portrait reels tiktok shorts aspect ratio square', ['video'], 'Crop or rotate it'),
+        sub('speed', 'Change video speed', 'gauge', 'Speed a clip up or slow it down, with voices at their normal pitch.', 'speed fast faster slow slower motion timelapse 2x', ['video'], 'Change its speed'),
+        sub('text', 'Add text to a video', 'text-t', 'Put titles or captions on top of a video.', 'text title caption subtitle overlay words write', ['video'], 'Add text'),
+        sub('audio', 'Add music or mute a video', 'music-notes', 'Add music or a voice-over with fades, change the volume or mute.', 'music audio soundtrack song voice over mute volume background sound', ['video', 'audio'], 'Use it in a video')
+      ]
+    },
+    {
+      id: 'recorder', name: 'Screen Recorder', path: 'Screen%20Recorder/screen_recorder.html', icon: 'record', category: 'media',
+      description: 'Record your screen, a window or a tab with its sound, your microphone and a camera bubble.',
+      accepts: [], formats: 'MP4, WebM',
+      keywords: 'screen recorder record screen capture screencast recording desktop window tab webcam camera bubble microphone mic system audio sound loom obs tutorial demo',
+      cta: 'Record your screen',
+      subtools: [
+        sub('screen', 'Record your screen', 'monitor', 'A screen, a window or a tab, with sound and an optional camera bubble.', 'screen capture screencast desktop window tab tutorial demo presentation'),
+        sub('camera', 'Record your camera', 'webcam', 'Record yourself with your camera and microphone.', 'webcam camera selfie video message introduction')
+      ]
+    },
+    {
       id: 'audio', name: 'Audio Transcriber', path: 'Audio%20Transcriber/audio_transcriber.html', icon: 'microphone', category: 'media',
       description: 'Turn speech into text on your device, from a file or a recording.',
       accepts: ['audio', 'video'], formats: 'MP3, WAV, M4A, FLAC, OGG, MP4',
@@ -234,8 +260,8 @@
           'pdf#watermark', 'pdf#organize', 'pdf#rotate', 'pdf#pdf_to_images', 'pdf#extract_text', 'pdf#ocr',
           'pdf#redact', 'pdf#unlock', 'pdf#metadata'],
     image: ['image', 'metadata', 'pdf#images_to_pdf', 'qr#read'],
-    video: ['video#to_gif', 'video#compress', 'video#convert', 'audio#file'],
-    audio: ['audio#file'],
+    video: ['editor', 'video#to_gif', 'video#compress', 'video#convert', 'audio#file'],
+    audio: ['audio#file', 'editor#audio'],
     office: ['metadata'],
     any: []
   };

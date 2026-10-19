@@ -1,0 +1,1984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Screen Recorder - Free Screen and Webcam Recorder with System Audio</title>
+<meta name="description" content="Record your screen, a window or a browser tab with system sound, your microphone and a webcam bubble, for free in your browser. Pause and resume, no time limit, no watermark, no upload, and recordings survive a crash.">
+<link rel="canonical" href="https://rehmozayub.github.io/tools-for-everyone/Screen%20Recorder/screen_recorder.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Screen Recorder - Free Screen and Webcam Recorder with System Audio">
+<meta property="og:description" content="Record your screen, a window or a browser tab with system sound, your microphone and a webcam bubble, for free in your browser. No time limit, no watermark, no upload.">
+<meta property="og:url" content="https://rehmozayub.github.io/tools-for-everyone/Screen%20Recorder/screen_recorder.html">
+<meta property="og:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Screen Recorder - Free Screen and Webcam Recorder with System Audio">
+<meta name="twitter:description" content="Record your screen, a window or a browser tab with system sound, your microphone and a webcam bubble, for free in your browser. No time limit, no watermark, no upload.">
+<meta name="twitter:image" content="https://rehmozayub.github.io/tools-for-everyone/assets/social-card.png">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f3f5">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1114">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="apple-touch-icon" href="../assets/icon-192.png">
+<script>
+  try {
+    var t = localStorage.getItem('theme');
+    if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="../assets/theme.css">
+<style>
+  /* Choice groups built from real radio inputs, drawn as chips */
+  .sr-fieldset { border: 0; padding: 0; margin: 0 0 14px; min-width: 0; }
+  .sr-fieldset > legend {
+    padding: 0;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .sr-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  label.sr-chip { position: relative; margin: 0; }
+  .sr-chip input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+  .sr-chip:has(input:checked) { border-color: var(--accent); background: var(--accent-tint); color: var(--accent); }
+  .sr-chip:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .sr-chip:has(input:disabled) { opacity: 0.5; cursor: not-allowed; }
+
+  .field-note { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+  .field-note:empty { display: none; }
+  .field-note.is-warn { color: var(--warning); }
+
+  /* One sound source: switch, device, level and volume */
+  .sr-source { padding: 0 0 12px; margin-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .sr-source:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
+  .sr-source .checkbox-label { margin-bottom: 6px; font-weight: 500; }
+  .sr-source select { margin-bottom: 8px; }
+  .sr-source.is-off .sr-when-on { display: none; }
+  .sr-meter {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin: 2px 0 8px;
+  }
+  .sr-meter > span {
+    display: block;
+    height: 100%;
+    width: calc(var(--lvl, 0) * 100%);
+    background: var(--success);
+  }
+  .sr-meter.is-hot > span { background: var(--warning); }
+  .sr-vol { display: grid; grid-template-columns: auto 1fr 3.5em; align-items: center; gap: 8px; }
+  .sr-vol label { margin: 0; font-weight: 400; }
+  .sr-vol .slider-value { margin: 0; }
+
+  /* The stage: preview, camera bubble, countdown */
+  .sr-frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    max-height: 62vh;
+    background: #0b0d10;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .sr-frame .hidden, .sr-frame [hidden] { display: none !important; }
+  .sr-frame > video, .sr-frame > canvas {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: contain;
+  }
+  .sr-frame.is-mirrored > #liveVideo { transform: scaleX(-1); }
+  .sr-placeholder {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px;
+    padding: 24px;
+    color: #b4bbc6;
+    text-align: center;
+    font-size: 0.9375rem;
+  }
+  .sr-placeholder .ph { font-size: 2.25rem; color: #8a93a1; }
+  .sr-placeholder p { max-width: 42ch; }
+  .sr-placeholder .btn { margin-top: 4px; }
+  .sr-bubble {
+    position: absolute;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #252a32;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.92), 0 6px 20px rgba(0, 0, 0, 0.35);
+    display: flex; align-items: center; justify-content: center;
+    color: #c9cfd8;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+  }
+  .sr-bubble.is-rounded { border-radius: 18%; }
+  .sr-bubble:active { cursor: grabbing; }
+  .sr-bubble .ph { font-size: 1.75rem; }
+  .sr-bubble video { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+  .sr-bubble.is-mirrored video { transform: scaleX(-1); }
+  /* While recording, the bubble is drawn into the picture; this stays as a handle. */
+  .sr-bubble.is-handle { background: transparent; box-shadow: none; }
+  .sr-bubble.is-handle video, .sr-bubble.is-handle .ph { visibility: hidden; }
+  .sr-bubble.is-handle:hover, .sr-bubble.is-handle:focus-visible { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.7); }
+  .sr-bubble:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  .sr-countdown {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+  }
+  .sr-countdown[hidden] { display: none; }
+  .sr-countdown .num { font-size: clamp(3rem, 12vw, 7rem); font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+  .sr-countdown .btn { margin: 0; }
+  .sr-badge {
+    position: absolute; top: 12px; left: 12px;
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.62);
+    color: #fff;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8125rem;
+  }
+  .sr-badge[hidden] { display: none; }
+  .sr-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); flex-shrink: 0; }
+  .is-paused .sr-dot { background: var(--warning); }
+  @media (prefers-reduced-motion: no-preference) {
+    .is-recording:not(.is-paused) .sr-dot { animation: sr-blink 1.2s steps(2, start) infinite; }
+    @keyframes sr-blink { to { visibility: hidden; } }
+  }
+
+  .sr-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
+  .sr-controls .btn-primary { margin-top: 0; }
+  .sr-controls .hidden { display: none !important; }
+  .sr-live { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .sr-clock { display: inline-flex; align-items: center; gap: 8px; min-width: 7.5em; }
+  .sr-clock .mono { font-size: 1.25rem; font-weight: 500; }
+  .sr-size { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 0.8125rem; color: var(--text-muted); }
+  .btn[aria-pressed="true"] { border-color: var(--warning); color: var(--warning); }
+
+  /* Progress, including an indeterminate state */
+  .sr-progress { max-width: 520px; }
+  .sr-progress .progress-sub { margin-top: 4px; font-size: 0.75rem; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+  .sr-progress.is-indeterminate .progress-fill { width: 35% !important; }
+  @media (prefers-reduced-motion: no-preference) {
+    .sr-progress.is-indeterminate .progress-fill { animation: sr-indet 1.3s ease-in-out infinite; }
+    @keyframes sr-indet { 0% { transform: translateX(-100%); } 100% { transform: translateX(290%); } }
+  }
+
+  .result-preview {
+    display: block;
+    width: 100%;
+    max-height: 460px;
+    border-radius: var(--radius);
+    background: #000;
+    margin: 12px 0 4px;
+  }
+  .sr-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 0.8125rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .sr-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .sr-actions .btn-primary { margin-top: 0; min-height: 38px; padding: 9px 16px; }
+
+  /* Recordings on this device */
+  .sr-library { margin-top: 32px; }
+  .sr-library h2 { display: flex; align-items: center; gap: 8px; }
+  .sr-row { flex-wrap: wrap; row-gap: 6px; }
+  .sr-row > .ph { color: var(--text-muted); font-size: 1.125rem; flex-shrink: 0; }
+  .sr-row .file-facts { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 0.75rem; color: var(--text-faint); }
+  .sr-row-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
+  .sr-row-actions .icon-btn { width: 32px; height: 32px; }
+  .sr-row.is-open { border-color: var(--accent); }
+  .sr-details { margin-top: 8px; font-size: 0.8125rem; }
+  .sr-details summary { cursor: pointer; color: var(--text-muted); }
+  .sr-details pre {
+    margin-top: 6px; padding: 8px 10px; max-height: 220px; overflow: auto;
+    background: var(--surface-2); border-radius: var(--radius);
+    font-family: var(--font-mono); font-size: 0.75rem; white-space: pre-wrap; word-break: break-word;
+  }
+  .tool-layout.has-subtool-nav { grid-template-rows: auto 1fr; }
+  @media (min-width: 901px) {
+    .tool-controls { max-height: calc(100vh - 88px); overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
+  }
+  @media (pointer: coarse) {
+    .sr-row-actions .icon-btn { width: 44px; height: 44px; }
+  }
+  [data-mode="camera"] .sr-screen-only { display: none !important; }
+  [data-mode="screen"] .sr-camera-only { display: none !important; }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="tool-header">
+  <a class="back" href="../index.html"><i class="ph ph-arrow-left" aria-hidden="true"></i> <span>All tools</span></a>
+  <h1><i class="ph ph-record" aria-hidden="true"></i> Screen Recorder</h1>
+  <div class="header-actions">
+    <button class="icon-btn" type="button" id="themeToggle" aria-label="Toggle theme"></button>
+    <a class="icon-btn" href="https://github.com/RehmozAyub/tools-for-everyone" aria-label="Source on GitHub"><i class="ph ph-github-logo" aria-hidden="true"></i></a>
+  </div>
+</header>
+
+<div class="tool-layout has-subtool-nav" id="layout" data-mode="screen">
+  <nav class="subtool-nav" id="toolList" aria-label="What to record"></nav>
+
+  <aside class="tool-controls">
+    <details class="panel" id="soundPanel" open data-mobile-collapsed>
+      <summary><span>Sound</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
+      <div id="soundBody">
+        <div class="sr-source sr-screen-only" id="sysSource">
+          <label class="checkbox-label"><input type="checkbox" id="sysOn" checked> <i class="ph ph-speaker-high" aria-hidden="true"></i> System sound</label>
+          <div class="sr-when-on">
+            <div class="sr-meter" id="sysMeter" role="meter" aria-label="System sound level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div>
+            <div class="sr-vol">
+              <label for="sysVol">Volume</label>
+              <input type="range" id="sysVol" min="0" max="200" step="5" value="100">
+              <div class="slider-value" id="sysVolVal">100%</div>
+            </div>
+          </div>
+          <p class="field-note" id="sysNote"></p>
+        </div>
+        <div class="sr-source" id="micSource">
+          <label class="checkbox-label"><input type="checkbox" id="micOn"> <i class="ph ph-microphone" aria-hidden="true"></i> Microphone</label>
+          <div class="sr-when-on">
+            <label class="sr-only" for="micSelect">Microphone to use</label>
+            <select id="micSelect" data-no-remember><option value="">Default microphone</option></select>
+            <div class="sr-meter" id="micMeter" role="meter" aria-label="Microphone level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div>
+            <div class="sr-vol">
+              <label for="micVol">Volume</label>
+              <input type="range" id="micVol" min="0" max="200" step="5" value="100">
+              <div class="slider-value" id="micVolVal">100%</div>
+            </div>
+            <label class="checkbox-label mt-2"><input type="checkbox" id="micClean" checked> Reduce background noise and echo</label>
+          </div>
+          <p class="field-note" id="micNote"></p>
+        </div>
+      </div>
+    </details>
+
+    <details class="panel" id="cameraPanel" open data-mobile-collapsed>
+      <summary><span>Camera</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
+      <div id="cameraBody">
+        <div class="sr-source" id="camSource">
+          <label class="checkbox-label sr-screen-only"><input type="checkbox" id="camOn"> <i class="ph ph-webcam" aria-hidden="true"></i> Show my camera in a bubble</label>
+          <div class="sr-when-on">
+            <label for="camSelect">Camera</label>
+            <select id="camSelect" data-no-remember><option value="">Default camera</option></select>
+            <div class="sr-screen-only mt-3">
+              <fieldset class="sr-fieldset">
+                <legend>Shape</legend>
+                <div class="sr-chips">
+                  <label class="chip sr-chip"><input type="radio" name="bubbleShape" value="circle" checked><span>Circle</span></label>
+                  <label class="chip sr-chip"><input type="radio" name="bubbleShape" value="rounded"><span>Rounded square</span></label>
+                </div>
+              </fieldset>
+              <fieldset class="sr-fieldset">
+                <legend>Size</legend>
+                <div class="sr-chips">
+                  <label class="chip sr-chip"><input type="radio" name="bubbleSize" value="s"><span>Small</span></label>
+                  <label class="chip sr-chip"><input type="radio" name="bubbleSize" value="m" checked><span>Medium</span></label>
+                  <label class="chip sr-chip"><input type="radio" name="bubbleSize" value="l"><span>Large</span></label>
+                </div>
+              </fieldset>
+              <fieldset class="sr-fieldset">
+                <legend>Corner</legend>
+                <div class="sr-chips" id="cornerChips">
+                  <button class="chip" type="button" data-corner="tl">Top left</button>
+                  <button class="chip" type="button" data-corner="tr">Top right</button>
+                  <button class="chip" type="button" data-corner="bl">Bottom left</button>
+                  <button class="chip" type="button" data-corner="br">Bottom right</button>
+                </div>
+                <p class="field-note">Or drag the bubble on the preview, even while recording.</p>
+              </fieldset>
+              <label class="checkbox-label"><input type="checkbox" id="camMirror" checked> Mirror the camera, like a mirror</label>
+            </div>
+          </div>
+          <p class="field-note" id="camNote"></p>
+        </div>
+      </div>
+    </details>
+
+    <details class="panel" id="videoPanel" open data-mobile-collapsed>
+      <summary><span>Video</span><i class="ph ph-caret-down caret" aria-hidden="true"></i></summary>
+      <div id="videoBody">
+        <fieldset class="sr-fieldset">
+          <legend>Size</legend>
+          <div class="sr-chips">
+            <label class="chip sr-chip"><input type="radio" name="quality" value="0"><span>Original</span></label>
+            <label class="chip sr-chip"><input type="radio" name="quality" value="1080" checked><span>1080p</span></label>
+            <label class="chip sr-chip"><input type="radio" name="quality" value="720"><span>720p</span></label>
+          </div>
+        </fieldset>
+        <fieldset class="sr-fieldset">
+          <legend>Frame rate</legend>
+          <div class="sr-chips">
+            <label class="chip sr-chip"><input type="radio" name="fps" value="30" checked><span>30 fps</span></label>
+            <label class="chip sr-chip"><input type="radio" name="fps" value="60"><span>60 fps, for games and motion</span></label>
+          </div>
+        </fieldset>
+        <fieldset class="sr-fieldset">
+          <legend>Countdown</legend>
+          <div class="sr-chips">
+            <label class="chip sr-chip"><input type="radio" name="countdown" value="0"><span>None</span></label>
+            <label class="chip sr-chip"><input type="radio" name="countdown" value="3" checked><span>3 seconds</span></label>
+            <label class="chip sr-chip"><input type="radio" name="countdown" value="5"><span>5 seconds</span></label>
+          </div>
+        </fieldset>
+        <fieldset class="sr-fieldset mb-0">
+          <legend>File type</legend>
+          <div class="sr-chips">
+            <label class="chip sr-chip"><input type="radio" name="format" value="mp4" checked><span>MP4 when possible</span></label>
+            <label class="chip sr-chip"><input type="radio" name="format" value="webm"><span>WebM</span></label>
+          </div>
+          <p class="field-note" id="formatNote"></p>
+        </fieldset>
+      </div>
+    </details>
+  </aside>
+
+  <main class="tool-main" id="main">
+    <p class="tool-intro">Record your screen, a window or a browser tab with the sound it plays, your microphone and your camera. Recordings are saved on this device as you go, so a closed tab or a crash does not lose them.</p>
+    <h2 id="toolTitle">Record your screen</h2>
+    <p class="tool-info"><i class="ph ph-info" aria-hidden="true"></i> <span id="toolInfo"></span></p>
+
+    <div id="supportNote"></div>
+    <div id="recoverNote" aria-live="polite"></div>
+
+    <section class="sr-stage" id="stage" aria-label="Preview">
+      <div class="sr-frame" id="frame">
+        <video id="liveVideo" muted playsinline autoplay hidden></video>
+        <canvas id="liveCanvas" hidden></canvas>
+        <div class="sr-placeholder" id="placeholder">
+          <i class="ph ph-monitor" aria-hidden="true" id="placeholderIcon"></i>
+          <p id="placeholderText">Your screen shows here once you start. You choose the screen, window or tab in the next step.</p>
+          <button class="btn btn-sm hidden" type="button" id="camPreviewBtn"><i class="ph ph-webcam" aria-hidden="true"></i> Turn on the camera</button>
+        </div>
+        <div class="sr-bubble hidden" id="bubble" role="button" tabindex="0" aria-label="Camera bubble. Drag, or use the arrow keys, to move it."><i class="ph ph-webcam" aria-hidden="true"></i><video id="camVideo" muted playsinline autoplay hidden></video></div>
+        <div class="sr-countdown" id="countdown" hidden>
+          <span class="num" id="countdownNum">3</span>
+          <button class="btn btn-sm" type="button" id="countdownCancel">Cancel</button>
+        </div>
+        <div class="sr-badge" id="badge" hidden><span class="sr-dot" aria-hidden="true"></span><span id="badgeTime">00:00</span></div>
+      </div>
+
+      <div class="sr-controls" id="controls">
+        <button class="btn btn-primary" type="button" id="startBtn"><i class="ph ph-record" aria-hidden="true"></i> Start recording</button>
+        <div class="sr-live hidden" id="liveBar" role="group" aria-label="Recording controls">
+          <span class="sr-clock"><span class="sr-dot" aria-hidden="true"></span><span class="mono" id="liveTime">00:00</span></span>
+          <span class="sr-size" id="liveSize"></span>
+          <button class="btn" type="button" id="pauseBtn"><i class="ph ph-pause" aria-hidden="true"></i> Pause</button>
+          <button class="btn hidden" type="button" id="micMuteBtn" aria-pressed="false"><i class="ph ph-microphone-slash" aria-hidden="true"></i> Mute mic</button>
+          <button class="btn btn-record" type="button" id="stopBtn"><i class="ph ph-stop" aria-hidden="true"></i> Stop</button>
+        </div>
+      </div>
+      <p class="field-note" id="stageNote" aria-live="polite"></p>
+    </section>
+
+    <div id="progress"></div>
+    <div id="result" aria-live="polite"></div>
+
+    <section class="sr-library" id="library" aria-labelledby="libraryTitle">
+      <h2 id="libraryTitle"><i class="ph ph-hard-drives" aria-hidden="true"></i> Recordings on this device</h2>
+      <p class="muted small" id="storageNote"></p>
+      <div class="file-list" id="recList"></div>
+    </section>
+    <p class="sr-only" id="srStatus" aria-live="polite"></p>
+  </main>
+</div>
+
+<footer class="tool-footer">
+  <span>Made with ❤️ by <a href="https://github.com/RehmozAyub">RehmozAyub</a></span>
+  <a href="https://github.com/RehmozAyub/tools-for-everyone">Source on GitHub</a>
+  <button class="link-btn" type="button" onclick="sharePage()">Share</button>
+</footer>
+
+<script src="recorder-core.js"></script>
+<script>
+'use strict';
+
+const Core = window.RecorderCore;
+
+/* ======================================================================
+   Modes (sub-tools)
+   ====================================================================== */
+
+const TOOLS = [
+  { id: 'screen', icon: 'monitor', name: 'Record your screen',
+    info: 'Record a whole screen, one window or a browser tab. Add the sound it plays, your voice and a camera bubble.' },
+  { id: 'camera', icon: 'webcam', name: 'Record your camera',
+    info: 'Record yourself with your camera and microphone, for a video message or an introduction.' },
+];
+const TOOL_IDS = TOOLS.map(t => t.id);
+const toolById = id => TOOLS.find(t => t.id === id);
+let mode = (() => { const h = location.hash.slice(1); return TOOL_IDS.includes(h) ? h : 'screen'; })();
+
+const $ = id => document.getElementById(id);
+const hasTFE = () => typeof window.TFE === 'object' && window.TFE !== null;
+function tfe(path, ...args) {
+  // Calls window.TFE.<path>(...args) when it exists; returns undefined otherwise.
+  try {
+    if (!hasTFE()) return undefined;
+    const parts = path.split('.');
+    let ctx = window.TFE, fn = window.TFE;
+    for (const p of parts) { ctx = fn; fn = fn && fn[p]; }
+    return typeof fn === 'function' ? fn.apply(ctx, args) : undefined;
+  } catch (e) { return undefined; }
+}
+
+function el(tag, attrs, children) {
+  const n = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === 'class') n.className = v;
+    else if (k === 'text') n.textContent = v;
+    else n.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of [].concat(children || [])) if (c != null) n.append(c);
+  return n;
+}
+const icon = name => el('i', { class: 'ph ph-' + name, 'aria-hidden': 'true' });
+function msgBox(kind, iconName, text, extra) {
+  return el('div', { class: kind + '-msg' }, [icon(iconName), ' ', el('span', null, [text].concat(extra || []))]);
+}
+function announce(text) {
+  if (hasTFE() && typeof TFE.announce === 'function') tfe('announce', text);
+  else $('srStatus').textContent = text;
+}
+function fmtSize(bytes) {
+  const shared = tfe('formatBytes', bytes);
+  if (typeof shared === 'string') return shared;
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+}
+function fmtDate(ts) {
+  try { return new Date(ts).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }); } catch (e) { return new Date(ts).toString(); }
+}
+const radio = name => { const n = document.querySelector(`input[name="${name}"]:checked`); return n ? n.value : null; };
+
+function errText(e) { return e && e.message ? e.message : String(e); }
+
+/* ======================================================================
+   State
+   ====================================================================== */
+
+const S = {
+  phase: 'idle',          // idle, starting, countdown, recording, finishing
+  paused: false,
+  display: null,          // MediaStream from getDisplayMedia
+  mic: null,              // MediaStream from getUserMedia (audio)
+  cam: null,              // MediaStream from getUserMedia (video)
+  mixer: null,
+  comp: null,             // compositor while a bubble is drawn in
+  recorder: null,
+  rec: null,              // the stored record of the recording in progress
+  chunkN: 0,
+  bytes: 0,
+  writes: Promise.resolve(),
+  writeError: null,
+  clock: { start: 0, pausedAt: 0, pausedTotal: 0 },
+  tick: null,
+  lockRelease: null,
+  jobDone: null,
+  micMuted: false,
+  countdownCancel: null,
+  openId: null,           // recording shown in the result area
+  resultURL: null,
+  fake: { display: null, mic: null, cam: null },   // test hooks
+};
+
+const bubble = { x: 0.86, y: 0.8, size: 'm', shape: 'circle' };
+
+/* ======================================================================
+   Browser support
+   ====================================================================== */
+
+const UA = navigator.userAgent || '';
+const isFirefox = /firefox/i.test(UA);
+const isSafari = /^((?!chrome|android|crios|fxios|edg).)*safari/i.test(UA);
+const isMac = /mac/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '');
+const canRecord = typeof window.MediaRecorder === 'function';
+const canShareScreen = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+const canUseDevices = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+function systemSoundHint() {
+  if (isFirefox) return 'Firefox does not share system sound with web pages. Your microphone still works.';
+  if (isSafari) return 'Safari does not share system sound with web pages. Your microphone still works.';
+  if (isMac) return 'On a Mac, only a browser tab\'s sound can be recorded: share a tab and keep "Also share tab audio" on.';
+  return 'When the browser asks what to share, keep "Also share system audio" (whole screen) or "Also share tab audio" (a tab) switched on.';
+}
+
+function renderSupport() {
+  const box = $('supportNote');
+  box.textContent = '';
+  if (!canRecord) {
+    box.append(msgBox('error', 'warning-circle', 'This browser cannot record video. Try a recent Chrome, Edge, Firefox or Safari.'));
+    return;
+  }
+  if (mode === 'screen' && !canShareScreen) {
+    const b = el('button', { class: 'link-btn', type: 'button', text: 'Record your camera instead' });
+    b.addEventListener('click', () => selectTool('camera'));
+    box.append(msgBox('warning', 'warning', 'This browser cannot share the screen with a web page. Phones and tablets do not allow it. ', [b]));
+  }
+  if (location.protocol === 'file:') {
+    box.append(msgBox('info', 'info', 'Opened from a file, so recordings are kept in memory until you download them. On the live site they are saved as you record.'));
+  }
+}
+
+/* ======================================================================
+   Mode switching and settings
+   ====================================================================== */
+
+function initToolList() {
+  const nav = $('toolList');
+  nav.textContent = '';
+  for (const t of TOOLS) {
+    const b = el('button', { class: 'tool-item', type: 'button', 'data-tool': t.id }, [icon(t.icon), ' ' + t.name]);
+    b.addEventListener('click', () => selectTool(t.id));
+    nav.append(b);
+  }
+}
+
+function selectTool(id, opts = {}) {
+  if (!TOOL_IDS.includes(id)) return;
+  if (S.phase !== 'idle' && id !== mode) { announce('Stop the recording before switching.'); return; }
+  mode = id;
+  const t = toolById(id);
+  document.querySelectorAll('#toolList .tool-item').forEach(b => {
+    const on = b.dataset.tool === id;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
+  $('layout').dataset.mode = id;
+  $('toolTitle').textContent = t.name;
+  $('toolInfo').textContent = t.info;
+  refreshSources();
+  renderSupport();
+  renderStage();
+  if (!opts.fromHash) {
+    if (hasTFE() && TFE.subtool && TFE.subtool.set) tfe('subtool.set', id, t.name);
+    else {
+      try { history.replaceState(null, '', '#' + id); } catch (e) {}
+      document.title = `${t.name} - Screen Recorder | Tools for Everyone`;
+    }
+  }
+  baseTitle = document.title;
+}
+let baseTitle = document.title;
+
+function wantSystemSound() { return mode === 'screen' && $('sysOn').checked; }
+function wantMic() { return $('micOn').checked; }
+function wantCamera() { return mode === 'camera' || $('camOn').checked; }
+
+function refreshSources() {
+  $('sysSource').classList.toggle('is-off', !$('sysOn').checked);
+  $('micSource').classList.toggle('is-off', !$('micOn').checked);
+  $('camSource').classList.toggle('is-off', !wantCamera());
+  $('sysVolVal').textContent = $('sysVol').value + '%';
+  $('micVolVal').textContent = $('micVol').value + '%';
+  $('sysNote').textContent = $('sysOn').checked ? systemSoundHint() : '';
+  $('sysNote').classList.toggle('is-warn', isFirefox || isSafari);
+  bubble.size = radio('bubbleSize') || 'm';
+  bubble.shape = radio('bubbleShape') || 'circle';
+  if (S.mixer) {
+    S.mixer.setVolume('system', $('sysVol').value / 100);
+    S.mixer.setVolume('mic', S.micMuted || !$('micOn').checked ? 0 : $('micVol').value / 100);
+  }
+  const wantWebm = radio('format') === 'webm';
+  const choice = canRecord ? Core.pickMimeType(t => MediaRecorder.isTypeSupported(t), wantWebm) : null;
+  let fnote = '';
+  if (choice && wantWebm) fnote = choice.video === 'avc' ? 'This browser cannot record WebM, so the file is MP4.' : 'WebM plays in browsers and VLC. Some phones and editors prefer MP4.';
+  else if (choice) fnote = choice.video === 'avc' ? 'Saved as MP4 (H.264), which plays almost everywhere.' : 'This browser can only record WebM. It plays in browsers and VLC, and Video Converter can turn it into MP4.';
+  $('formatNote').textContent = fnote;
+  renderStage();
+  updatePanelSummaries();
+}
+
+let summaries = [];
+function updatePanelSummaries() { summaries.forEach(s => { try { s.update(); } catch (e) {} }); }
+
+/* ======================================================================
+   Devices: microphone and camera
+   ====================================================================== */
+
+async function listDevices() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+  let devices = [];
+  try { devices = await navigator.mediaDevices.enumerateDevices(); } catch (e) { return; }
+  fillSelect($('micSelect'), devices.filter(d => d.kind === 'audioinput'), 'Microphone', 'micDevice');
+  fillSelect($('camSelect'), devices.filter(d => d.kind === 'videoinput'), 'Camera', 'camDevice');
+}
+
+function fillSelect(sel, list, noun, prefKey) {
+  const want = sel.value || prefsGet(prefKey, '');
+  sel.textContent = '';
+  sel.append(el('option', { value: '', text: 'Default ' + noun.toLowerCase() }));
+  let n = 0;
+  for (const d of list) {
+    if (!d.deviceId || d.deviceId === 'default' || d.deviceId === 'communications') continue;
+    n++;
+    sel.append(el('option', { value: d.deviceId, text: d.label || `${noun} ${n}` }));
+  }
+  if ([...sel.options].some(o => o.value === want)) sel.value = want;
+}
+
+function micConstraints() {
+  const clean = $('micClean').checked;
+  const id = $('micSelect').value;
+  return {
+    audio: Object.assign(id ? { deviceId: { exact: id } } : {}, {
+      echoCancellation: clean, noiseSuppression: clean, autoGainControl: clean,
+    }),
+  };
+}
+
+function camConstraints() {
+  const id = $('camSelect').value;
+  const q = +radio('quality');
+  const fps = +radio('fps') || 30;
+  const big = q === 720 ? { width: { ideal: 1280 }, height: { ideal: 720 } } : { width: { ideal: 1920 }, height: { ideal: 1080 } };
+  // The bubble is small, so it does not need a large camera picture.
+  const size = mode === 'screen' ? { width: { ideal: 1280 }, height: { ideal: 720 } } : big;
+  return { video: Object.assign(id ? { deviceId: { exact: id } } : {}, size, { frameRate: { ideal: Math.min(fps, 30) } }) };
+}
+
+function deviceError(e, what) {
+  const n = e && e.name;
+  if (n === 'NotAllowedError' || n === 'SecurityError') return `The browser blocked the ${what}. Allow it from the icon in the address bar, then try again.`;
+  if (n === 'NotFoundError' || n === 'OverconstrainedError') return `No ${what} was found.`;
+  if (n === 'NotReadableError' || n === 'AbortError') return `The ${what} is busy. Close other apps that use it, then try again.`;
+  return `Could not open the ${what}: ${errText(e)}`;
+}
+
+async function openMic() {
+  closeMic();
+  $('micNote').textContent = '';
+  try {
+    S.mic = S.fake.mic ? S.fake.mic.clone() : await navigator.mediaDevices.getUserMedia(micConstraints());
+  } catch (e) {
+    S.mic = null;
+    $('micOn').checked = false;
+    $('micNote').textContent = deviceError(e, 'microphone');
+    $('micNote').classList.add('is-warn');
+    refreshSources();
+    throw e;
+  }
+  $('micNote').classList.remove('is-warn');
+  const track = S.mic.getAudioTracks()[0];
+  if (track) track.addEventListener('ended', () => { if (S.mic && S.mic.getAudioTracks()[0] === track) { $('micNote').textContent = 'The microphone stopped.'; } });
+  ensureMixer().add('mic', track, $('micVol').value / 100);
+  if (S.micMuted) S.mixer.setVolume('mic', 0);
+  listDevices();
+  $('micMuteBtn').classList.toggle('hidden', S.phase === 'idle');
+  return S.mic;
+}
+
+function closeMic() {
+  if (S.mixer) S.mixer.remove('mic');
+  if (S.mic) { S.mic.getTracks().forEach(t => t.stop()); S.mic = null; }
+}
+
+async function openCamera() {
+  closeCamera();
+  $('camNote').textContent = '';
+  try {
+    S.cam = S.fake.cam ? S.fake.cam.clone() : await navigator.mediaDevices.getUserMedia(camConstraints());
+  } catch (e) {
+    S.cam = null;
+    if (mode === 'screen') $('camOn').checked = false;
+    $('camNote').textContent = deviceError(e, 'camera');
+    $('camNote').classList.add('is-warn');
+    refreshSources();
+    throw e;
+  }
+  $('camNote').classList.remove('is-warn');
+  const v = $('camVideo');
+  v.srcObject = S.cam;
+  v.hidden = false;
+  try { await v.play(); } catch (e) {}
+  const track = S.cam.getVideoTracks()[0];
+  if (track) track.addEventListener('ended', () => { if (S.cam && S.cam.getVideoTracks()[0] === track) { $('camNote').textContent = 'The camera stopped.'; } });
+  listDevices();
+  renderStage();
+  return S.cam;
+}
+
+function closeCamera() {
+  if (S.cam) { S.cam.getTracks().forEach(t => t.stop()); S.cam = null; }
+  const v = $('camVideo');
+  v.srcObject = null;
+  v.hidden = true;
+}
+
+/* ======================================================================
+   Sound mixing: every source gets its own volume and level meter, and they
+   are mixed into one track for the recording.
+   ====================================================================== */
+
+class Mixer {
+  constructor() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    this.ctx = new AC({ latencyHint: 'playback' });
+    this.dest = this.ctx.createMediaStreamDestination();
+    this.inputs = {};
+  }
+  add(name, track, volume) {
+    this.remove(name);
+    if (!track) return;
+    const src = this.ctx.createMediaStreamSource(new MediaStream([track]));
+    const gain = this.ctx.createGain();
+    gain.gain.value = volume;
+    const an = this.ctx.createAnalyser();
+    an.fftSize = 1024;
+    src.connect(gain);
+    gain.connect(an);
+    gain.connect(this.dest);
+    this.inputs[name] = { src, gain, an, buf: new Float32Array(an.fftSize) };
+    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+  }
+  remove(name) {
+    const i = this.inputs[name];
+    if (!i) return;
+    try { i.src.disconnect(); i.gain.disconnect(); } catch (e) {}
+    delete this.inputs[name];
+  }
+  has(name) { return !!this.inputs[name]; }
+  get count() { return Object.keys(this.inputs).length; }
+  setVolume(name, v) {
+    const i = this.inputs[name];
+    if (i) i.gain.gain.setTargetAtTime(v, this.ctx.currentTime, 0.02);
+  }
+  level(name) {
+    const i = this.inputs[name];
+    if (!i) return 0;
+    i.an.getFloatTimeDomainData(i.buf);
+    let peak = 0;
+    for (let k = 0; k < i.buf.length; k++) { const a = Math.abs(i.buf[k]); if (a > peak) peak = a; }
+    return peak;
+  }
+  get track() { return this.dest.stream.getAudioTracks()[0]; }
+  close() { try { this.ctx.close(); } catch (e) {} }
+}
+
+function ensureMixer() {
+  if (!S.mixer) S.mixer = new Mixer();
+  if (S.mixer.ctx.state === 'suspended') S.mixer.ctx.resume().catch(() => {});
+  return S.mixer;
+}
+
+// Level meters, redrawn while the page is visible.
+function meterLoop() {
+  for (const [name, id] of [['system', 'sysMeter'], ['mic', 'micMeter']]) {
+    const m = $(id);
+    const peak = S.mixer ? S.mixer.level(name) : 0;
+    // Shown on a decibel scale, so speech fills a useful part of the bar.
+    const db = peak > 0 ? 20 * Math.log10(peak) : -100;
+    const lvl = Math.max(0, Math.min(1, (db + 54) / 54));
+    m.style.setProperty('--lvl', lvl.toFixed(3));
+    m.classList.toggle('is-hot', peak > 0.89);
+    m.setAttribute('aria-valuenow', String(Math.round(lvl * 100)));
+  }
+  requestAnimationFrame(meterLoop);
+}
+
+/* ======================================================================
+   Compositor: draws the screen with the camera bubble on top. Frames are
+   driven by a timer in a worker, because pages that are not visible get their
+   own timers and animation frames slowed down or stopped, and you are usually
+   looking at something else while recording.
+   ====================================================================== */
+
+function makeTicker(fps, onTick) {
+  const src = 'let t=null;onmessage=e=>{clearInterval(t);t=null;if(e.data>0)t=setInterval(()=>postMessage(0),e.data);};';
+  let worker = null;
+  try {
+    worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+    worker.onmessage = onTick;
+    worker.postMessage(Math.round(1000 / fps));
+    return { stop() { try { worker.postMessage(0); worker.terminate(); } catch (e) {} } };
+  } catch (e) {
+    const t = setInterval(onTick, Math.round(1000 / fps));
+    return { stop() { clearInterval(t); } };
+  }
+}
+
+class Compositor {
+  constructor(displayTrack, camStream, width, height, fps) {
+    this.W = width; this.H = height; this.fps = fps;
+    this.canvas = $('liveCanvas');
+    this.canvas.width = width; this.canvas.height = height;
+    this.ctx = this.canvas.getContext('2d', { alpha: false });
+    this.screen = { frame: null, video: null };
+    this.cam = { frame: null, video: null };
+    this.readers = [];
+    this.closed = false;
+    const native = typeof window.MediaStreamTrackProcessor === 'function' && typeof window.MediaStreamTrackGenerator === 'function';
+    this.native = native;
+    if (native) {
+      // Frames come straight from the tracks, so nothing depends on the page being visible.
+      this.pull(displayTrack, this.screen);
+      this.gen = new MediaStreamTrackGenerator({ kind: 'video' });
+      this.writer = this.gen.writable.getWriter();
+      this.track = this.gen;
+    } else {
+      this.screen.video = this.videoFor(new MediaStream([displayTrack]));
+      this.track = this.canvas.captureStream(fps).getVideoTracks()[0];
+    }
+    this.setCamera(camStream);
+    this.ticker = makeTicker(fps, () => this.draw());
+    this.draw();
+  }
+  videoFor(stream) {
+    const v = document.createElement('video');
+    v.muted = true; v.playsInline = true; v.srcObject = stream;
+    v.play().catch(() => {});
+    return v;
+  }
+  pull(track, slot) {
+    let reader;
+    try { reader = new MediaStreamTrackProcessor({ track }).readable.getReader(); } catch (e) { slot.video = this.videoFor(new MediaStream([track])); return; }
+    this.readers.push(reader);
+    // A newer pull on the same slot (a different camera) makes this one stop.
+    const gen = slot.gen = (slot.gen || 0) + 1;
+    (async () => {
+      for (;;) {
+        let r;
+        try { r = await reader.read(); } catch (e) { break; }
+        if (r.done) break;
+        if (this.closed || slot.gen !== gen) { r.value.close(); try { reader.cancel().catch(() => {}); } catch (e) {} break; }
+        if (slot.frame) slot.frame.close();
+        slot.frame = r.value;
+      }
+    })();
+  }
+  setCamera(camStream) {
+    this.cam.gen = (this.cam.gen || 0) + 1;
+    if (this.cam.frame) { this.cam.frame.close(); this.cam.frame = null; }
+    this.cam.video = null;
+    const t = camStream && camStream.getVideoTracks()[0];
+    if (!t) return;
+    if (this.native) this.pull(t, this.cam);
+    else this.cam.video = this.videoFor(new MediaStream([t]));
+  }
+  source(slot) {
+    if (slot.frame) return { img: slot.frame, w: slot.frame.displayWidth, h: slot.frame.displayHeight };
+    const v = slot.video;
+    if (v && v.readyState >= 2 && v.videoWidth) return { img: v, w: v.videoWidth, h: v.videoHeight };
+    return null;
+  }
+  draw() {
+    if (this.closed) return;
+    const { ctx, W, H } = this;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    const s = this.source(this.screen);
+    if (s) {
+      const k = Math.min(W / s.w, H / s.h);
+      const dw = s.w * k, dh = s.h * k;
+      ctx.drawImage(s.img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    }
+    const c = this.source(this.cam);
+    if (c && wantCamera()) drawBubble(ctx, W, H, c);
+    if (this.native && this.writer) {
+      if (this.writer.desiredSize !== null && this.writer.desiredSize <= 0) return;
+      try {
+        const vf = new VideoFrame(this.canvas, { timestamp: Math.round(performance.now() * 1000) });
+        this.writer.write(vf).catch(() => {});
+      } catch (e) {}
+    }
+  }
+  close() {
+    this.closed = true;
+    this.ticker.stop();
+    const quiet = p => { if (p && p.catch) p.catch(() => {}); };
+    for (const r of this.readers) { try { quiet(r.cancel()); } catch (e) {} }
+    for (const slot of [this.screen, this.cam]) { if (slot.frame) { try { slot.frame.close(); } catch (e) {} slot.frame = null; } }
+    if (this.writer) { try { quiet(this.writer.close()); } catch (e) {} }
+    try { this.track && this.track.stop(); } catch (e) {}
+  }
+}
+
+function bubblePath(ctx, r) {
+  ctx.beginPath();
+  if (bubble.shape === 'rounded') {
+    const rad = r.w * 0.18;
+    if (typeof ctx.roundRect === 'function') ctx.roundRect(r.x, r.y, r.w, r.h, rad);
+    else ctx.rect(r.x, r.y, r.w, r.h);
+  } else {
+    ctx.arc(r.x + r.w / 2, r.y + r.h / 2, r.w / 2, 0, Math.PI * 2);
+  }
+}
+
+function drawBubble(ctx, W, H, cam) {
+  const r = Core.bubbleRect(W, H, bubble);
+  const src = Core.coverSource(cam.w, cam.h);
+  ctx.save();
+  bubblePath(ctx, r);
+  ctx.clip();
+  if ($('camMirror').checked) {
+    ctx.translate(r.x + r.w, r.y);
+    ctx.scale(-1, 1);
+    ctx.drawImage(cam.img, src.sx, src.sy, src.sw, src.sh, 0, 0, r.w, r.h);
+  } else {
+    ctx.drawImage(cam.img, src.sx, src.sy, src.sw, src.sh, r.x, r.y, r.w, r.h);
+  }
+  ctx.restore();
+  ctx.save();
+  ctx.lineWidth = Math.max(2, Math.round(r.w * 0.018));
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.92)';
+  bubblePath(ctx, r);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* ======================================================================
+   The stage: what the preview shows, and moving the bubble
+   ====================================================================== */
+
+function renderStage() {
+  const live = S.phase !== 'idle' && S.phase !== 'finishing';
+  const composite = !!S.comp;
+  const frame = $('frame');
+  const video = $('liveVideo'), canvas = $('liveCanvas');
+  canvas.hidden = !composite;
+  if (composite) {
+    video.hidden = true;
+  } else if (live && mode === 'screen' && S.display) {
+    if (video.srcObject !== S.display) video.srcObject = S.display;
+    video.hidden = false;
+  } else if (mode === 'camera' && S.cam) {
+    if (video.srcObject !== S.cam) video.srcObject = S.cam;
+    video.hidden = false;
+  } else {
+    video.srcObject = null;
+    video.hidden = true;
+  }
+  frame.classList.toggle('is-mirrored', mode === 'camera');
+  if (!video.hidden) video.play().catch(() => {});
+
+  const showPlaceholder = video.hidden && canvas.hidden;
+  $('placeholder').hidden = !showPlaceholder;
+  $('placeholder').classList.toggle('hidden', !showPlaceholder);
+  $('placeholderIcon').className = 'ph ph-' + (mode === 'camera' ? 'webcam' : 'monitor');
+  $('placeholderText').textContent = mode === 'camera'
+    ? 'Your camera shows here. It turns on when you start, or now to check how you look.'
+    : 'Your screen shows here once you start. You choose the screen, window or tab in the next step.';
+  $('camPreviewBtn').classList.toggle('hidden', !(mode === 'camera' && !S.cam && canUseDevices));
+
+  // Shape of the preview: the recording's shape while recording, otherwise a common screen shape.
+  let ratio = '16 / 9';
+  if (composite) ratio = `${S.comp.W} / ${S.comp.H}`;
+  else if (!video.hidden && video.videoWidth) ratio = `${video.videoWidth} / ${video.videoHeight}`;
+  frame.style.aspectRatio = ratio;
+
+  const b = $('bubble');
+  const showBubble = mode === 'screen' && wantCamera();
+  b.classList.toggle('hidden', !showBubble);
+  b.classList.toggle('is-rounded', bubble.shape === 'rounded');
+  b.classList.toggle('is-mirrored', $('camMirror').checked);
+  b.classList.toggle('is-handle', composite);
+  b.querySelector('.ph').hidden = !!S.cam;
+  if (showBubble) placeBubble();
+}
+
+function placeBubble() {
+  const frame = $('frame');
+  const W = frame.clientWidth, H = frame.clientHeight;
+  if (!W || !H) return;
+  const r = Core.bubbleRect(W, H, bubble);
+  const b = $('bubble');
+  b.style.left = r.x + 'px';
+  b.style.top = r.y + 'px';
+  b.style.width = r.w + 'px';
+  b.style.height = r.h + 'px';
+}
+
+function setBubbleCenter(x, y, save) {
+  // Clamp through the same rule the recording uses, so the box never leaves the frame.
+  const frame = $('frame');
+  const W = frame.clientWidth || 16, H = frame.clientHeight || 9;
+  const r = Core.bubbleRect(W, H, { x, y, size: bubble.size });
+  bubble.x = (r.x + r.w / 2) / W;
+  bubble.y = (r.y + r.h / 2) / H;
+  placeBubble();
+  if (S.comp && !S.comp.native) S.comp.draw();
+  if (save) prefsSet('bubble', { x: bubble.x, y: bubble.y });
+}
+
+function initBubbleDrag() {
+  const b = $('bubble'), frame = $('frame');
+  let drag = null;
+  b.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    const fr = frame.getBoundingClientRect(), br = b.getBoundingClientRect();
+    drag = { id: e.pointerId, dx: e.clientX - (br.left + br.width / 2), dy: e.clientY - (br.top + br.height / 2), fr };
+    try { b.setPointerCapture(e.pointerId); } catch (err) {}
+    e.preventDefault();
+  });
+  b.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const fr = drag.fr;
+    setBubbleCenter((e.clientX - drag.dx - fr.left) / fr.width, (e.clientY - drag.dy - fr.top) / fr.height, false);
+  });
+  const end = e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    drag = null;
+    setBubbleCenter(bubble.x, bubble.y, true);
+  };
+  b.addEventListener('pointerup', end);
+  b.addEventListener('pointercancel', end);
+  b.addEventListener('keydown', e => {
+    const step = e.shiftKey ? 0.1 : 0.02;
+    const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+    const m = moves[e.key];
+    if (!m) return;
+    e.preventDefault();
+    setBubbleCenter(bubble.x + m[0], bubble.y + m[1], true);
+  });
+  $('cornerChips').addEventListener('click', e => {
+    const c = e.target.closest('[data-corner]');
+    if (!c) return;
+    const W = frame.clientWidth || 1600, H = frame.clientHeight || 900;
+    const p = Core.bubbleCorner(c.dataset.corner, W, H, bubble.size);
+    setBubbleCenter(p.x, p.y, true);
+  });
+  new ResizeObserver(() => placeBubble()).observe(frame);
+}
+
+/* ======================================================================
+   Storage: recordings are written to IndexedDB a second at a time, so a
+   crash or a closed tab loses at most the last second. The tidied file is
+   stored in pieces too, so a long recording never has to fit in memory.
+   ====================================================================== */
+
+const DB_NAME = 'tfe-recordings';
+const RECS = 'recs', CHUNKS = 'chunks';
+let dbPromise = null;
+
+function openDb() {
+  if (!dbPromise) {
+    dbPromise = new Promise((resolve, reject) => {
+      if (!window.indexedDB || location.protocol === 'file:') { reject(new Error('IndexedDB is not available')); return; }
+      let req;
+      try { req = indexedDB.open(DB_NAME, 1); } catch (e) { reject(e); return; }
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(RECS)) db.createObjectStore(RECS, { keyPath: 'id' });
+        if (!db.objectStoreNames.contains(CHUNKS)) db.createObjectStore(CHUNKS);
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+      req.onblocked = () => reject(new Error('blocked'));
+    });
+    dbPromise.catch(() => {});
+  }
+  return dbPromise;
+}
+
+function tx(stores, mode, fn) {
+  return openDb().then(db => new Promise((resolve, reject) => {
+    const t = db.transaction(stores, mode);
+    let result;
+    fn(t, r => { result = r; });
+    t.oncomplete = () => resolve(result);
+    t.onerror = () => reject(t.error);
+    t.onabort = () => reject(t.error || new Error('aborted'));
+  }));
+}
+
+const rawRange = id => IDBKeyRange.bound([id, 0], [id, Infinity]);
+const partKey = id => id + '#f';
+
+// Memory fallback with the same shape, for private windows and pages opened from disk.
+const mem = { recs: new Map(), chunks: new Map() };
+let useMem = false;
+
+const store = {
+  async init() {
+    try { await openDb(); } catch (e) { useMem = true; }
+    return !useMem;
+  },
+  async put(rec) {
+    if (useMem) { mem.recs.set(rec.id, Object.assign({}, rec)); return; }
+    await tx([RECS], 'readwrite', t => t.objectStore(RECS).put(rec));
+  },
+  async get(id) {
+    if (useMem) return mem.recs.get(id) || null;
+    return tx([RECS], 'readonly', (t, set) => { const r = t.objectStore(RECS).get(id); r.onsuccess = () => set(r.result || null); });
+  },
+  async list() {
+    let all;
+    if (useMem) all = [...mem.recs.values()];
+    else all = await tx([RECS], 'readonly', (t, set) => { const r = t.objectStore(RECS).getAll(); r.onsuccess = () => set(r.result || []); });
+    return all.sort((a, b) => b.startedAt - a.startedAt);
+  },
+  async addChunk(rec, n, blob) {
+    if (useMem) { mem.chunks.set(rec.id + ':' + n, blob); mem.recs.set(rec.id, Object.assign({}, rec)); return; }
+    await tx([RECS, CHUNKS], 'readwrite', t => {
+      t.objectStore(CHUNKS).put(blob, [rec.id, n]);
+      t.objectStore(RECS).put(rec);
+    });
+  },
+  async rawBlob(rec) {
+    let parts;
+    if (useMem) {
+      parts = [];
+      for (let i = 0; mem.chunks.has(rec.id + ':' + i); i++) parts.push(mem.chunks.get(rec.id + ':' + i));
+    } else {
+      parts = await tx([CHUNKS], 'readonly', (t, set) => { const r = t.objectStore(CHUNKS).getAll(rawRange(rec.id)); r.onsuccess = () => set(r.result || []); });
+    }
+    return new Blob(parts, { type: baseType(rec.mime) });
+  },
+  async addPart(id, n, blob) {
+    if (useMem) { mem.chunks.set(partKey(id) + ':' + n, blob); return; }
+    await tx([CHUNKS], 'readwrite', t => t.objectStore(CHUNKS).put(blob, [partKey(id), n]));
+  },
+  async finalBlob(rec) {
+    const f = rec.final;
+    let parts;
+    if (useMem) {
+      parts = [];
+      for (let i = 0; i < f.parts; i++) parts.push(mem.chunks.get(partKey(rec.id) + ':' + i));
+    } else {
+      parts = await tx([CHUNKS], 'readonly', (t, set) => { const r = t.objectStore(CHUNKS).getAll(rawRange(partKey(rec.id))); r.onsuccess = () => set(r.result || []); });
+    }
+    const base = new Blob(parts);
+    const patches = f.patches || [];
+    const segs = Core.assembleSegments(f.size, patches.map(p => ({ pos: p.pos, len: p.data.byteLength })));
+    return new Blob(segs.map(s => s.base ? base.slice(s.base[0], s.base[1]) : patches[s.patch].data.slice(s.start, s.end)), { type: f.type });
+  },
+  async deleteRaw(id) {
+    if (useMem) { for (const k of [...mem.chunks.keys()]) if (k.startsWith(id + ':')) mem.chunks.delete(k); return; }
+    await tx([CHUNKS], 'readwrite', t => t.objectStore(CHUNKS).delete(rawRange(id)));
+  },
+  async deleteParts(id) {
+    if (useMem) { for (const k of [...mem.chunks.keys()]) if (k.startsWith(partKey(id) + ':')) mem.chunks.delete(k); return; }
+    await tx([CHUNKS], 'readwrite', t => t.objectStore(CHUNKS).delete(rawRange(partKey(id))));
+  },
+  async remove(id) {
+    await this.deleteRaw(id);
+    await this.deleteParts(id);
+    if (useMem) { mem.recs.delete(id); return; }
+    await tx([RECS], 'readwrite', t => t.objectStore(RECS).delete(id));
+  },
+};
+
+function baseType(mime) { return String(mime || 'video/webm').split(';')[0]; }
+
+/* A WritableStream for Mediabunny's StreamTarget that stores what it writes as
+   numbered pieces, and the few writes that go back over earlier bytes as
+   patches. See Core.planWrite. */
+function partSink(id) {
+  const state = { length: 0 };
+  const sink = { count: 0, patches: [], get size() { return state.length; } };
+  const append = async bytes => { await store.addPart(id, sink.count++, new Blob([bytes])); };
+  sink.writable = new WritableStream({
+    async write(chunk) {
+      const data = chunk.data;
+      const plan = Core.planWrite(state, chunk.position, data.byteLength);
+      if (plan.zeroFill) await append(new Uint8Array(plan.zeroFill));
+      if (plan.patch) sink.patches.push({ pos: plan.patch.pos, data: data.slice(plan.patch.dataStart, plan.patch.dataEnd) });
+      if (plan.append) await append(data.subarray(plan.append.dataStart, plan.append.dataEnd));
+    },
+  });
+  return sink;
+}
+
+/* ======================================================================
+   Mediabunny, used to tidy the recording into a proper MP4 or WebM. It is the
+   same pinned copy Video Converter uses, from the same cache.
+   ====================================================================== */
+
+const MB_VERSION = '1.59.1';
+const MB_URL = `https://cdn.jsdelivr.net/npm/mediabunny@${MB_VERSION}/dist/bundles/mediabunny.min.mjs`;
+const MB_CACHE = `tfe-mediabunny-${MB_VERSION}`;
+let mbPromise = null;
+
+function getMediabunny() {
+  if (!mbPromise) {
+    const p = (async () => {
+      let cache = null;
+      try { cache = 'caches' in window ? await caches.open(MB_CACHE) : null; } catch (e) {}
+      let blob = null;
+      if (cache) { try { const hit = await cache.match(MB_URL); if (hit) blob = await hit.blob(); } catch (e) {} }
+      if (!blob || !blob.size) {
+        const res = await fetch(MB_URL);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        blob = new Blob([await res.arrayBuffer()], { type: 'text/javascript' });
+        if (cache) { try { await cache.put(MB_URL, new Response(blob, { headers: { 'Content-Type': 'text/javascript' } })); } catch (e) {} }
+      }
+      return await import(URL.createObjectURL(new Blob([blob], { type: 'text/javascript' })));
+    })();
+    mbPromise = p;
+    p.catch(() => { if (mbPromise === p) mbPromise = null; });
+  }
+  return mbPromise;
+}
+
+/* ======================================================================
+   Recording
+   ====================================================================== */
+
+function displayConstraints() {
+  const fps = +radio('fps') || 30;
+  const q = +radio('quality');
+  const video = { frameRate: { ideal: fps, max: fps } };
+  if (q) video.height = { max: q * 2 };   // refined once the shared surface is known
+  const audio = wantSystemSound()
+    ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false, suppressLocalAudioPlayback: false }
+    : false;
+  return { video, audio, systemAudio: wantSystemSound() ? 'include' : 'exclude', selfBrowserSurface: 'exclude', surfaceSwitching: 'include', monitorTypeSurfaces: 'include' };
+}
+
+function setPhase(p) {
+  S.phase = p;
+  const live = p === 'recording';
+  $('layout').classList.toggle('is-recording', live);
+  $('layout').classList.toggle('is-paused', live && S.paused);
+  $('startBtn').classList.toggle('hidden', p !== 'idle');
+  $('startBtn').disabled = p !== 'idle' || !canRecord || (mode === 'screen' && !canShareScreen);
+  $('liveBar').classList.toggle('hidden', !live);
+  $('badge').hidden = !live;
+  $('micMuteBtn').classList.toggle('hidden', !(live && S.mic));
+  document.querySelectorAll('#toolList .tool-item').forEach(b => { b.disabled = p !== 'idle'; });
+  // Choices that cannot change once a recording is under way. While recording,
+  // the microphone can still be switched or turned down, and the bubble can be
+  // turned off and on again when it is being drawn into the picture.
+  const idle = p === 'idle';
+  $('videoBody').querySelectorAll('input').forEach(i => { i.disabled = !idle; });
+  $('sysOn').disabled = !idle;
+  $('micClean').disabled = !idle;
+  $('micOn').disabled = !idle && !live;
+  $('micSelect').disabled = !idle && !live;
+  $('camOn').disabled = !idle && !(live && S.comp);
+  $('camSelect').disabled = !idle && !(live && S.comp);
+  renderStage();
+}
+
+async function startRecording() {
+  if (S.phase !== 'idle') return;
+  hideProgress();
+  closeResult();
+  $('stageNote').textContent = '';
+  setPhase('starting');
+  try {
+    if (mode === 'screen') {
+      // Asked first, while the click still counts as the reason for the prompt.
+      try {
+        S.display = S.fake.display ? S.fake.display.clone() : await navigator.mediaDevices.getDisplayMedia(displayConstraints());
+      } catch (e) {
+        S.display = null;
+        if (e && e.name === 'NotAllowedError') { $('stageNote').textContent = 'Recording did not start: nothing was chosen to share.'; }
+        else $('stageNote').textContent = 'Could not share the screen: ' + errText(e);
+        throw null;
+      }
+      await limitDisplaySize(S.display);
+      if (wantSystemSound() && !S.display.getAudioTracks().length) {
+        $('stageNote').textContent = 'No system sound was shared, so only the microphone (if on) is recorded. ' +
+          (isFirefox || isSafari ? '' : 'Next time, switch on the audio option in the sharing window.');
+      }
+    }
+    if (wantMic() && !S.mic) { try { await openMic(); } catch (e) { /* noted under the switch; record without it */ } }
+    if (wantCamera() && !S.cam) {
+      try { await openCamera(); } catch (e) { if (mode === 'camera') { $('stageNote').textContent = $('camNote').textContent; throw null; } }
+    }
+    const secs = +radio('countdown') || 0;
+    if (secs > 0) {
+      setPhase('countdown');
+      const go = await countdown(secs);
+      if (!go) { $('stageNote').textContent = 'Cancelled before recording started.'; throw null; }
+    }
+    await beginRecording();
+  } catch (e) {
+    if (e) $('stageNote').textContent = 'Could not start recording: ' + errText(e);
+    teardownCapture();
+    setPhase('idle');
+  }
+}
+
+// Brings the shared picture down to the chosen size without changing its shape.
+async function limitDisplaySize(stream) {
+  const t = stream.getVideoTracks()[0];
+  if (!t) return;
+  const q = +radio('quality');
+  const st = t.getSettings();
+  if (!q || !st.width || !st.height) return;
+  const fit = Core.fitWithin(st.width, st.height, q);
+  if (fit.width < st.width) {
+    try { await t.applyConstraints({ width: fit.width, height: fit.height, frameRate: { ideal: +radio('fps') || 30 } }); } catch (e) {}
+  }
+}
+
+function countdown(secs) {
+  return new Promise(resolve => {
+    const box = $('countdown'), num = $('countdownNum');
+    let left = secs;
+    box.hidden = false;
+    num.textContent = String(left);
+    const finish = ok => { clearInterval(timer); box.hidden = true; S.countdownCancel = null; document.removeEventListener('keydown', onKey); resolve(ok); };
+    const onKey = e => { if (e.key === 'Escape') finish(false); };
+    document.addEventListener('keydown', onKey);
+    S.countdownCancel = () => finish(false);
+    const timer = setInterval(() => {
+      left--;
+      if (left <= 0) finish(true);
+      else num.textContent = String(left);
+    }, 1000);
+  });
+}
+
+async function beginRecording() {
+  const fps = +radio('fps') || 30;
+  let videoTrack;
+  let width = 0, height = 0;
+  if (mode === 'screen') {
+    const dt = S.display.getVideoTracks()[0];
+    if (!dt || dt.readyState === 'ended') throw new Error('sharing stopped before recording began');
+    dt.addEventListener('ended', () => { if (S.phase === 'recording') stopRecording('The browser stopped sharing the screen.'); });
+    const st = dt.getSettings();
+    const fit = Core.fitWithin(st.width || 1920, st.height || 1080, +radio('quality') || 0);
+    width = fit.width; height = fit.height;
+    // A window or a tab can change size while it is recorded. Drawing it into a
+    // picture of fixed size keeps the file one size throughout.
+    const resizes = st.displaySurface && st.displaySurface !== 'monitor';
+    if ((S.cam && wantCamera()) || resizes) {
+      S.comp = new Compositor(dt, S.cam, width, height, fps);
+      videoTrack = S.comp.track;
+    } else {
+      videoTrack = dt;
+    }
+  } else {
+    videoTrack = S.cam && S.cam.getVideoTracks()[0];
+    if (!videoTrack || videoTrack.readyState === 'ended') throw new Error('the camera is not on');
+    videoTrack.addEventListener('ended', () => { if (S.phase === 'recording') stopRecording('The camera stopped.'); });
+    const st = videoTrack.getSettings();
+    width = st.width || 1280; height = st.height || 720;
+  }
+
+  // Sound: system sound and microphone, mixed.
+  const tracks = [videoTrack];
+  const sys = mode === 'screen' && S.display ? S.display.getAudioTracks()[0] : null;
+  if (sys || S.mic) {
+    const mx = ensureMixer();
+    if (sys) mx.add('system', sys, $('sysVol').value / 100);
+    if (S.mic && !mx.has('mic')) mx.add('mic', S.mic.getAudioTracks()[0], $('micVol').value / 100);
+    if (S.micMuted) mx.setVolume('mic', 0);
+    tracks.push(mx.track);
+  }
+  const stream = new MediaStream(tracks);
+
+  const choice = Core.pickMimeType(t => MediaRecorder.isTypeSupported(t), radio('format') === 'webm');
+  // A key frame every two seconds keeps data flowing to storage and makes the
+  // finished file quick to jump around in.
+  const opts = { videoBitsPerSecond: Core.videoBitrate(width, height, fps), audioBitsPerSecond: 160000, videoKeyFrameIntervalDuration: 2000 };
+  if (choice) opts.mimeType = choice.mime;
+  let recorder;
+  try { recorder = new MediaRecorder(stream, opts); }
+  catch (e) { delete opts.mimeType; recorder = new MediaRecorder(stream, opts); }
+
+  await store.init();
+  const now = Date.now();
+  const id = 'r' + now.toString(36) + Math.random().toString(36).slice(2, 6);
+  const mime = recorder.mimeType || (choice && choice.mime) || 'video/webm';
+  const ext = Core.describeMime(mime).container;
+  S.rec = {
+    id, kind: mode, name: Core.recordingName(mode, new Date(now), ext), mime,
+    startedAt: now, updatedAt: now, durationMs: 0, bytes: 0, chunks: 0,
+    width, height, fps, state: 'recording', hasAudio: tracks.length > 1,
+  };
+  S.chunkN = 0; S.bytes = 0; S.writes = Promise.resolve(); S.writeError = null;
+  await store.put(S.rec);
+  holdLock(id);
+
+  recorder.ondataavailable = e => {
+    if (!e.data || !e.data.size) return;
+    const n = S.chunkN++;
+    const blob = e.data;
+    S.bytes += blob.size;
+    const rec = S.rec;
+    S.writes = S.writes.then(() => {
+      rec.chunks = n + 1;
+      rec.bytes += blob.size;
+      rec.durationMs = elapsed();
+      rec.updatedAt = Date.now();
+      return store.addChunk(rec, n, blob);
+    }).catch(err => {
+      if (!S.writeError) {
+        S.writeError = err;
+        if (S.phase === 'recording') stopRecording('This device ran out of space for recordings, so recording stopped. Everything up to here is kept.');
+      }
+    });
+  };
+  recorder.onerror = e => { stopRecording('The recording stopped because of an error: ' + errText(e.error || e)); };
+  recorder.onstop = () => { onRecorderStopped(); };
+
+  S.recorder = recorder;
+  S.paused = false;
+  S.clock = { start: performance.now(), pausedAt: 0, pausedTotal: 0, stoppedAt: 0 };
+  recorder.start(1000);
+  // Without a requested type, the browser names its choice only once it starts.
+  if (recorder.mimeType && recorder.mimeType !== S.rec.mime) {
+    S.rec.mime = recorder.mimeType;
+    S.rec.name = Core.recordingName(mode, new Date(now), Core.describeMime(recorder.mimeType).container);
+  }
+  S.jobDone = tfe('job', 'Recording');
+  tfe('setDirty', true);
+  setPhase('recording');
+  tickClock();
+  S.tick = setInterval(tickClock, 500);
+  announce('Recording.');
+}
+
+function elapsed() {
+  const c = S.clock;
+  if (!c.start) return 0;
+  const now = c.stoppedAt || (S.paused && c.pausedAt ? c.pausedAt : performance.now());
+  return Math.max(0, now - c.start - c.pausedTotal);
+}
+
+function tickClock() {
+  const t = Core.formatClock(elapsed());
+  $('liveTime').textContent = t;
+  $('badgeTime').textContent = (S.paused ? 'Paused ' : '') + t;
+  $('liveSize').textContent = S.bytes ? fmtSize(S.bytes) : '';
+  document.title = (S.paused ? '❚❚ ' : '● ') + t + ' - ' + baseTitle;
+}
+
+function togglePause() {
+  const r = S.recorder;
+  if (!r || S.phase !== 'recording') return;
+  const btn = $('pauseBtn');
+  btn.textContent = '';
+  if (!S.paused) {
+    try { r.pause(); } catch (e) { return; }
+    S.paused = true;
+    S.clock.pausedAt = performance.now();
+    btn.append(icon('play'), ' Resume');
+    announce('Paused.');
+  } else {
+    try { r.resume(); } catch (e) { return; }
+    S.paused = false;
+    S.clock.pausedTotal += performance.now() - S.clock.pausedAt;
+    S.clock.pausedAt = 0;
+    btn.append(icon('pause'), ' Pause');
+    announce('Recording again.');
+  }
+  $('layout').classList.toggle('is-paused', S.paused);
+  tickClock();
+}
+
+function toggleMicMute() {
+  S.micMuted = !S.micMuted;
+  const btn = $('micMuteBtn');
+  btn.setAttribute('aria-pressed', S.micMuted ? 'true' : 'false');
+  btn.textContent = '';
+  btn.append(icon(S.micMuted ? 'microphone' : 'microphone-slash'), S.micMuted ? ' Unmute mic' : ' Mute mic');
+  if (S.mixer) S.mixer.setVolume('mic', S.micMuted ? 0 : $('micVol').value / 100);
+  announce(S.micMuted ? 'Microphone muted.' : 'Microphone on.');
+}
+
+let stopReason = '';
+function stopRecording(reason) {
+  if (S.phase !== 'recording') return;
+  stopReason = reason || '';
+  if (S.paused) { S.clock.pausedTotal += performance.now() - S.clock.pausedAt; S.clock.pausedAt = 0; S.paused = false; }
+  S.clock.stoppedAt = performance.now();
+  S.rec.durationMs = elapsed();
+  clearInterval(S.tick); S.tick = null;
+  setPhase('finishing');
+  try { if (S.recorder.state !== 'inactive') S.recorder.stop(); else onRecorderStopped(); }
+  catch (e) { onRecorderStopped(); }
+}
+
+let stoppedOnce = false;
+async function onRecorderStopped() {
+  if (stoppedOnce || !S.rec) return;
+  stoppedOnce = true;
+  const rec = S.rec;
+  teardownCapture();
+  document.title = baseTitle;
+  showProgress('Saving the last second', null);
+  await S.writes;
+  rec.state = 'stopped';
+  rec.updatedAt = Date.now();
+  try { await store.put(rec); } catch (e) {}
+  if (stopReason) $('stageNote').textContent = stopReason;
+  S.rec = null; S.recorder = null;
+  try {
+    await finishRecording(rec, { fresh: true });
+  } finally {
+    releaseLock();
+    if (S.jobDone) { try { S.jobDone(); } catch (e) {} S.jobDone = null; }
+    stoppedOnce = false;
+    setPhase('idle');
+    renderLibrary();
+  }
+}
+
+function teardownCapture() {
+  if (S.comp) { S.comp.close(); S.comp = null; }
+  if (S.display) { S.display.getTracks().forEach(t => t.stop()); S.display = null; }
+  if (S.mixer) S.mixer.remove('system');
+  // The camera and microphone are switched off too, so their lights go out.
+  closeCamera();
+  closeMic();
+  if (S.mixer) { S.mixer.close(); S.mixer = null; }
+  if (S.countdownCancel) S.countdownCancel();
+  S.micMuted = false;
+  const mb = $('micMuteBtn');
+  mb.setAttribute('aria-pressed', 'false');
+  mb.textContent = '';
+  mb.append(icon('microphone-slash'), ' Mute mic');
+  const pb = $('pauseBtn');
+  pb.textContent = '';
+  pb.append(icon('pause'), ' Pause');
+  S.paused = false;
+}
+
+/* Web Locks mark a recording as "being recorded in some tab", so another tab
+   does not offer to recover it while it is still going. */
+function holdLock(id) {
+  if (!navigator.locks || !navigator.locks.request) return;
+  navigator.locks.request('tfe-rec-' + id, () => new Promise(res => { S.lockRelease = res; })).catch(() => {});
+}
+function releaseLock() { if (S.lockRelease) { S.lockRelease(); S.lockRelease = null; } }
+async function lockedIds() {
+  try {
+    if (!navigator.locks || !navigator.locks.query) return new Set();
+    const q = await navigator.locks.query();
+    return new Set((q.held || []).map(l => l.name).filter(n => n && n.startsWith('tfe-rec-')).map(n => n.slice(8)));
+  } catch (e) { return new Set(); }
+}
+
+/* ======================================================================
+   Tidying: turns the raw recording into a file with a proper duration that
+   every player can seek in. MP4 when the picture is H.264, with AAC sound
+   when this device can make it; WebM otherwise. Nothing is encoded again
+   except, sometimes, the sound.
+   ====================================================================== */
+
+async function finishRecording(rec, { fresh } = {}) {
+  showProgress('Finishing the file', 0);
+  let raw;
+  try { raw = await store.rawBlob(rec); }
+  catch (e) { hideProgress(); showError('The recording could not be read back: ' + errText(e)); return; }
+  if (!raw.size) {
+    hideProgress();
+    await store.remove(rec.id).catch(() => {});
+    $('stageNote').textContent = 'Nothing was recorded.';
+    return;
+  }
+  let out = null, note = '', live = true;
+  try {
+    // Progress can still be reported after the work is done; it is ignored then.
+    out = await tidy(rec, raw, p => { if (live) showProgress('Finishing the file', p); });
+  } catch (e) {
+    await store.deleteParts(rec.id).catch(() => {});
+    note = 'Saved as recorded. It plays in browsers and VLC, but some players cannot jump around in it. (' + errText(e) + ')';
+  }
+  live = false;
+  hideProgress();
+  if (out) {
+    Object.assign(rec, out, { state: 'done', updatedAt: Date.now() });
+    await store.put(rec);
+    await store.deleteRaw(rec.id).catch(() => {});
+  } else {
+    rec.state = 'raw';
+    rec.updatedAt = Date.now();
+    await store.put(rec).catch(() => {});
+  }
+  await openRecording(rec.id, { note, fresh });
+}
+
+async function tidy(rec, raw, onProgress) {
+  const MB = await getMediabunny();
+  const input = new MB.Input({ source: new MB.BlobSource(raw), formats: MB.ALL_FORMATS });
+  try {
+    const vt = await input.getPrimaryVideoTrack();
+    if (!vt) throw new Error('no picture in the recording');
+    const at = await input.getPrimaryAudioTrack();
+    const vcodec = await vt.getCodec();
+    const acodec = at ? await at.getCodec() : null;
+    // H.264 belongs in MP4 and is copied there as it is; VP8 and VP9 stay in WebM.
+    const toMp4 = vcodec === 'avc';
+    const audio = {};
+    if (at) {
+      if (toMp4 && acodec !== 'aac' && await MB.canEncodeAudio('aac', { numberOfChannels: 2, sampleRate: 48000 }).catch(() => false)) {
+        Object.assign(audio, { codec: 'aac', quality: MB.QUALITY_HIGH });
+      } else if (!toMp4 && acodec !== 'opus' && acodec !== 'vorbis') {
+        Object.assign(audio, { codec: 'opus', quality: MB.QUALITY_HIGH });
+      }
+    }
+    await store.deleteParts(rec.id).catch(() => {});
+    const sink = partSink(rec.id);
+    const output = new MB.Output({
+      format: toMp4 ? new MB.Mp4OutputFormat({ fastStart: false }) : new MB.WebMOutputFormat(),
+      target: new MB.StreamTarget(sink.writable, { chunked: true, chunkSize: 8 * 1024 * 1024 }),
+    });
+    const conv = await MB.Conversion.init({ input, output, audio, showWarnings: false });
+    if (!conv.isValid) throw new Error('this recording cannot be tidied: ' + conv.discardedTracks.map(d => d.reason).join(', '));
+    conv.onProgress = p => onProgress(p);
+    await conv.execute();
+    let durationMs = rec.durationMs;
+    try { durationMs = Math.round((await input.computeDuration()) * 1000); } catch (e) {}
+    const ext = toMp4 ? 'mp4' : 'webm';
+    return {
+      durationMs,
+      name: rec.name.replace(/\.[a-z0-9]+$/i, '') + '.' + ext,
+      final: { type: toMp4 ? 'video/mp4' : 'video/webm', size: sink.size, parts: sink.count, patches: sink.patches },
+    };
+  } finally {
+    try { input.dispose(); } catch (e) {}
+  }
+}
+
+async function recordingBlob(rec) {
+  if (rec.state === 'done' && rec.final) return store.finalBlob(rec);
+  return store.rawBlob(rec);
+}
+
+/* ======================================================================
+   Progress, results and the list of recordings
+   ====================================================================== */
+
+function showProgress(label, p) {
+  const box = $('progress');
+  let wrap = box.querySelector('.sr-progress');
+  if (!wrap) {
+    wrap = el('div', { class: 'progress sr-progress', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100' }, [
+      el('div', { class: 'progress-track' }, el('div', { class: 'progress-fill' })),
+      el('div', { class: 'progress-label' }, [el('span', { class: 'lbl' }), el('span', { class: 'pct' })]),
+    ]);
+    box.append(wrap);
+  }
+  wrap.classList.toggle('is-indeterminate', p == null);
+  wrap.querySelector('.progress-fill').style.width = p == null ? '' : Math.round(p * 100) + '%';
+  wrap.querySelector('.lbl').textContent = label;
+  wrap.querySelector('.pct').textContent = p == null ? '' : Math.round(p * 100) + '%';
+  wrap.setAttribute('aria-label', label);
+  if (p != null) wrap.setAttribute('aria-valuenow', String(Math.round(p * 100)));
+}
+function hideProgress() { $('progress').textContent = ''; }
+
+function showError(text) {
+  $('result').textContent = '';
+  $('result').append(msgBox('error', 'warning-circle', text));
+  announce(text);
+}
+
+function closeResult() {
+  if (S.resultURL) { URL.revokeObjectURL(S.resultURL); S.resultURL = null; }
+  S.openId = null;
+  $('result').textContent = '';
+  document.querySelectorAll('#recList .sr-row').forEach(r => r.classList.remove('is-open'));
+}
+
+function downloadBlob(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+function editorHref() {
+  const e = hasTFE() && typeof TFE.toolById === 'function' ? TFE.toolById('editor') : null;
+  return e && e.href ? e.href : new URL('../Video%20Editor/video_editor.html', location.href).href;
+}
+
+// The name a recording downloads under: the tidied name, or the raw format's.
+function fileNameFor(rec) {
+  return rec.state === 'done' && rec.final ? rec.name : rec.name.replace(/\.[a-z0-9]+$/i, '') + '.' + Core.describeMime(rec.mime).container;
+}
+
+function sendToEditor(file, btn) {
+  if (btn) btn.setAttribute('aria-busy', 'true');
+  if (hasTFE() && TFE.handoff && TFE.handoff.send) TFE.handoff.send([file], editorHref());
+  else location.href = editorHref();
+}
+
+async function openRecording(id, { note, fresh } = {}) {
+  const rec = await store.get(id);
+  if (!rec) return;
+  let blob;
+  try { blob = await recordingBlob(rec); }
+  catch (e) { showError('This recording could not be read: ' + errText(e)); return; }
+  closeResult();
+  S.openId = id;
+  const name = fileNameFor(rec);
+  const file = new File([blob], name, { type: blob.type || baseType(rec.mime) });
+  const url = URL.createObjectURL(file);
+  S.resultURL = url;
+
+  const dl = el('button', { class: 'btn btn-primary btn-download', type: 'button' }, [icon('download-simple'), ' Download ' + (/mp4/.test(file.type) ? 'MP4' : 'WebM')]);
+  dl.addEventListener('click', () => downloadBlob(file, name));
+  const edit = el('button', { class: 'btn', type: 'button' }, [icon('scissors'), ' Edit in Video Editor']);
+  edit.addEventListener('click', () => sendToEditor(file, edit));
+  const del = el('button', { class: 'btn btn-delete', type: 'button' }, [icon('trash'), ' Delete']);
+  del.addEventListener('click', () => deleteRecording(rec.id, del));
+
+  const video = el('video', { class: 'result-preview', src: url, controls: true, playsinline: true, preload: 'metadata' });
+  const meta = el('div', { class: 'sr-meta' }, [
+    el('span', { class: 'mono', text: name }),
+    el('span', { text: Core.formatClock(rec.durationMs) }),
+    el('span', { text: fmtSize(blob.size) }),
+    rec.width ? el('span', { text: `${rec.width} × ${rec.height}` }) : null,
+    rec.hasAudio === false ? el('span', { class: 'pill', text: 'No sound' }) : null,
+  ]);
+  const body = el('div', { class: 'result-body' }, [meta, video, el('div', { class: 'sr-actions' }, [dl, edit, del])]);
+  if (note) body.prepend(msgBox('warning', 'warning', note));
+  const head = el('div', { class: 'result-head' }, [el('h2', { text: fresh ? 'Your recording is ready' : 'Recording' })]);
+  const box = el('div', { class: 'result' }, [head, body]);
+  $('result').append(box);
+  tfe('continueWith', body, file, { exclude: ['editor'] });
+  if (fresh) {
+    if (hasTFE() && typeof TFE.revealResult === 'function') tfe('revealResult', box);
+    else { try { box.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
+    announce(`Your recording is ready, ${Core.formatClock(rec.durationMs)}, ${fmtSize(blob.size)}.`);
+  } else {
+    try { box.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {}
+  }
+  document.querySelectorAll('#recList .sr-row').forEach(r => r.classList.toggle('is-open', r.dataset.id === id));
+}
+
+async function deleteRecording(id, btn) {
+  const ok = hasTFE() && typeof TFE.confirmInline === 'function'
+    ? await TFE.confirmInline(btn, { message: 'Delete this recording from this device? This cannot be undone.', confirmLabel: 'Delete', danger: true })
+    : window.confirm('Delete this recording from this device?');
+  if (!ok) return;
+  if (S.openId === id) closeResult();
+  try { await store.remove(id); } catch (e) {}
+  if (typeof window.showToast === 'function') showToast('The recording was deleted.', 'success');
+  renderLibrary();
+}
+
+async function recoverRecording(id, btn) {
+  if (btn) btn.setAttribute('aria-busy', 'true');
+  const rec = await store.get(id);
+  if (!rec) { renderLibrary(); return; }
+  rec.state = 'stopped';
+  await store.put(rec).catch(() => {});
+  const done = tfe('job', 'Recovering a recording');
+  try { await finishRecording(rec, { fresh: true }); }
+  finally { if (typeof done === 'function') done(); renderLibrary(); }
+}
+
+let libraryBusy = false;
+async function renderLibrary() {
+  if (libraryBusy) return;
+  libraryBusy = true;
+  try {
+    await store.init();
+    const list = (await store.list()).filter(r => !S.rec || r.id !== S.rec.id);
+    const locked = await lockedIds();
+    const box = $('recList');
+    box.textContent = '';
+    const unfinished = [];
+    let total = 0;
+    for (const rec of list) {
+      const size = rec.state === 'done' && rec.final ? rec.final.size : rec.bytes || 0;
+      total += size;
+      const elsewhere = (rec.state === 'recording' || rec.state === 'stopped') && locked.has(rec.id);
+      const broken = (rec.state === 'recording' || rec.state === 'stopped') && !elsewhere;
+      if (broken) unfinished.push(rec);
+      const facts = [Core.formatClock(rec.durationMs), fmtSize(size), fmtDate(rec.startedAt)].join(' · ');
+      const actions = el('div', { class: 'sr-row-actions' });
+      const row = el('div', { class: 'file-row sr-row', 'data-id': rec.id }, [
+        icon(rec.kind === 'camera' ? 'webcam' : 'monitor'),
+        el('span', { class: 'file-name', text: rec.name, title: rec.name }),
+        el('span', { class: 'file-facts', text: facts }),
+        elsewhere ? el('span', { class: 'pill pill-accent', text: 'Recording in another tab' }) : null,
+        broken ? el('span', { class: 'pill pill-warning', text: 'Not finished' }) : null,
+        rec.state === 'raw' ? el('span', { class: 'pill', text: 'As recorded' }) : null,
+        actions,
+      ]);
+      if (broken) {
+        const b = el('button', { class: 'btn btn-sm', type: 'button' }, [icon('lifebuoy'), ' Recover']);
+        b.addEventListener('click', () => recoverRecording(rec.id, b));
+        actions.append(b);
+      } else if (!elsewhere) {
+        const open = el('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Play ' + rec.name, title: 'Play' }, icon('play'));
+        open.addEventListener('click', () => openRecording(rec.id));
+        const dl = el('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Download ' + rec.name, title: 'Download' }, icon('download-simple'));
+        dl.addEventListener('click', async () => {
+          try {
+            const r = await store.get(rec.id);
+            downloadBlob(await recordingBlob(r), fileNameFor(r));
+          } catch (e) { showError('This recording could not be read: ' + errText(e)); }
+        });
+        const ed = el('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Edit ' + rec.name, title: 'Edit in Video Editor' }, icon('scissors'));
+        ed.addEventListener('click', async () => {
+          try {
+            const r = await store.get(rec.id);
+            const blob = await recordingBlob(r);
+            sendToEditor(new File([blob], fileNameFor(r), { type: blob.type || baseType(r.mime) }), ed);
+          } catch (e) { showError('This recording could not be read: ' + errText(e)); }
+        });
+        actions.append(open, dl, ed);
+      }
+      if (!elsewhere) {
+        const del = el('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Delete ' + rec.name, title: 'Delete' }, icon('trash'));
+        del.addEventListener('click', () => deleteRecording(rec.id, del));
+        actions.append(del);
+      }
+      if (S.openId === rec.id) row.classList.add('is-open');
+      box.append(row);
+    }
+    if (!list.length) {
+      box.append(el('p', { class: 'muted small', text: useMem
+        ? 'Recordings you make stay here until you close the page. Download the ones you want to keep.'
+        : 'Recordings you make are kept here until you delete them, even if the page closes mid-recording.' }));
+    }
+    renderRecoverNote(unfinished);
+    let note = list.length ? `${list.length} recording${list.length === 1 ? '' : 's'}, ${fmtSize(total)}.` : '';
+    try {
+      if (!useMem && navigator.storage && navigator.storage.estimate) {
+        const est = await navigator.storage.estimate();
+        if (est && est.quota) note += ` Room for about ${fmtSize(Math.max(0, est.quota - (est.usage || 0)))} more.`;
+      }
+    } catch (e) {}
+    $('storageNote').textContent = note.trim();
+  } catch (e) {
+    $('storageNote').textContent = 'Saved recordings could not be listed: ' + errText(e);
+  } finally {
+    libraryBusy = false;
+  }
+}
+
+function renderRecoverNote(unfinished) {
+  const box = $('recoverNote');
+  box.textContent = '';
+  if (!unfinished.length) return;
+  const r = unfinished[0];
+  const b = el('button', { class: 'btn btn-sm', type: 'button' }, [icon('lifebuoy'), ' Recover it']);
+  b.addEventListener('click', () => recoverRecording(r.id, b));
+  const text = unfinished.length === 1
+    ? `A recording from ${fmtDate(r.startedAt)} (${Core.formatClock(r.durationMs)}) was not finished, probably because the page closed. `
+    : `${unfinished.length} recordings were not finished, probably because the page closed. The newest is from ${fmtDate(r.startedAt)}. `;
+  box.append(msgBox('warning', 'lifebuoy', text, [b]));
+}
+
+/* ======================================================================
+   Remembered settings
+   ====================================================================== */
+
+let P = null;
+function prefsGet(k, d) { try { return P ? P.get(k, d) : d; } catch (e) { return d; } }
+function prefsSet(k, v) { try { if (P) P.set(k, v); } catch (e) {} }
+
+/* ======================================================================
+   Start-up
+   ====================================================================== */
+
+initToolList();
+initBubbleDrag();
+selectTool(mode, { fromHash: true });
+setPhase('idle');
+requestAnimationFrame(meterLoop);
+
+for (const id of ['soundBody', 'cameraBody', 'videoBody']) {
+  $(id).addEventListener('input', refreshSources);
+  $(id).addEventListener('change', refreshSources);
+}
+$('sysVol').addEventListener('input', refreshSources);
+$('micOn').addEventListener('change', async () => {
+  refreshSources();
+  if ($('micOn').checked) { try { await openMic(); } catch (e) {} }
+  else if (S.phase === 'idle') closeMic();
+  else if (S.mixer) S.mixer.setVolume('mic', 0);
+});
+$('micSelect').addEventListener('change', async () => {
+  prefsSet('micDevice', $('micSelect').value);
+  if (S.mic) { try { await openMic(); } catch (e) {} }
+});
+$('micClean').addEventListener('change', async () => { if (S.mic && S.phase === 'idle') { try { await openMic(); } catch (e) {} } });
+$('camOn').addEventListener('change', async () => {
+  refreshSources();
+  if ($('camOn').checked) {
+    try { await openCamera(); } catch (e) {}
+    if (S.comp && S.cam) S.comp.setCamera(S.cam);
+  } else {
+    if (S.comp) S.comp.setCamera(null);
+    closeCamera();
+  }
+  renderStage();
+});
+$('camSelect').addEventListener('change', async () => {
+  prefsSet('camDevice', $('camSelect').value);
+  if (S.cam) {
+    try { await openCamera(); } catch (e) {}
+    if (S.comp) S.comp.setCamera(S.cam);
+  }
+});
+$('camMirror').addEventListener('change', renderStage);
+$('camPreviewBtn').addEventListener('click', async () => { try { await openCamera(); } catch (e) {} });
+$('startBtn').addEventListener('click', startRecording);
+$('stopBtn').addEventListener('click', () => stopRecording());
+$('pauseBtn').addEventListener('click', togglePause);
+$('micMuteBtn').addEventListener('click', toggleMicMute);
+$('countdownCancel').addEventListener('click', () => { if (S.countdownCancel) S.countdownCancel(); });
+if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener('devicechange', listDevices);
+listDevices();
+renderLibrary();
+// The list follows other tabs that start, finish or delete recordings.
+window.addEventListener('focus', () => { if (S.phase === 'idle') renderLibrary(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && S.phase === 'idle') renderLibrary(); });
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (!hasTFE()) {
+    window.addEventListener('hashchange', () => {
+      const h = location.hash.slice(1);
+      if (TOOL_IDS.includes(h) && h !== mode) selectTool(h, { fromHash: true });
+    });
+    document.title = `${toolById(mode).name} - Screen Recorder | Tools for Everyone`;
+    baseTitle = document.title;
+    return;
+  }
+  try { P = typeof TFE.prefs === 'function' ? TFE.prefs('recorder') : null; } catch (e) { P = null; }
+  if (P && typeof P.bindForm === 'function') {
+    for (const id of ['soundBody', 'cameraBody', 'videoBody']) {
+      try { P.bindForm($(id), { exclude: ['micOn', 'camOn'] }); } catch (e) {}
+    }
+  }
+  const saved = prefsGet('bubble', null);
+  if (saved && typeof saved.x === 'number') { bubble.x = saved.x; bubble.y = saved.y; }
+  if (prefsGet('micWanted', false)) $('micOn').checked = true;
+  if (prefsGet('camWanted', false)) $('camOn').checked = true;
+  $('micOn').addEventListener('change', () => prefsSet('micWanted', $('micOn').checked));
+  $('camOn').addEventListener('change', () => prefsSet('camWanted', $('camOn').checked));
+  listDevices();
+  refreshSources();
+  try {
+    summaries = [
+      TFE.panelSummary($('soundPanel'), () => [mode === 'screen' && $('sysOn').checked ? 'System sound' : '', $('micOn').checked ? 'Microphone' : ''].filter(Boolean).join(', ') || 'No sound'),
+      TFE.panelSummary($('cameraPanel'), () => wantCamera() ? (mode === 'screen' ? 'Bubble' : 'On') : 'Off'),
+      TFE.panelSummary($('videoPanel'), () => [{ 0: 'Original', 1080: '1080p', 720: '720p' }[radio('quality')], radio('fps') + ' fps', radio('format') === 'webm' ? 'WebM' : 'MP4'].join(', ')),
+    ].filter(Boolean);
+  } catch (e) {}
+  if (TFE.subtool) {
+    tfe('subtool.set', mode, toolById(mode).name);
+    tfe('subtool.onChange', id => { if (TOOL_IDS.includes(id) && id !== mode) selectTool(id, { fromHash: true }); });
+  }
+  baseTitle = document.title;
+});
+
+// Hooks for the automated tests; harmless for people.
+window.__sr = {
+  state: S,
+  bubble,
+  store,
+  useFakeStreams({ display, mic, cam } = {}) { S.fake = { display: display || null, mic: mic || null, cam: cam || null }; },
+  start: startRecording,
+  stop: () => stopRecording(),
+  togglePause,
+  renderLibrary,
+};
+</script>
+<script src="../assets/app.js" defer></script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tools-for-everyone-v12';
+const CACHE_NAME = 'tools-for-everyone-v13';
 // Libraries from the CDNs live in their own cache. Every one of them is pinned to
 // an exact version, so a copy never goes stale and does not need to be dropped
 // when the site itself changes.
@@ -25,6 +25,8 @@ const APP_SHELL = [
   './Virtual%20Card%20Manager/virtual_card_manager.html',
   './Image%20Compressor/image_compressor.html',
   './Video%20Converter/video_converter.html',
+  './Video%20Editor/video_editor.html',
+  './Screen%20Recorder/screen_recorder.html',
   './Private%20AI%20Chat/private_ai_chat.html',
   // Scripts the tool pages load from their own folders.
   './Image%20Compressor/compress-worker.js',
@@ -32,6 +34,8 @@ const APP_SHELL = [
   './Bulk%20File%20Renamer/renamer-core.js',
   './Metadata%20Scrubber/scrub-engine.js',
   './Audio%20Transcriber/model-cache.js',
+  './Video%20Editor/editor-core.js',
+  './Screen%20Recorder/recorder-core.js',
 ];
 
 self.addEventListener('install', (event) => {
