@@ -121,6 +121,64 @@
 
   function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
 
+  /* The corner a bubble centre is closest to, and the next one going round
+     clockwise, for a "move the bubble" button that needs no dragging. */
+  var CORNER_ORDER = ['tl', 'tr', 'br', 'bl'];
+  function nearestCorner(x, y) { return (y < 0.5 ? 't' : 'b') + (x < 0.5 ? 'l' : 'r'); }
+  function nextCorner(x, y) {
+    return CORNER_ORDER[(CORNER_ORDER.indexOf(nearestCorner(x, y)) + 1) % CORNER_ORDER.length];
+  }
+
+  /* ---------- The floating window ----------
+     While recording, a small window can float on top of other apps with the
+     controls. Shown with the camera when a window or a tab is recorded. A
+     whole-screen recording captures the floating window itself, so then it is
+     only a strip of controls: a camera there would be a second bubble in the
+     video. An unknown surface is treated like a whole screen. */
+  var FLOAT_BUBBLE = { s: 200, m: 250, l: 320 };
+  function floatingLayout(o) {
+    o = o || {};
+    var showCam = !!o.camera && (o.surface === 'window' || o.surface === 'browser');
+    if (showCam) {
+      var side = FLOAT_BUBBLE[o.size] || FLOAT_BUBBLE.m;
+      return { kind: 'bubble', width: side, height: side };
+    }
+    var buttons = Math.max(1, o.buttons || 3);
+    return { kind: 'pill', width: 96 + buttons * 40, height: 60 };
+  }
+
+  /* Notices a microphone that has picked up nothing at all since it was turned
+     on, which is what a muted or wrong microphone looks like. Once it has heard
+     anything it stays quiet, so pauses in speech never set it off. */
+  function createDeadMicCheck(opts) {
+    opts = opts || {};
+    var threshold = opts.threshold || 0.002;
+    var after = opts.after || 8000;
+    var since = null, heard = false;
+    return {
+      update: function (peak, now) {
+        if (heard) return false;
+        if (peak > threshold) { heard = true; return false; }
+        if (since === null) since = now;
+        return now - since >= after;
+      },
+      reset: function () { since = null; heard = false; },
+      get heard() { return heard; }
+    };
+  }
+
+  /* A file name typed by a person, made safe for every system: no path
+     characters, no trailing dots or spaces, not empty. The extension is kept. */
+  function cleanFileName(typed, ext, fallback) {
+    var base = String(typed == null ? '' : typed).trim()
+      .replace(/\.[a-z0-9]{2,4}$/i, '')
+      .replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/^[\s.]+|[\s.]+$/g, '')
+      .slice(0, 120);
+    return (base || fallback || 'Recording') + '.' + (ext || 'mp4');
+  }
+
   /* ---------- Names and clocks ---------- */
 
   function pad2(n) { return String(n).padStart(2, '0'); }
@@ -196,6 +254,8 @@
     MIME_CANDIDATES: MIME_CANDIDATES, BUBBLE_SIZES: BUBBLE_SIZES,
     pickMimeType: pickMimeType, describeMime: describeMime, videoBitrate: videoBitrate, fitWithin: fitWithin,
     bubbleRect: bubbleRect, bubbleCorner: bubbleCorner, coverSource: coverSource,
+    nearestCorner: nearestCorner, nextCorner: nextCorner, floatingLayout: floatingLayout,
+    createDeadMicCheck: createDeadMicCheck, cleanFileName: cleanFileName,
     recordingName: recordingName, formatClock: formatClock,
     planWrite: planWrite, assembleSegments: assembleSegments
   };

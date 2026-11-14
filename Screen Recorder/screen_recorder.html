@@ -181,6 +181,18 @@
     margin: 12px 0 4px;
   }
   .sr-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 0.8125rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .sr-name { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; min-width: 0; }
+  .sr-name input[type="text"] {
+    width: auto; min-width: 12ch; max-width: min(46ch, 100%);
+    field-sizing: content;
+    padding: 4px 8px;
+    font-family: var(--font-mono); font-size: 0.8125rem;
+    border-color: transparent; background: transparent;
+  }
+  .sr-name input[type="text"]:hover { border-color: var(--border); }
+  .sr-name input[type="text"]:focus { border-color: var(--accent); background: var(--surface); }
+  .sr-name .ext { font-family: var(--font-mono); color: var(--text-faint); }
+  .sr-name .ph { color: var(--text-faint); }
   .sr-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
   .sr-actions .btn-primary { margin-top: 0; min-height: 38px; padding: 9px 16px; }
 
@@ -335,6 +347,19 @@
           </div>
           <p class="field-note" id="formatNote"></p>
         </fieldset>
+        <div class="form-group mt-3">
+          <label for="autoStop">Stop by itself after</label>
+          <select id="autoStop">
+            <option value="0" selected>Never</option>
+            <option value="5">5 minutes</option>
+            <option value="10">10 minutes</option>
+            <option value="15">15 minutes</option>
+            <option value="30">30 minutes</option>
+            <option value="60">1 hour</option>
+            <option value="120">2 hours</option>
+          </select>
+        </div>
+        <label class="checkbox-label mb-0 hidden" id="floatOpt"><input type="checkbox" id="floatOn" checked> Float the bubble and controls on top of other windows</label>
       </div>
     </details>
   </aside>
@@ -372,6 +397,8 @@
           <button class="btn" type="button" id="pauseBtn"><i class="ph ph-pause" aria-hidden="true"></i> Pause</button>
           <button class="btn hidden" type="button" id="micMuteBtn" aria-pressed="false"><i class="ph ph-microphone-slash" aria-hidden="true"></i> Mute mic</button>
           <button class="btn btn-record" type="button" id="stopBtn"><i class="ph ph-stop" aria-hidden="true"></i> Stop</button>
+          <button class="btn" type="button" id="discardBtn"><i class="ph ph-trash" aria-hidden="true"></i> Discard</button>
+          <button class="btn hidden" type="button" id="floatBtn" title="A small window with the bubble and these controls, on top of other windows"><i class="ph ph-picture-in-picture" aria-hidden="true"></i> Float</button>
         </div>
       </div>
       <p class="field-note" id="stageNote" aria-live="polite"></p>
@@ -488,6 +515,11 @@ const S = {
   countdownCancel: null,
   openId: null,           // recording shown in the result area
   resultURL: null,
+  float: null,            // the floating window, while open
+  discard: false,         // the recording being stopped is to be thrown away
+  deadMic: null,          // notices a microphone that hears nothing
+  deadMicWarned: false,
+  countdownLeft: 0,
   fake: { display: null, mic: null, cam: null },   // test hooks
 };
 
@@ -597,6 +629,7 @@ function refreshSources() {
   $('formatNote').textContent = fnote;
   renderStage();
   updatePanelSummaries();
+  renderFloating();
 }
 
 let summaries = [];
@@ -675,6 +708,9 @@ async function openMic() {
   if (S.micMuted) S.mixer.setVolume('mic', 0);
   listDevices();
   $('micMuteBtn').classList.toggle('hidden', S.phase === 'idle');
+  // A different microphone gets a fresh chance to be heard.
+  if (S.deadMic) { S.deadMic.reset(); S.deadMicWarned = false; }
+  renderFloating();
   return S.mic;
 }
 
@@ -705,6 +741,7 @@ async function openCamera() {
   if (track) track.addEventListener('ended', () => { if (S.cam && S.cam.getVideoTracks()[0] === track) { $('camNote').textContent = 'The camera stopped.'; } });
   listDevices();
   renderStage();
+  renderFloating();
   return S.cam;
 }
 
@@ -713,6 +750,7 @@ function closeCamera() {
   const v = $('camVideo');
   v.srcObject = null;
   v.hidden = true;
+  renderFloating();
 }
 
 /* ======================================================================
@@ -886,10 +924,12 @@ class Compositor {
     if (c && wantCamera()) drawBubble(ctx, W, H, c);
     if (this.native && this.writer) {
       if (this.writer.desiredSize !== null && this.writer.desiredSize <= 0) return;
+      let vf = null;
       try {
-        const vf = new VideoFrame(this.canvas, { timestamp: Math.round(performance.now() * 1000) });
-        this.writer.write(vf).catch(() => {});
-      } catch (e) {}
+        vf = new VideoFrame(this.canvas, { timestamp: Math.round(performance.now() * 1000) });
+        // The track takes the frame and closes it; one it refuses is closed here.
+        this.writer.write(vf).catch(() => { try { vf.close(); } catch (e) {} });
+      } catch (e) { if (vf) { try { vf.close(); } catch (err) {} } }
     }
   }
   close() {
@@ -1048,6 +1088,280 @@ function initBubbleDrag() {
     setBubbleCenter(p.x, p.y, true);
   });
   new ResizeObserver(() => placeBubble()).observe(frame);
+}
+
+/* ======================================================================
+   Floating window: the bubble and the controls in a small window that stays
+   on top of other apps while recording (Document Picture-in-Picture, in
+   Chrome and Edge). Recording a window or a tab, it shows the camera and the
+   controls appear when you hover it. Recording a whole screen, the window
+   itself is in the picture, so it is a strip of controls only and the bubble
+   is drawn into the video as usual.
+   ====================================================================== */
+
+const canFloat = !!(window.documentPictureInPicture && window.isSecureContext);
+const PH_CSS = 'https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css';
+const FLOAT_CSS = `
+:root { color-scheme: dark; }
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; }
+body { background: #111418; color: #e7e9ed; font: 500 13px/1.25 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; user-select: none; }
+.ph { line-height: 1; }
+.fl { position: relative; height: 100%; display: flex; align-items: center; gap: 10px; padding: 0 10px; }
+.status { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font: 600 14px/1 ui-monospace, Consolas, monospace; font-variant-numeric: tabular-nums; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: #ef4444; flex-shrink: 0; }
+.is-paused .dot { background: #f59e0b; }
+.status .warn { display: none; color: #f59e0b; font-size: 15px; }
+.has-warn .status .warn { display: inline; }
+.bar { display: flex; gap: 4px; margin-left: auto; }
+button { width: 36px; height: 36px; padding: 0; border: 0; border-radius: 8px; background: #23272e; color: #e7e9ed; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; }
+button:hover { background: #343a43; }
+button:focus-visible { outline: 2px solid #6f8fff; outline-offset: 1px; }
+button.stop { background: #e5484d; color: #fff; }
+button.stop:hover { background: #c93a3f; }
+button.danger:hover { background: #6b2226; color: #ffb4b4; }
+button[aria-pressed="true"] { color: #f5a524; }
+button.warn { color: #f5a524; box-shadow: inset 0 0 0 1px #f5a524; }
+.fl.bubble { display: block; padding: 0; }
+.cam { position: absolute; inset: 8px; border-radius: 50%; overflow: hidden; background: #252a32; box-shadow: 0 0 0 3px rgba(255,255,255,.92); display: flex; align-items: center; justify-content: center; color: #8a93a1; font-size: 40px; }
+.fl.rounded .cam { border-radius: 18%; }
+.cam video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cam.mirror video { transform: scaleX(-1); }
+.cam.off video { display: none; }
+.fl.bubble .status { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.62); padding: 4px 9px; border-radius: 999px; font-size: 12px; }
+.fl.bubble .bar { position: absolute; left: 0; right: 0; bottom: 14px; margin: 0 auto; width: max-content; max-width: calc(100% - 28px); padding: 4px; border-radius: 12px; background: rgba(17,20,24,.88); opacity: 0; transition: opacity .15s; flex-wrap: wrap; justify-content: center; }
+.fl.bubble:hover .bar, .fl.bubble:focus-within .bar, .fl.bubble.is-paused .bar { opacity: 1; }
+.fl.bubble button { width: 30px; height: 30px; font-size: 16px; }
+.confirm { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; gap: 8px; padding: 8px; background: rgba(17,20,24,.96); text-align: center; z-index: 2; }
+.fl.bubble .confirm { flex-direction: column; border-radius: 50%; }
+.is-confirming .confirm { display: flex; }
+.confirm .row { display: flex; gap: 6px; }
+.confirm button { width: auto; height: 32px; padding: 0 12px; font: 600 13px system-ui, sans-serif; }
+.confirm .yes { background: #e5484d; color: #fff; }
+.countdown { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; gap: 12px; background: rgba(0,0,0,.78); z-index: 3; }
+.fl.bubble .countdown { flex-direction: column; }
+.countdown .num { font: 700 40px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.countdown button { width: auto; height: 30px; padding: 0 12px; font: 600 12px system-ui, sans-serif; }
+.is-counting .countdown { display: flex; }
+`;
+
+const FLOAT_BUTTONS = {
+  pause: { icon: 'pause', label: 'Pause' },
+  stop: { icon: 'stop', label: 'Stop and save', cls: 'stop' },
+  mic: { icon: 'microphone', label: 'Mute the microphone' },
+  cam: { icon: 'webcam', label: 'Hide the camera' },
+  move: { icon: 'arrows-out-cardinal', label: 'Move the bubble to the next corner' },
+  discard: { icon: 'trash', label: 'Discard this recording', cls: 'danger' },
+};
+
+function displaySurface() {
+  const t = S.display && S.display.getVideoTracks()[0];
+  const st = t && t.getSettings ? t.getSettings() : {};
+  return st.displaySurface || null;
+}
+
+// What the floating window holds right now: its layout and its buttons.
+function floatShape() {
+  const camOn = mode === 'screen' && wantCamera();
+  const buttons = ['pause', 'stop'];
+  if (wantMic()) buttons.push('mic');
+  if (mode === 'screen' && (camOn || S.comp)) buttons.push('cam');
+  if (camOn) buttons.push('move');
+  buttons.push('discard');
+  const layout = Core.floatingLayout({ camera: camOn, surface: displaySurface(), size: bubble.size, buttons: buttons.length });
+  return { layout, buttons, key: layout.kind + ':' + buttons.join(',') };
+}
+
+async function openFloating({ asked = false } = {}) {
+  if (!canFloat) return null;
+  if (S.float) return S.float;
+  if (S.phase === 'idle' || S.phase === 'finishing') return null;
+  const shape = floatShape();
+  let win;
+  try {
+    win = await documentPictureInPicture.requestWindow({ width: shape.layout.width, height: shape.layout.height });
+  } catch (e) {
+    // Opening it by itself fails when too long passed since the click; the
+    // Float button then opens it. When even that fails, say so.
+    if (asked) $('stageNote').textContent = 'This browser would not open the floating window. The controls here and the browser\'s Stop sharing bar still work.';
+    updateFloatButton();
+    return null;
+  }
+  if (S.phase === 'idle' || S.phase === 'finishing') { try { win.close(); } catch (e) {} return null; }
+  attachFloating(win);
+  if (displaySurface() === 'monitor' || !displaySurface()) {
+    $('stageNote').textContent = 'The floating controls show in a whole-screen recording. Drag them to a corner or another screen, or close them: the browser\'s Stop sharing bar still works.';
+  }
+  return S.float;
+}
+
+/* Fills a window (the real floating one, or a test frame) with the controls. */
+function attachFloating(win) {
+  const doc = win.document;
+  doc.title = 'Recording';
+  const link = doc.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = PH_CSS;
+  const style = doc.createElement('style');
+  style.textContent = FLOAT_CSS;
+  doc.head.append(link, style);
+  S.float = { win, key: null, els: null };
+  win.addEventListener('pagehide', () => {
+    if (S.float && S.float.win === win) { S.float = null; updateFloatButton(); }
+  });
+  doc.addEventListener('click', onFloatClick);
+  doc.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && S.float && S.float.els) S.float.els.root.classList.remove('is-confirming');
+  });
+  renderFloating();
+  updateFloatButton();
+}
+
+function closeFloating() {
+  const f = S.float;
+  S.float = null;
+  if (f) { try { f.win.close(); } catch (e) {} }
+  updateFloatButton();
+}
+
+function buildFloating(doc, shape) {
+  const mk = (tag, attrs, kids) => {
+    const n = doc.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (v == null || v === false) continue;
+      if (k === 'class') n.className = v; else if (k === 'text') n.textContent = v; else n.setAttribute(k, v === true ? '' : v);
+    }
+    for (const c of [].concat(kids || [])) if (c != null) n.append(c);
+    return n;
+  };
+  const ico = name => mk('i', { class: 'ph ph-' + name, 'aria-hidden': 'true' });
+  const els = { buttons: {} };
+  els.root = mk('div', { class: 'fl ' + shape.layout.kind });
+  if (shape.layout.kind === 'bubble') {
+    els.video = mk('video', { muted: true, autoplay: true, playsinline: true });
+    els.video.muted = true;
+    els.cam = mk('div', { class: 'cam' }, [ico('webcam'), els.video]);
+    els.root.append(els.cam);
+  }
+  els.time = mk('span', { text: '00:00' });
+  els.status = mk('div', { class: 'status' }, [mk('span', { class: 'dot' }), els.time, mk('i', { class: 'ph ph-microphone-slash warn', title: 'Your microphone has picked up no sound so far' })]);
+  els.root.append(els.status);
+  const bar = mk('div', { class: 'bar', role: 'toolbar', 'aria-label': 'Recording controls' });
+  for (const id of shape.buttons) {
+    const d = FLOAT_BUTTONS[id];
+    const b = mk('button', { type: 'button', class: d.cls || null, 'data-act': id, title: d.label, 'aria-label': d.label }, ico(d.icon));
+    els.buttons[id] = b;
+    bar.append(b);
+  }
+  els.root.append(bar);
+  els.root.append(mk('div', { class: 'confirm', role: 'alertdialog', 'aria-label': 'Discard this recording?' }, [
+    mk('span', { text: 'Discard this recording?' }),
+    mk('div', { class: 'row' }, [
+      mk('button', { type: 'button', class: 'yes', 'data-act': 'discard-yes', text: 'Discard' }),
+      mk('button', { type: 'button', 'data-act': 'discard-no', text: 'Keep' }),
+    ]),
+  ]));
+  els.num = mk('span', { class: 'num', text: '3' });
+  els.root.append(mk('div', { class: 'countdown' }, [els.num, mk('button', { type: 'button', 'data-act': 'cancel', text: 'Cancel' })]));
+  doc.body.textContent = '';
+  doc.body.append(els.root);
+  return els;
+}
+
+function setIcon(btn, name, label) {
+  if (!btn) return;
+  const i = btn.querySelector('i');
+  if (i) i.className = 'ph ph-' + name;
+  btn.title = label;
+  btn.setAttribute('aria-label', label);
+}
+
+function renderFloating() {
+  const f = S.float;
+  if (!f) return;
+  const shape = floatShape();
+  if (shape.key !== f.key) {
+    const was = f.key;
+    f.els = buildFloating(f.win.document, shape);
+    f.key = shape.key;
+    // A change of layout asks for the new size; without a recent click in the
+    // window the browser may say no, and the old size stays.
+    if (was) { try { f.win.resizeTo(shape.layout.width, shape.layout.height + (f.win.outerHeight - f.win.innerHeight || 0)); } catch (e) {} }
+  }
+  const e = f.els;
+  const live = S.phase === 'recording';
+  e.root.classList.toggle('is-paused', live && S.paused);
+  e.root.classList.toggle('is-counting', S.phase === 'countdown');
+  e.root.classList.toggle('rounded', bubble.shape === 'rounded');
+  e.root.classList.toggle('has-warn', !!S.deadMicWarned);
+  e.num.textContent = String(S.countdownLeft || '');
+  e.time.textContent = live ? Core.formatClock(elapsed()) : S.phase === 'starting' ? '…' : '00:00';
+  e.status.title = live ? (S.paused ? 'Paused' : 'Recording') : '';
+  setIcon(e.buttons.pause, S.paused ? 'play' : 'pause', S.paused ? 'Resume' : 'Pause');
+  if (e.buttons.mic) {
+    setIcon(e.buttons.mic, S.micMuted ? 'microphone-slash' : 'microphone', S.micMuted ? 'Unmute the microphone' : (S.deadMicWarned ? 'Your microphone has picked up no sound so far' : 'Mute the microphone'));
+    e.buttons.mic.setAttribute('aria-pressed', S.micMuted ? 'true' : 'false');
+    e.buttons.mic.classList.toggle('warn', !!S.deadMicWarned && !S.micMuted);
+  }
+  if (e.buttons.cam) {
+    const on = wantCamera();
+    setIcon(e.buttons.cam, on ? 'webcam' : 'webcam-slash', on ? 'Hide the camera' : 'Show the camera');
+    e.buttons.cam.setAttribute('aria-pressed', on ? 'false' : 'true');
+    e.buttons.cam.disabled = $('camOn').disabled;
+  }
+  for (const id of ['pause', 'stop', 'mic', 'move']) if (e.buttons[id]) e.buttons[id].disabled = !live;
+  if (e.video) {
+    if (e.video.srcObject !== S.cam) { e.video.srcObject = S.cam || null; if (S.cam) e.video.play().catch(() => {}); }
+    e.cam.classList.toggle('off', !S.cam);
+    e.cam.classList.toggle('mirror', $('camMirror').checked);
+  }
+}
+
+function onFloatClick(ev) {
+  const b = ev.target.closest && ev.target.closest('[data-act]');
+  if (!b || b.disabled || !S.float) return;
+  const root = S.float.els && S.float.els.root;
+  switch (b.dataset.act) {
+    case 'pause': togglePause(); break;
+    case 'stop': stopRecording(); try { window.focus(); } catch (e) {} break;
+    case 'mic': toggleMicMute(); break;
+    case 'cam': toggleCamera(); break;
+    case 'move': moveBubbleNext(); break;
+    case 'discard': root.classList.add('is-confirming'); break;
+    case 'discard-no': root.classList.remove('is-confirming'); break;
+    case 'discard-yes': root.classList.remove('is-confirming'); discardRecording(); break;
+    case 'cancel': if (S.countdownCancel) S.countdownCancel(); break;
+  }
+  renderFloating();
+}
+
+function updateFloatButton() {
+  $('floatBtn').classList.toggle('hidden', !(canFloat && !S.float && S.phase === 'recording'));
+}
+
+// While recording, a browser that supports it opens the floating window by
+// itself when you switch tabs.
+function setAutoFloat(on) {
+  if (!canFloat || !navigator.mediaSession || !navigator.mediaSession.setActionHandler) return;
+  try { navigator.mediaSession.setActionHandler('enterpictureinpicture', on ? () => { openFloating(); } : null); } catch (e) {}
+}
+
+function toggleCamera() {
+  const cb = $('camOn');
+  if (cb.disabled) return;
+  cb.checked = !cb.checked;
+  cb.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function moveBubbleNext() {
+  const W = S.comp ? S.comp.W : ($('frame').clientWidth || 1600);
+  const H = S.comp ? S.comp.H : ($('frame').clientHeight || 900);
+  const c = Core.nextCorner(bubble.x, bubble.y);
+  const p = Core.bubbleCorner(c, W, H, bubble.size);
+  bubble.x = p.x; bubble.y = p.y;
+  placeBubble();
+  prefsSet('bubble', { x: bubble.x, y: bubble.y });
+  announce({ tl: 'Bubble moved to the top left.', tr: 'Bubble moved to the top right.', br: 'Bubble moved to the bottom right.', bl: 'Bubble moved to the bottom left.' }[c]);
 }
 
 /* ======================================================================
@@ -1250,7 +1564,7 @@ function setPhase(p) {
   // the microphone can still be switched or turned down, and the bubble can be
   // turned off and on again when it is being drawn into the picture.
   const idle = p === 'idle';
-  $('videoBody').querySelectorAll('input').forEach(i => { i.disabled = !idle; });
+  $('videoBody').querySelectorAll('input, select').forEach(i => { i.disabled = !idle; });
   $('sysOn').disabled = !idle;
   $('micClean').disabled = !idle;
   $('micOn').disabled = !idle && !live;
@@ -1258,6 +1572,8 @@ function setPhase(p) {
   $('camOn').disabled = !idle && !(live && S.comp);
   $('camSelect').disabled = !idle && !(live && S.comp);
   renderStage();
+  updateFloatButton();
+  renderFloating();
 }
 
 async function startRecording() {
@@ -1282,6 +1598,8 @@ async function startRecording() {
         $('stageNote').textContent = 'No system sound was shared, so only the microphone (if on) is recorded. ' +
           (isFirefox || isSafari ? '' : 'Next time, switch on the audio option in the sharing window.');
       }
+      // Opened straight away: the browser only allows it shortly after the click.
+      if (canFloat && $('floatOn').checked) await openFloating();
     }
     if (wantMic() && !S.mic) { try { await openMic(); } catch (e) { /* noted under the switch; record without it */ } }
     if (wantCamera() && !S.cam) {
@@ -1320,14 +1638,21 @@ function countdown(secs) {
     let left = secs;
     box.hidden = false;
     num.textContent = String(left);
-    const finish = ok => { clearInterval(timer); box.hidden = true; S.countdownCancel = null; document.removeEventListener('keydown', onKey); resolve(ok); };
+    // The floating window counts down too, since you are often looking at another window by now.
+    S.countdownLeft = left;
+    renderFloating();
+    const finish = ok => {
+      clearInterval(timer); box.hidden = true; S.countdownCancel = null; S.countdownLeft = 0;
+      document.removeEventListener('keydown', onKey); resolve(ok);
+    };
     const onKey = e => { if (e.key === 'Escape') finish(false); };
     document.addEventListener('keydown', onKey);
     S.countdownCancel = () => finish(false);
     const timer = setInterval(() => {
       left--;
+      S.countdownLeft = left;
       if (left <= 0) finish(true);
-      else num.textContent = String(left);
+      else { num.textContent = String(left); renderFloating(); }
     }, 1000);
   });
 }
@@ -1428,6 +1753,9 @@ async function beginRecording() {
   }
   S.jobDone = tfe('job', 'Recording');
   tfe('setDirty', true);
+  S.deadMic = Core.createDeadMicCheck();
+  S.deadMicWarned = false;
+  setAutoFloat($('floatOn').checked);
   setPhase('recording');
   tickClock();
   S.tick = setInterval(tickClock, 500);
@@ -1441,12 +1769,30 @@ function elapsed() {
   return Math.max(0, now - c.start - c.pausedTotal);
 }
 
+const DEAD_MIC_NOTE = 'Your microphone has picked up no sound so far. Check that it is not muted, or pick another one under Sound.';
+
 function tickClock() {
-  const t = Core.formatClock(elapsed());
-  $('liveTime').textContent = t;
+  const ms = elapsed();
+  const t = Core.formatClock(ms);
+  const limit = (+$('autoStop').value || 0) * 60000;
+  if (limit && S.phase === 'recording' && ms >= limit) {
+    stopRecording(`Stopped by itself after ${$('autoStop').selectedOptions[0].textContent}, as set under Video.`);
+    return;
+  }
+  $('liveTime').textContent = limit ? `${t} / ${Core.formatClock(limit)}` : t;
   $('badgeTime').textContent = (S.paused ? 'Paused ' : '') + t;
   $('liveSize').textContent = S.bytes ? fmtSize(S.bytes) : '';
   document.title = (S.paused ? '❚❚ ' : '● ') + t + ' - ' + baseTitle;
+  // A muted or wrong microphone shows up as one that has heard nothing at all.
+  if (S.deadMic && S.mixer && S.mixer.has('mic') && wantMic() && !S.micMuted && !S.paused) {
+    const warn = S.deadMic.update(S.mixer.level('mic'), ms);
+    if (warn !== S.deadMicWarned) {
+      S.deadMicWarned = warn;
+      if (warn) { $('stageNote').textContent = DEAD_MIC_NOTE; announce(DEAD_MIC_NOTE); }
+      else if ($('stageNote').textContent === DEAD_MIC_NOTE) $('stageNote').textContent = '';
+    }
+  }
+  renderFloating();
 }
 
 function togglePause() {
@@ -1470,6 +1816,7 @@ function togglePause() {
   }
   $('layout').classList.toggle('is-paused', S.paused);
   tickClock();
+  renderFloating();
 }
 
 function toggleMicMute() {
@@ -1480,6 +1827,21 @@ function toggleMicMute() {
   btn.append(icon(S.micMuted ? 'microphone' : 'microphone-slash'), S.micMuted ? ' Unmute mic' : ' Mute mic');
   if (S.mixer) S.mixer.setVolume('mic', S.micMuted ? 0 : $('micVol').value / 100);
   announce(S.micMuted ? 'Microphone muted.' : 'Microphone on.');
+  renderFloating();
+}
+
+/* Stops and throws the recording away, keeping nothing. */
+function discardRecording() {
+  if (S.phase !== 'recording') return;
+  S.discard = true;
+  stopRecording('');
+}
+
+async function confirmDiscard(btn) {
+  const ok = hasTFE() && typeof TFE.confirmInline === 'function'
+    ? await TFE.confirmInline(btn, { message: 'Discard this recording? It is deleted, not saved.', confirmLabel: 'Discard', danger: true })
+    : window.confirm('Discard this recording? It is deleted, not saved.');
+  if (ok) discardRecording();
 }
 
 let stopReason = '';
@@ -1500,17 +1862,25 @@ async function onRecorderStopped() {
   if (stoppedOnce || !S.rec) return;
   stoppedOnce = true;
   const rec = S.rec;
+  const discard = S.discard;
+  S.discard = false;
   teardownCapture();
   document.title = baseTitle;
-  showProgress('Saving the last second', null);
+  if (!discard) showProgress('Saving the last second', null);
   await S.writes;
-  rec.state = 'stopped';
-  rec.updatedAt = Date.now();
-  try { await store.put(rec); } catch (e) {}
-  if (stopReason) $('stageNote').textContent = stopReason;
   S.rec = null; S.recorder = null;
   try {
-    await finishRecording(rec, { fresh: true });
+    if (discard) {
+      await store.remove(rec.id).catch(() => {});
+      $('stageNote').textContent = 'The recording was discarded.';
+      announce('The recording was discarded.');
+    } else {
+      rec.state = 'stopped';
+      rec.updatedAt = Date.now();
+      try { await store.put(rec); } catch (e) {}
+      if (stopReason) $('stageNote').textContent = stopReason;
+      await finishRecording(rec, { fresh: true });
+    }
   } finally {
     releaseLock();
     if (S.jobDone) { try { S.jobDone(); } catch (e) {} S.jobDone = null; }
@@ -1521,6 +1891,11 @@ async function onRecorderStopped() {
 }
 
 function teardownCapture() {
+  closeFloating();
+  setAutoFloat(false);
+  S.deadMic = null;
+  S.deadMicWarned = false;
+  if ($('stageNote').textContent === DEAD_MIC_NOTE) $('stageNote').textContent = '';
   if (S.comp) { S.comp.close(); S.comp = null; }
   if (S.display) { S.display.getTracks().forEach(t => t.stop()); S.display = null; }
   if (S.mixer) S.mixer.remove('system');
@@ -1710,21 +2085,40 @@ async function openRecording(id, { note, fresh } = {}) {
   catch (e) { showError('This recording could not be read: ' + errText(e)); return; }
   closeResult();
   S.openId = id;
-  const name = fileNameFor(rec);
-  const file = new File([blob], name, { type: blob.type || baseType(rec.mime) });
-  const url = URL.createObjectURL(file);
+  const type = blob.type || baseType(rec.mime);
+  // The name can be changed below, so the file follows it.
+  const cur = { name: fileNameFor(rec) };
+  cur.file = new File([blob], cur.name, { type });
+  const ext = cur.name.split('.').pop();
+  const url = URL.createObjectURL(cur.file);
   S.resultURL = url;
 
-  const dl = el('button', { class: 'btn btn-primary btn-download', type: 'button' }, [icon('download-simple'), ' Download ' + (/mp4/.test(file.type) ? 'MP4' : 'WebM')]);
-  dl.addEventListener('click', () => downloadBlob(file, name));
+  const dl = el('button', { class: 'btn btn-primary btn-download', type: 'button' }, [icon('download-simple'), ' Download ' + (/mp4/.test(type) ? 'MP4' : ext.toUpperCase())]);
+  dl.addEventListener('click', () => downloadBlob(cur.file, cur.name));
   const edit = el('button', { class: 'btn', type: 'button' }, [icon('scissors'), ' Edit in Video Editor']);
-  edit.addEventListener('click', () => sendToEditor(file, edit));
+  edit.addEventListener('click', () => sendToEditor(cur.file, edit));
   const del = el('button', { class: 'btn btn-delete', type: 'button' }, [icon('trash'), ' Delete']);
   del.addEventListener('click', () => deleteRecording(rec.id, del));
 
+  const nameInput = el('input', { type: 'text', value: cur.name.slice(0, -(ext.length + 1)), 'aria-label': 'File name', spellcheck: 'false', 'data-no-remember': true });
+  nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') nameInput.blur(); if (e.key === 'Escape') { nameInput.value = cur.name.slice(0, -(ext.length + 1)); nameInput.blur(); } });
+  nameInput.addEventListener('change', async () => {
+    const newName = Core.cleanFileName(nameInput.value, ext, cur.name.slice(0, -(ext.length + 1)));
+    nameInput.value = newName.slice(0, -(ext.length + 1));
+    if (newName === cur.name) return;
+    cur.name = newName;
+    cur.file = new File([blob], newName, { type });
+    try {
+      const r = await store.get(rec.id);
+      if (r) { r.name = newName; r.updatedAt = Date.now(); await store.put(r); }
+    } catch (e) {}
+    tfe('continueWith', body, cur.file, { exclude: ['editor'] });
+    renderLibrary();
+    announce('Renamed to ' + newName + '.');
+  });
   const video = el('video', { class: 'result-preview', src: url, controls: true, playsinline: true, preload: 'metadata' });
   const meta = el('div', { class: 'sr-meta' }, [
-    el('span', { class: 'mono', text: name }),
+    el('label', { class: 'sr-name', title: 'Click to rename' }, [icon('pencil-simple'), nameInput, el('span', { class: 'ext', text: '.' + ext })]),
     el('span', { text: Core.formatClock(rec.durationMs) }),
     el('span', { text: fmtSize(blob.size) }),
     rec.width ? el('span', { text: `${rec.width} × ${rec.height}` }) : null,
@@ -1735,7 +2129,7 @@ async function openRecording(id, { note, fresh } = {}) {
   const head = el('div', { class: 'result-head' }, [el('h2', { text: fresh ? 'Your recording is ready' : 'Recording' })]);
   const box = el('div', { class: 'result' }, [head, body]);
   $('result').append(box);
-  tfe('continueWith', body, file, { exclude: ['editor'] });
+  tfe('continueWith', body, cur.file, { exclude: ['editor'] });
   if (fresh) {
     if (hasTFE() && typeof TFE.revealResult === 'function') tfe('revealResult', box);
     else { try { box.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
@@ -1922,6 +2316,9 @@ $('stopBtn').addEventListener('click', () => stopRecording());
 $('pauseBtn').addEventListener('click', togglePause);
 $('micMuteBtn').addEventListener('click', toggleMicMute);
 $('countdownCancel').addEventListener('click', () => { if (S.countdownCancel) S.countdownCancel(); });
+$('discardBtn').addEventListener('click', e => confirmDiscard(e.currentTarget));
+$('floatBtn').addEventListener('click', () => { openFloating({ asked: true }); });
+$('floatOpt').classList.toggle('hidden', !canFloat);
 if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener('devicechange', listDevices);
 listDevices();
 renderLibrary();
@@ -1957,7 +2354,8 @@ document.addEventListener('DOMContentLoaded', () => {
     summaries = [
       TFE.panelSummary($('soundPanel'), () => [mode === 'screen' && $('sysOn').checked ? 'System sound' : '', $('micOn').checked ? 'Microphone' : ''].filter(Boolean).join(', ') || 'No sound'),
       TFE.panelSummary($('cameraPanel'), () => wantCamera() ? (mode === 'screen' ? 'Bubble' : 'On') : 'Off'),
-      TFE.panelSummary($('videoPanel'), () => [{ 0: 'Original', 1080: '1080p', 720: '720p' }[radio('quality')], radio('fps') + ' fps', radio('format') === 'webm' ? 'WebM' : 'MP4'].join(', ')),
+      TFE.panelSummary($('videoPanel'), () => [{ 0: 'Original', 1080: '1080p', 720: '720p' }[radio('quality')], radio('fps') + ' fps', radio('format') === 'webm' ? 'WebM' : 'MP4',
+        +$('autoStop').value ? 'stops after ' + $('autoStop').selectedOptions[0].textContent : ''].filter(Boolean).join(', ')),
     ].filter(Boolean);
   } catch (e) {}
   if (TFE.subtool) {
@@ -1977,6 +2375,11 @@ window.__sr = {
   stop: () => stopRecording(),
   togglePause,
   renderLibrary,
+  discard: discardRecording,
+  openFloating,
+  // Puts the floating controls into any window, such as a test frame.
+  floatInto(win) { attachFloating(win); return S.float; },
+  get float() { return S.float; },
 };
 </script>
 <script src="../assets/app.js" defer></script>
