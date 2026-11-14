@@ -11,9 +11,9 @@ Try it live: [Screen Recorder](https://rehmozayub.github.io/tools-for-everyone/S
 | What to record | A whole screen, one window or a browser tab, or just your camera |
 | Sound | The sound the screen or tab plays, and your microphone, each with its own volume (up to 200%) and level meter, mixed into one track. Optional noise and echo reduction for the microphone. |
 | Camera bubble | Your camera in a circle or rounded square, small, medium or large, in any corner or dragged anywhere, even while recording. Optionally mirrored. |
-| Floating bubble and controls | In Chrome and Edge, a small window floats on top of other apps while you record. Recording a window or a tab, it shows your camera bubble and hovering it reveals Pause, Stop, Discard, mute, hide the camera and move the bubble. Recording the whole screen, it is a compact strip of the same controls, so your video never gets a second bubble. |
-| Controls | A 3 or 5 second countdown (also shown in the floating window), pause and resume, mute the microphone, stop, and discard with a confirmation. The browser's own "Stop sharing" button also stops it, and the tab title shows the time while you work elsewhere. |
-| Safety nets | A warning when the microphone has picked up nothing at all, which usually means it is muted or the wrong one. An optional stop after 5 minutes to 2 hours. |
+| Floating bubble | In Chrome and Edge, when you record a window or a tab, your camera bubble floats on top of other apps. Hover it for Pause, Stop, Discard, mute and move the bubble. Nothing floats while you record the whole screen, so nothing extra ends up in the video. |
+| Controls | A 3 or 5 second countdown, pause and resume, mute the microphone, stop, and discard with a confirmation. The browser's own "Stop sharing" button also stops it, and the tab title shows the time while you work elsewhere. |
+| Mic test | Before recording, record 3 seconds and hear it played back, at the volume you set. |
 | Quality | Original size, 1080p or 720p, at 30 or 60 fps |
 | Crash safe | Saved to your device a second at a time. If the tab closes or the browser crashes, the recording is offered for recovery the next time you open the page. |
 | Files | MP4 (H.264) where the browser can record it, otherwise WebM. Rename a recording by clicking its name. Recordings are kept on this device until you delete them, and open in the [Video Editor](../Video%20Editor/) in one click. |

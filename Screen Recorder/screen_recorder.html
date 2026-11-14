@@ -265,6 +265,8 @@
               <div class="slider-value" id="micVolVal">100%</div>
             </div>
             <label class="checkbox-label mt-2"><input type="checkbox" id="micClean" checked> Reduce background noise and echo</label>
+            <button class="btn btn-sm" type="button" id="micTestBtn"><i class="ph ph-waveform" aria-hidden="true"></i> Test: record 3 s and play back</button>
+            <p class="field-note" id="micTestNote" aria-live="polite"></p>
           </div>
           <p class="field-note" id="micNote"></p>
         </div>
@@ -347,19 +349,7 @@
           </div>
           <p class="field-note" id="formatNote"></p>
         </fieldset>
-        <div class="form-group mt-3">
-          <label for="autoStop">Stop by itself after</label>
-          <select id="autoStop">
-            <option value="0" selected>Never</option>
-            <option value="5">5 minutes</option>
-            <option value="10">10 minutes</option>
-            <option value="15">15 minutes</option>
-            <option value="30">30 minutes</option>
-            <option value="60">1 hour</option>
-            <option value="120">2 hours</option>
-          </select>
-        </div>
-        <label class="checkbox-label mb-0 hidden" id="floatOpt"><input type="checkbox" id="floatOn" checked> Float the bubble and controls on top of other windows</label>
+        <label class="checkbox-label mt-3 mb-0 hidden" id="floatOpt"><input type="checkbox" id="floatOn" checked> Float the camera bubble on top of other windows when recording a window or tab</label>
       </div>
     </details>
   </aside>
@@ -517,8 +507,6 @@ const S = {
   resultURL: null,
   float: null,            // the floating window, while open
   discard: false,         // the recording being stopped is to be thrown away
-  deadMic: null,          // notices a microphone that hears nothing
-  deadMicWarned: false,
   countdownLeft: 0,
   fake: { display: null, mic: null, cam: null },   // test hooks
 };
@@ -708,10 +696,44 @@ async function openMic() {
   if (S.micMuted) S.mixer.setVolume('mic', 0);
   listDevices();
   $('micMuteBtn').classList.toggle('hidden', S.phase === 'idle');
-  // A different microphone gets a fresh chance to be heard.
-  if (S.deadMic) { S.deadMic.reset(); S.deadMicWarned = false; }
   renderFloating();
   return S.mic;
+}
+
+/* Records a few seconds from the microphone, at the volume set above, and
+   plays it back, so you can hear how you will sound before you start. */
+let micTesting = false;
+async function testMic() {
+  if (micTesting || S.phase !== 'idle') return;
+  const btn = $('micTestBtn'), note = $('micTestNote');
+  micTesting = true;
+  btn.disabled = true;
+  let url = null;
+  try {
+    if (!S.mic) await openMic();
+    const track = S.mixer && S.mixer.has('mic') ? S.mixer.track : S.mic.getAudioTracks()[0];
+    const rec = new MediaRecorder(new MediaStream([track]));
+    const chunks = [];
+    rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    const stopped = new Promise(r => { rec.onstop = r; });
+    note.textContent = 'Recording 3 seconds. Say something…';
+    rec.start();
+    await new Promise(r => setTimeout(r, 3000));
+    rec.stop();
+    await stopped;
+    url = URL.createObjectURL(new Blob(chunks, { type: rec.mimeType || 'audio/webm' }));
+    note.textContent = 'Playing it back…';
+    const audio = new Audio(url);
+    await new Promise((res, rej) => { audio.onended = res; audio.onerror = () => rej(new Error('playback failed')); audio.play().catch(rej); });
+    note.textContent = 'That is how you will sound. If it is too quiet or too loud, change the volume above.';
+  } catch (e) {
+    if (!$('micNote').textContent) note.textContent = 'The test did not work: ' + errText(e);
+    else note.textContent = '';
+  } finally {
+    if (url) URL.revokeObjectURL(url);
+    micTesting = false;
+    btn.disabled = S.phase !== 'idle';
+  }
 }
 
 function closeMic() {
@@ -1091,12 +1113,11 @@ function initBubbleDrag() {
 }
 
 /* ======================================================================
-   Floating window: the bubble and the controls in a small window that stays
-   on top of other apps while recording (Document Picture-in-Picture, in
-   Chrome and Edge). Recording a window or a tab, it shows the camera and the
-   controls appear when you hover it. Recording a whole screen, the window
-   itself is in the picture, so it is a strip of controls only and the bubble
-   is drawn into the video as usual.
+   Floating bubble: while a window or a tab is recorded, the camera bubble
+   can float on top of other apps in a small window (Document
+   Picture-in-Picture, in Chrome and Edge), with the controls showing only
+   while you hover it. Nothing floats while the whole screen is recorded,
+   because it would end up in the video.
    ====================================================================== */
 
 const canFloat = !!(window.documentPictureInPicture && window.isSecureContext);
@@ -1107,39 +1128,31 @@ const FLOAT_CSS = `
 html, body { height: 100%; }
 body { background: #111418; color: #e7e9ed; font: 500 13px/1.25 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; user-select: none; }
 .ph { line-height: 1; }
-.fl { position: relative; height: 100%; display: flex; align-items: center; gap: 10px; padding: 0 10px; }
-.status { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font: 600 14px/1 ui-monospace, Consolas, monospace; font-variant-numeric: tabular-nums; }
-.dot { width: 10px; height: 10px; border-radius: 50%; background: #ef4444; flex-shrink: 0; }
+.fl { position: relative; height: 100%; }
+.cam { position: absolute; inset: 8px; border-radius: 50%; overflow: hidden; background: #252a32; box-shadow: 0 0 0 3px rgba(255,255,255,.92); display: flex; align-items: center; justify-content: center; color: #8a93a1; font-size: 40px; }
+.fl.rounded .cam { border-radius: 18%; }
+.cam video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cam.mirror video { transform: scaleX(-1); }
+.cam.off video { display: none; }
+.status { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; padding: 4px 9px; border-radius: 999px; background: rgba(0,0,0,.62); font: 600 12px/1 ui-monospace, Consolas, monospace; font-variant-numeric: tabular-nums; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: #ef4444; flex-shrink: 0; }
 .is-paused .dot { background: #f59e0b; }
-.status .warn { display: none; color: #f59e0b; font-size: 15px; }
-.has-warn .status .warn { display: inline; }
-.bar { display: flex; gap: 4px; margin-left: auto; }
-button { width: 36px; height: 36px; padding: 0; border: 0; border-radius: 8px; background: #23272e; color: #e7e9ed; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; }
+.bar { position: absolute; left: 0; right: 0; bottom: 14px; margin: 0 auto; width: max-content; max-width: calc(100% - 28px); display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; padding: 4px; border-radius: 12px; background: rgba(17,20,24,.88); }
+.status, .bar { opacity: 0; transition: opacity .15s; }
+.fl:hover .status, .fl:hover .bar, .fl:focus-within .bar, .fl:focus-within .status, .is-paused .status, .is-paused .bar { opacity: 1; }
+button { width: 30px; height: 30px; padding: 0; border: 0; border-radius: 8px; background: #23272e; color: #e7e9ed; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; }
 button:hover { background: #343a43; }
 button:focus-visible { outline: 2px solid #6f8fff; outline-offset: 1px; }
 button.stop { background: #e5484d; color: #fff; }
 button.stop:hover { background: #c93a3f; }
 button.danger:hover { background: #6b2226; color: #ffb4b4; }
 button[aria-pressed="true"] { color: #f5a524; }
-button.warn { color: #f5a524; box-shadow: inset 0 0 0 1px #f5a524; }
-.fl.bubble { display: block; padding: 0; }
-.cam { position: absolute; inset: 8px; border-radius: 50%; overflow: hidden; background: #252a32; box-shadow: 0 0 0 3px rgba(255,255,255,.92); display: flex; align-items: center; justify-content: center; color: #8a93a1; font-size: 40px; }
-.fl.rounded .cam { border-radius: 18%; }
-.cam video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.cam.mirror video { transform: scaleX(-1); }
-.cam.off video { display: none; }
-.fl.bubble .status { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.62); padding: 4px 9px; border-radius: 999px; font-size: 12px; }
-.fl.bubble .bar { position: absolute; left: 0; right: 0; bottom: 14px; margin: 0 auto; width: max-content; max-width: calc(100% - 28px); padding: 4px; border-radius: 12px; background: rgba(17,20,24,.88); opacity: 0; transition: opacity .15s; flex-wrap: wrap; justify-content: center; }
-.fl.bubble:hover .bar, .fl.bubble:focus-within .bar, .fl.bubble.is-paused .bar { opacity: 1; }
-.fl.bubble button { width: 30px; height: 30px; font-size: 16px; }
-.confirm { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; gap: 8px; padding: 8px; background: rgba(17,20,24,.96); text-align: center; z-index: 2; }
-.fl.bubble .confirm { flex-direction: column; border-radius: 50%; }
+.confirm { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 8px; border-radius: 50%; background: rgba(17,20,24,.96); text-align: center; z-index: 2; }
 .is-confirming .confirm { display: flex; }
 .confirm .row { display: flex; gap: 6px; }
 .confirm button { width: auto; height: 32px; padding: 0 12px; font: 600 13px system-ui, sans-serif; }
 .confirm .yes { background: #e5484d; color: #fff; }
-.countdown { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; gap: 12px; background: rgba(0,0,0,.78); z-index: 3; }
-.fl.bubble .countdown { flex-direction: column; }
+.countdown { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: rgba(0,0,0,.78); z-index: 3; }
 .countdown .num { font: 700 40px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; }
 .countdown button { width: auto; height: 30px; padding: 0 12px; font: 600 12px system-ui, sans-serif; }
 .is-counting .countdown { display: flex; }
@@ -1149,7 +1162,6 @@ const FLOAT_BUTTONS = {
   pause: { icon: 'pause', label: 'Pause' },
   stop: { icon: 'stop', label: 'Stop and save', cls: 'stop' },
   mic: { icon: 'microphone', label: 'Mute the microphone' },
-  cam: { icon: 'webcam', label: 'Hide the camera' },
   move: { icon: 'arrows-out-cardinal', label: 'Move the bubble to the next corner' },
   discard: { icon: 'trash', label: 'Discard this recording', cls: 'danger' },
 };
@@ -1160,42 +1172,37 @@ function displaySurface() {
   return st.displaySurface || null;
 }
 
-// What the floating window holds right now: its layout and its buttons.
+// The floating bubble's size and buttons right now, or null when nothing should float.
 function floatShape() {
-  const camOn = mode === 'screen' && wantCamera();
+  const layout = Core.floatingLayout({ camera: mode === 'screen' && wantCamera(), surface: displaySurface(), size: bubble.size });
+  if (!layout) return null;
   const buttons = ['pause', 'stop'];
   if (wantMic()) buttons.push('mic');
-  if (mode === 'screen' && (camOn || S.comp)) buttons.push('cam');
-  if (camOn) buttons.push('move');
-  buttons.push('discard');
-  const layout = Core.floatingLayout({ camera: camOn, surface: displaySurface(), size: bubble.size, buttons: buttons.length });
-  return { layout, buttons, key: layout.kind + ':' + buttons.join(',') };
+  buttons.push('move', 'discard');
+  return { layout, buttons, key: buttons.join(',') };
 }
 
 async function openFloating({ asked = false } = {}) {
-  if (!canFloat) return null;
-  if (S.float) return S.float;
+  if (!canFloat || S.float) return S.float;
   if (S.phase === 'idle' || S.phase === 'finishing') return null;
   const shape = floatShape();
+  if (!shape) return null;
   let win;
   try {
     win = await documentPictureInPicture.requestWindow({ width: shape.layout.width, height: shape.layout.height });
   } catch (e) {
     // Opening it by itself fails when too long passed since the click; the
     // Float button then opens it. When even that fails, say so.
-    if (asked) $('stageNote').textContent = 'This browser would not open the floating window. The controls here and the browser\'s Stop sharing bar still work.';
+    if (asked) $('stageNote').textContent = 'This browser would not open the floating bubble. The controls here still work.';
     updateFloatButton();
     return null;
   }
-  if (S.phase === 'idle' || S.phase === 'finishing') { try { win.close(); } catch (e) {} return null; }
+  if (S.phase === 'idle' || S.phase === 'finishing' || !floatShape()) { try { win.close(); } catch (e) {} return null; }
   attachFloating(win);
-  if (displaySurface() === 'monitor' || !displaySurface()) {
-    $('stageNote').textContent = 'The floating controls show in a whole-screen recording. Drag them to a corner or another screen, or close them: the browser\'s Stop sharing bar still works.';
-  }
   return S.float;
 }
 
-/* Fills a window (the real floating one, or a test frame) with the controls. */
+/* Fills a window (the real floating one, or a test frame) with the bubble. */
 function attachFloating(win) {
   const doc = win.document;
   doc.title = 'Recording';
@@ -1236,16 +1243,12 @@ function buildFloating(doc, shape) {
   };
   const ico = name => mk('i', { class: 'ph ph-' + name, 'aria-hidden': 'true' });
   const els = { buttons: {} };
-  els.root = mk('div', { class: 'fl ' + shape.layout.kind });
-  if (shape.layout.kind === 'bubble') {
-    els.video = mk('video', { muted: true, autoplay: true, playsinline: true });
-    els.video.muted = true;
-    els.cam = mk('div', { class: 'cam' }, [ico('webcam'), els.video]);
-    els.root.append(els.cam);
-  }
+  els.root = mk('div', { class: 'fl' });
+  els.video = mk('video', { muted: true, autoplay: true, playsinline: true });
+  els.video.muted = true;
+  els.cam = mk('div', { class: 'cam' }, [ico('webcam'), els.video]);
   els.time = mk('span', { text: '00:00' });
-  els.status = mk('div', { class: 'status' }, [mk('span', { class: 'dot' }), els.time, mk('i', { class: 'ph ph-microphone-slash warn', title: 'Your microphone has picked up no sound so far' })]);
-  els.root.append(els.status);
+  els.status = mk('div', { class: 'status' }, [mk('span', { class: 'dot' }), els.time]);
   const bar = mk('div', { class: 'bar', role: 'toolbar', 'aria-label': 'Recording controls' });
   for (const id of shape.buttons) {
     const d = FLOAT_BUTTONS[id];
@@ -1253,16 +1256,16 @@ function buildFloating(doc, shape) {
     els.buttons[id] = b;
     bar.append(b);
   }
-  els.root.append(bar);
-  els.root.append(mk('div', { class: 'confirm', role: 'alertdialog', 'aria-label': 'Discard this recording?' }, [
-    mk('span', { text: 'Discard this recording?' }),
-    mk('div', { class: 'row' }, [
-      mk('button', { type: 'button', class: 'yes', 'data-act': 'discard-yes', text: 'Discard' }),
-      mk('button', { type: 'button', 'data-act': 'discard-no', text: 'Keep' }),
-    ]),
-  ]));
   els.num = mk('span', { class: 'num', text: '3' });
-  els.root.append(mk('div', { class: 'countdown' }, [els.num, mk('button', { type: 'button', 'data-act': 'cancel', text: 'Cancel' })]));
+  els.root.append(els.cam, els.status, bar,
+    mk('div', { class: 'confirm', role: 'alertdialog', 'aria-label': 'Discard this recording?' }, [
+      mk('span', { text: 'Discard this recording?' }),
+      mk('div', { class: 'row' }, [
+        mk('button', { type: 'button', class: 'yes', 'data-act': 'discard-yes', text: 'Discard' }),
+        mk('button', { type: 'button', 'data-act': 'discard-no', text: 'Keep' }),
+      ]),
+    ]),
+    mk('div', { class: 'countdown' }, [els.num, mk('button', { type: 'button', 'data-act': 'cancel', text: 'Cancel' })]));
   doc.body.textContent = '';
   doc.body.append(els.root);
   return els;
@@ -1280,41 +1283,25 @@ function renderFloating() {
   const f = S.float;
   if (!f) return;
   const shape = floatShape();
-  if (shape.key !== f.key) {
-    const was = f.key;
-    f.els = buildFloating(f.win.document, shape);
-    f.key = shape.key;
-    // A change of layout asks for the new size; without a recent click in the
-    // window the browser may say no, and the old size stays.
-    if (was) { try { f.win.resizeTo(shape.layout.width, shape.layout.height + (f.win.outerHeight - f.win.innerHeight || 0)); } catch (e) {} }
-  }
+  // The camera was turned off, or the sharing switched to the whole screen.
+  if (!shape) { closeFloating(); return; }
+  if (shape.key !== f.key) { f.els = buildFloating(f.win.document, shape); f.key = shape.key; }
   const e = f.els;
   const live = S.phase === 'recording';
   e.root.classList.toggle('is-paused', live && S.paused);
   e.root.classList.toggle('is-counting', S.phase === 'countdown');
   e.root.classList.toggle('rounded', bubble.shape === 'rounded');
-  e.root.classList.toggle('has-warn', !!S.deadMicWarned);
   e.num.textContent = String(S.countdownLeft || '');
-  e.time.textContent = live ? Core.formatClock(elapsed()) : S.phase === 'starting' ? '…' : '00:00';
-  e.status.title = live ? (S.paused ? 'Paused' : 'Recording') : '';
+  e.time.textContent = live ? Core.formatClock(elapsed()) : '00:00';
   setIcon(e.buttons.pause, S.paused ? 'play' : 'pause', S.paused ? 'Resume' : 'Pause');
   if (e.buttons.mic) {
-    setIcon(e.buttons.mic, S.micMuted ? 'microphone-slash' : 'microphone', S.micMuted ? 'Unmute the microphone' : (S.deadMicWarned ? 'Your microphone has picked up no sound so far' : 'Mute the microphone'));
+    setIcon(e.buttons.mic, S.micMuted ? 'microphone-slash' : 'microphone', S.micMuted ? 'Unmute the microphone' : 'Mute the microphone');
     e.buttons.mic.setAttribute('aria-pressed', S.micMuted ? 'true' : 'false');
-    e.buttons.mic.classList.toggle('warn', !!S.deadMicWarned && !S.micMuted);
-  }
-  if (e.buttons.cam) {
-    const on = wantCamera();
-    setIcon(e.buttons.cam, on ? 'webcam' : 'webcam-slash', on ? 'Hide the camera' : 'Show the camera');
-    e.buttons.cam.setAttribute('aria-pressed', on ? 'false' : 'true');
-    e.buttons.cam.disabled = $('camOn').disabled;
   }
   for (const id of ['pause', 'stop', 'mic', 'move']) if (e.buttons[id]) e.buttons[id].disabled = !live;
-  if (e.video) {
-    if (e.video.srcObject !== S.cam) { e.video.srcObject = S.cam || null; if (S.cam) e.video.play().catch(() => {}); }
-    e.cam.classList.toggle('off', !S.cam);
-    e.cam.classList.toggle('mirror', $('camMirror').checked);
-  }
+  if (e.video.srcObject !== S.cam) { e.video.srcObject = S.cam || null; if (S.cam) e.video.play().catch(() => {}); }
+  e.cam.classList.toggle('off', !S.cam);
+  e.cam.classList.toggle('mirror', $('camMirror').checked);
 }
 
 function onFloatClick(ev) {
@@ -1325,7 +1312,6 @@ function onFloatClick(ev) {
     case 'pause': togglePause(); break;
     case 'stop': stopRecording(); try { window.focus(); } catch (e) {} break;
     case 'mic': toggleMicMute(); break;
-    case 'cam': toggleCamera(); break;
     case 'move': moveBubbleNext(); break;
     case 'discard': root.classList.add('is-confirming'); break;
     case 'discard-no': root.classList.remove('is-confirming'); break;
@@ -1336,21 +1322,14 @@ function onFloatClick(ev) {
 }
 
 function updateFloatButton() {
-  $('floatBtn').classList.toggle('hidden', !(canFloat && !S.float && S.phase === 'recording'));
+  $('floatBtn').classList.toggle('hidden', !(canFloat && !S.float && S.phase === 'recording' && floatShape()));
 }
 
-// While recording, a browser that supports it opens the floating window by
+// While recording, a browser that supports it opens the floating bubble by
 // itself when you switch tabs.
 function setAutoFloat(on) {
   if (!canFloat || !navigator.mediaSession || !navigator.mediaSession.setActionHandler) return;
   try { navigator.mediaSession.setActionHandler('enterpictureinpicture', on ? () => { openFloating(); } : null); } catch (e) {}
-}
-
-function toggleCamera() {
-  const cb = $('camOn');
-  if (cb.disabled) return;
-  cb.checked = !cb.checked;
-  cb.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 function moveBubbleNext() {
@@ -1567,6 +1546,7 @@ function setPhase(p) {
   $('videoBody').querySelectorAll('input, select').forEach(i => { i.disabled = !idle; });
   $('sysOn').disabled = !idle;
   $('micClean').disabled = !idle;
+  $('micTestBtn').disabled = !idle || micTesting;
   $('micOn').disabled = !idle && !live;
   $('micSelect').disabled = !idle && !live;
   $('camOn').disabled = !idle && !(live && S.comp);
@@ -1753,8 +1733,6 @@ async function beginRecording() {
   }
   S.jobDone = tfe('job', 'Recording');
   tfe('setDirty', true);
-  S.deadMic = Core.createDeadMicCheck();
-  S.deadMicWarned = false;
   setAutoFloat($('floatOn').checked);
   setPhase('recording');
   tickClock();
@@ -1769,30 +1747,14 @@ function elapsed() {
   return Math.max(0, now - c.start - c.pausedTotal);
 }
 
-const DEAD_MIC_NOTE = 'Your microphone has picked up no sound so far. Check that it is not muted, or pick another one under Sound.';
-
 function tickClock() {
-  const ms = elapsed();
-  const t = Core.formatClock(ms);
-  const limit = (+$('autoStop').value || 0) * 60000;
-  if (limit && S.phase === 'recording' && ms >= limit) {
-    stopRecording(`Stopped by itself after ${$('autoStop').selectedOptions[0].textContent}, as set under Video.`);
-    return;
-  }
-  $('liveTime').textContent = limit ? `${t} / ${Core.formatClock(limit)}` : t;
+  const t = Core.formatClock(elapsed());
+  $('liveTime').textContent = t;
   $('badgeTime').textContent = (S.paused ? 'Paused ' : '') + t;
   $('liveSize').textContent = S.bytes ? fmtSize(S.bytes) : '';
   document.title = (S.paused ? '❚❚ ' : '● ') + t + ' - ' + baseTitle;
-  // A muted or wrong microphone shows up as one that has heard nothing at all.
-  if (S.deadMic && S.mixer && S.mixer.has('mic') && wantMic() && !S.micMuted && !S.paused) {
-    const warn = S.deadMic.update(S.mixer.level('mic'), ms);
-    if (warn !== S.deadMicWarned) {
-      S.deadMicWarned = warn;
-      if (warn) { $('stageNote').textContent = DEAD_MIC_NOTE; announce(DEAD_MIC_NOTE); }
-      else if ($('stageNote').textContent === DEAD_MIC_NOTE) $('stageNote').textContent = '';
-    }
-  }
   renderFloating();
+  updateFloatButton();
 }
 
 function togglePause() {
@@ -1893,9 +1855,6 @@ async function onRecorderStopped() {
 function teardownCapture() {
   closeFloating();
   setAutoFloat(false);
-  S.deadMic = null;
-  S.deadMicWarned = false;
-  if ($('stageNote').textContent === DEAD_MIC_NOTE) $('stageNote').textContent = '';
   if (S.comp) { S.comp.close(); S.comp = null; }
   if (S.display) { S.display.getTracks().forEach(t => t.stop()); S.display = null; }
   if (S.mixer) S.mixer.remove('system');
@@ -2317,6 +2276,7 @@ $('pauseBtn').addEventListener('click', togglePause);
 $('micMuteBtn').addEventListener('click', toggleMicMute);
 $('countdownCancel').addEventListener('click', () => { if (S.countdownCancel) S.countdownCancel(); });
 $('discardBtn').addEventListener('click', e => confirmDiscard(e.currentTarget));
+$('micTestBtn').addEventListener('click', testMic);
 $('floatBtn').addEventListener('click', () => { openFloating({ asked: true }); });
 $('floatOpt').classList.toggle('hidden', !canFloat);
 if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener('devicechange', listDevices);
@@ -2354,8 +2314,7 @@ document.addEventListener('DOMContentLoaded', () => {
     summaries = [
       TFE.panelSummary($('soundPanel'), () => [mode === 'screen' && $('sysOn').checked ? 'System sound' : '', $('micOn').checked ? 'Microphone' : ''].filter(Boolean).join(', ') || 'No sound'),
       TFE.panelSummary($('cameraPanel'), () => wantCamera() ? (mode === 'screen' ? 'Bubble' : 'On') : 'Off'),
-      TFE.panelSummary($('videoPanel'), () => [{ 0: 'Original', 1080: '1080p', 720: '720p' }[radio('quality')], radio('fps') + ' fps', radio('format') === 'webm' ? 'WebM' : 'MP4',
-        +$('autoStop').value ? 'stops after ' + $('autoStop').selectedOptions[0].textContent : ''].filter(Boolean).join(', ')),
+      TFE.panelSummary($('videoPanel'), () => [{ 0: 'Original', 1080: '1080p', 720: '720p' }[radio('quality')], radio('fps') + ' fps', radio('format') === 'webm' ? 'WebM' : 'MP4'].join(', ')),
     ].filter(Boolean);
   } catch (e) {}
   if (TFE.subtool) {

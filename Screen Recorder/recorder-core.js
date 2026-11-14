@@ -129,42 +129,17 @@
     return CORNER_ORDER[(CORNER_ORDER.indexOf(nearestCorner(x, y)) + 1) % CORNER_ORDER.length];
   }
 
-  /* ---------- The floating window ----------
-     While recording, a small window can float on top of other apps with the
-     controls. Shown with the camera when a window or a tab is recorded. A
-     whole-screen recording captures the floating window itself, so then it is
-     only a strip of controls: a camera there would be a second bubble in the
-     video. An unknown surface is treated like a whole screen. */
+  /* ---------- The floating bubble ----------
+     While a window or a tab is recorded, the camera bubble can float on top of
+     other apps, with the controls showing on hover. Nothing floats while the
+     whole screen is recorded, because it would end up in the video. An unknown
+     surface counts as the whole screen. Returns null when nothing should float. */
   var FLOAT_BUBBLE = { s: 200, m: 250, l: 320 };
   function floatingLayout(o) {
     o = o || {};
-    var showCam = !!o.camera && (o.surface === 'window' || o.surface === 'browser');
-    if (showCam) {
-      var side = FLOAT_BUBBLE[o.size] || FLOAT_BUBBLE.m;
-      return { kind: 'bubble', width: side, height: side };
-    }
-    var buttons = Math.max(1, o.buttons || 3);
-    return { kind: 'pill', width: 96 + buttons * 40, height: 60 };
-  }
-
-  /* Notices a microphone that has picked up nothing at all since it was turned
-     on, which is what a muted or wrong microphone looks like. Once it has heard
-     anything it stays quiet, so pauses in speech never set it off. */
-  function createDeadMicCheck(opts) {
-    opts = opts || {};
-    var threshold = opts.threshold || 0.002;
-    var after = opts.after || 8000;
-    var since = null, heard = false;
-    return {
-      update: function (peak, now) {
-        if (heard) return false;
-        if (peak > threshold) { heard = true; return false; }
-        if (since === null) since = now;
-        return now - since >= after;
-      },
-      reset: function () { since = null; heard = false; },
-      get heard() { return heard; }
-    };
+    if (!o.camera || (o.surface !== 'window' && o.surface !== 'browser')) return null;
+    var side = FLOAT_BUBBLE[o.size] || FLOAT_BUBBLE.m;
+    return { width: side, height: side };
   }
 
   /* A file name typed by a person, made safe for every system: no path
@@ -255,7 +230,7 @@
     pickMimeType: pickMimeType, describeMime: describeMime, videoBitrate: videoBitrate, fitWithin: fitWithin,
     bubbleRect: bubbleRect, bubbleCorner: bubbleCorner, coverSource: coverSource,
     nearestCorner: nearestCorner, nextCorner: nextCorner, floatingLayout: floatingLayout,
-    createDeadMicCheck: createDeadMicCheck, cleanFileName: cleanFileName,
+    cleanFileName: cleanFileName,
     recordingName: recordingName, formatClock: formatClock,
     planWrite: planWrite, assembleSegments: assembleSegments
   };
