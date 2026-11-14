@@ -21,7 +21,7 @@ Getting around:
 
 Most tools come in **two versions**:
 - **HTML (browser)** - what the live site above runs. Also works completely offline: double-click the `.html` file in any tool folder and it runs instantly, no setup needed.
-- **Streamlit (Python)** - a fuller desktop app for the original six tools, for anyone who prefers a local Python environment. Some of these require a `.env` file for configuration, which you can create yourself from each tool's own README.
+- **Streamlit (Python)** - a fuller desktop app for five of the tools, for anyone who prefers a local Python environment. Some of these require a `.env` file for configuration, which you can create yourself from each tool's own README.
 
 If you have any questions, need help, or want to share your experience, feel free to reach out to me.
 Instagram: @rehmozdoesstuff
@@ -86,10 +86,6 @@ Rename many files at once with find and replace, regex patterns, prefix/suffix, 
 [Open in browser](https://rehmozayub.github.io/tools-for-everyone/Bulk%20File%20Renamer/bulk_rename.html) · [Streamlit version](Bulk%20File%20Renamer/)
 
 ![Bulk File Renamer](assets/screenshots/bulk-file-renamer.png)
-
-### Test Card Generator
-Official test card numbers from Stripe, Adyen and Braintree for checking payment forms during development, with scenarios such as a successful payment, a decline, insufficient funds and a 3D Secure challenge. Copy any number in one click, keep a saved list, and back it up to a file. These numbers only work in the processors' test modes. (This tool used to be called Virtual Card Manager, and its page keeps the old address.)
-[Open in browser](https://rehmozayub.github.io/tools-for-everyone/Virtual%20Card%20Manager/virtual_card_manager.html) · [Streamlit version](Virtual%20Card%20Manager/) (the older virtual card manager)
 
 ---
 

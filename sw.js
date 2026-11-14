@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tools-for-everyone-v13';
+const CACHE_NAME = 'tools-for-everyone-v14';
 // Libraries from the CDNs live in their own cache. Every one of them is pinned to
 // an exact version, so a copy never goes stale and does not need to be dropped
 // when the site itself changes.
@@ -22,7 +22,6 @@ const APP_SHELL = [
   './Metadata%20Scrubber/metadata_scrubber.html',
   './Bulk%20File%20Renamer/bulk_rename.html',
   './Audio%20Transcriber/audio_transcriber.html',
-  './Virtual%20Card%20Manager/virtual_card_manager.html',
   './Image%20Compressor/image_compressor.html',
   './Video%20Converter/video_converter.html',
   './Video%20Editor/video_editor.html',

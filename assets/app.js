@@ -244,13 +244,6 @@
         sub('event', 'Event QR code', 'calendar-blank', 'Add an event to a calendar.', 'event calendar meeting ical'),
         sub('batch', 'Batch QR codes', 'rows', 'Make many QR codes at once as a ZIP.', 'batch bulk many zip')
       ]
-    },
-    {
-      id: 'cards', name: 'Test Card Generator', path: 'Virtual%20Card%20Manager/virtual_card_manager.html', icon: 'credit-card', category: 'everyday',
-      description: 'Official test card numbers for checking payment forms, with decline and 3D Secure scenarios.',
-      accepts: [], formats: 'Stripe, Adyen, Braintree',
-      keywords: 'test card credit card number stripe adyen braintree payment sandbox checkout developer 3ds 3d secure decline luhn virtual card manager',
-      subtools: []
     }
   ];
 

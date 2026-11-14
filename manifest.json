@@ -2,7 +2,7 @@
   "id": "/tools-for-everyone/index.html",
   "name": "Tools for Everyone",
   "short_name": "Tools",
-  "description": "Free tools that run in your browser: a PDF suite, image compressor, video converter, video editor, screen recorder, audio transcriber, private AI chat, QR code studio, metadata scrubber, bulk file renamer and test card generator. Your files are never uploaded, and each tool keeps working offline once you have opened it.",
+  "description": "Free tools that run in your browser: a PDF suite, image compressor, video converter, video editor, screen recorder, audio transcriber, private AI chat, QR code studio, metadata scrubber and bulk file renamer. Your files are never uploaded, and each tool keeps working offline once you have opened it.",
   "lang": "en",
   "dir": "ltr",
   "start_url": "./index.html",
